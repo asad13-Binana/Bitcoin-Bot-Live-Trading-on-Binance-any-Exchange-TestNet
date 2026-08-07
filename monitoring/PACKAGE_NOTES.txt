@@ -1,0 +1,6 @@
+MODE: BITCOIN SPOT UNIFIED - RELEASE CANDIDATE
+The unified package supports simulation, testnet, and gated live operation, but
+starts in simulation. Live monitoring is
+also disabled until promotion, binds only to 127.0.0.1:8091 when enabled, and
+uses a separate monitor token and Telegram token. It never reads trading keys.
+Simulation monitoring uses its own correctly labelled environment and service.

@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Bitcoin bot Telegram monitor report (LIVE Binance Spot)
+
+[Timer]
+OnCalendar=*-*-* 00:15:00 UTC
+RandomizedDelaySec=5m
+Persistent=true
+Unit=bitcoin-bot-monitor-report-live.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,12 @@
+FROM python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/app PIP_NO_CACHE_DIR=1 HOME=/tmp
+COPY requirements.services.lock /app/
+RUN pip install --no-cache-dir --require-hashes -r requirements.services.lock \
+    && useradd --create-home --uid 10001 bot
+COPY --chown=bot:bot services /app/services
+COPY --chown=bot:bot freqtrade/user_data/strategies/IctSmcStrategy.py /app/freqtrade/user_data/strategies/IctSmcStrategy.py
+COPY --chown=bot:bot RELEASE_MANIFEST.json RELEASE_SHA256.txt VALIDATION_STATUS.json /app/
+COPY RELEASE_MODE /app/RELEASE_MODE
+RUN chmod 0444 /app/RELEASE_MODE
+USER bot

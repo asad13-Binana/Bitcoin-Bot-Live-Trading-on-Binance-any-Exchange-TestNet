@@ -1,0 +1,146 @@
+BITCOIN SPOT BOT — GITHUB AND ORACLE LAUNCH GUIDE
+Release date: 30 July 2026
+Status: source-level offline release candidate; live trading is NOT certified
+
+1. PACKAGE CHOICE
+
+Use only one complete package:
+
+- BITCOIN_BOT_TESTNET_GITHUB_ORACLE_2026-07-30.zip
+  RELEASE_MODE=testnet; permits EXECUTION_MODE=simulation or testnet.
+  It rejects live mode regardless of environment variables.
+
+- BITCOIN_BOT_LIVE_GITHUB_ORACLE_2026-07-30.zip
+  RELEASE_MODE=live; permits EXECUTION_MODE=simulation or live.
+  It still defaults to simulation and remains not-certified for real funds.
+
+Verify the adjacent checksum before extraction. Example on Ubuntu:
+
+  sha256sum -c BITCOIN_BOT_TESTNET_GITHUB_ORACLE_2026-07-30.zip.sha256
+
+Never commit .env, API keys, Telegram tokens, signing private keys, runtime
+databases, evidence files, logs or account identifiers.
+
+2. GITHUB VALIDATION
+
+Create a private repository first. Extract one package so README.md,
+docker-compose.yml, deploy/ and .github/ are at the repository root.
+
+Copy .github/CODEOWNERS.example to .github/CODEOWNERS and replace
+@YOUR_GITHUB_USERNAME with the actual GitHub user/team. Protect main and require
+all verify-matrix and artifact checks. Pushes verify and package; they do not
+deploy. Oracle deployment is manual through workflow_dispatch, exact
+SIMULATION_ONLY confirmation, a temporary repository-variable gate, a dedicated
+unprivileged runner, and an independent one-use root-approved artifact hash.
+
+Required first evidence:
+
+  a. all Python 3.10–3.13 verification jobs pass;
+  b. exact dependency locks install and pip-audit is clean at run time;
+  c. the services image builds;
+  d. the final artifact is freshly extracted and reverified;
+  e. the pinned Freqtrade image runs the strategy probe;
+  f. the exact four-service Compose stack parses and reaches healthy state.
+
+Do not tag a production release while any required check is absent or skipped.
+
+3. ORACLE SIMULATION AND TESTNET
+
+Follow docs/GITHUB_ORACLE_DEPLOYMENT.md. Prepare a supported Oracle Ubuntu host,
+restrict SSH at the VCN and host firewall, install Docker/chrony, and create the
+private mode-0600 file /etc/bitcoin-bot/.env.
+
+Use one Always Free VM.Standard.A1.Flex allocation of 2 OCPU and 12 GB RAM. The
+1 GB E2.1.Micro shape is not supported for the full four-service stack. The
+pinned Python and Freqtrade image indexes include linux/arm64. Do not add Oracle
+Database or the Setup-Oracle-DB-Free GitHub Action; the bot uses local SQLite.
+See docs/ORACLE_GITHUB_SOURCE_REVIEW_2026-07-30.md.
+
+Start with:
+
+  EXECUTION_MODE=simulation
+  LIVE_TRADING_ENABLED=false
+  AUTO_CONFIRM=false
+  AUTO_PROTECTION_ENABLED=false
+  COINGECKO_CONTEXT_ENABLED=false
+  COINMARKETCAP_CONTEXT_ENABLED=false
+
+The supported first Oracle deployment is simulation-only and requires empty
+Binance credentials. For any later reviewed production-account drill, use a
+dedicated account or subaccount; disable withdrawals, grant only minimum Spot
+permission, and apply an IP restriction where available.
+
+For Testnet, use only the testnet package and dedicated Binance Spot Test
+Network credentials generated at the Spot Test Network website.
+Exercise full fills, partial fills, rejection, accepted-timeout ambiguity,
+cancel/replacement, user-stream reconnect, process restart and pair switching.
+
+Pair switching is staged:
+
+  /pairs -> select and confirm -> WAITING_MANUAL_SWAP
+  complete any required Binance-side quote swap
+  /swapdone -> apply one-pair configuration
+  /verifypair -> require fresh exact Freqtrade heartbeat
+  /start -> separate explicit resume
+
+The bot never infers the active pair from BTC or quote balances.
+
+CoinGecko and CoinMarketCap are optional Bitcoin-only advisory context. Keep
+them disabled until the base stack is stable. If enabled, use private free-plan
+keys and do not raise the shipped caps:
+
+  CoinGecko: 96 attempts/minute, 9,600 attempts/month
+  CoinMarketCap: 28 attempts/minute, 9,600 attempts/month
+  Refresh interval: at least 300 seconds
+
+Reservations are committed before each request. Missing initialized quota state
+fails closed. Provider output never changes pair selection, signals, sizing,
+filters, protection or order decisions.
+
+4. MANDATORY BLOCKERS BEFORE LIVE CERTIFICATION
+
+THE LIVE PACKAGE STAYS NOT-CERTIFIED UNTIL EVERY ITEM BELOW IS COMPLETED FOR THE
+EXACT FINAL RELEASE HASH AND THE ORIGINAL, REDACTED EVIDENCE IS RETAINED:
+
+  1. Green GitHub Actions for the exact source, including Docker image build,
+     Compose runtime, fresh-artifact verification and the pinned Freqtrade probe.
+  2. Binance Spot Testnet lifecycle evidence covering full/partial fills,
+     deterministic rejects, accepted-timeout ambiguity, stale entry expiry,
+     OTO/OTOCO/OCO/trailing protection, cancel-and-replace, restart recovery,
+     user-data reconnect and staged pair switching.
+  3. Oracle simulation/Testnet soak for at least 14 continuous days, including
+     clock, disk, memory, log retention, backup/restore, network loss, restart,
+     OOM and disk-full fault drills.
+  4. Three consecutive successful release and rollback cycles against the exact
+     four-service stack.
+  5. Real owner-only Telegram authorization, replay, cancellation, staged pair
+     switch, reconciliation and emergency-action drills with test credentials.
+  6. A genuine official Freqtrade result ZIP for the exact strategy, exact pair,
+     fee assumptions and adequate timerange, plus out-of-sample review.
+  7. Conclusive official lookahead-analysis and recursive-analysis outputs.
+  8. Performance review after fees, spread and slippage. A passing backtest is
+     not a profitability guarantee.
+  9. Fresh evidence files content-hashed into the promotion record and signed
+     offline with the configured Ed25519 key.
+ 10. Protected oracle-production approval and smallest-amount supervised launch,
+     with entries still manually controlled.
+
+No live order was submitted while building or testing this release. Packaging,
+unit tests, source hashes and a successful container start cannot by themselves
+certify real-money trading or guarantee profit.
+
+5. CHECKS AFTER EVERY DEPLOYMENT
+
+  readlink -f /opt/bitcoin-bot/current
+  sudo /usr/local/sbin/bitcoin-bot-deploy verify
+  docker ps --filter label=com.docker.compose.project=bitcoin-bot
+  cat /var/lib/bitcoin-bot/shared/runtime/deployment_status.json
+  cat /var/lib/bitcoin-bot/shared/runtime/release_validation.json
+  cat /var/lib/bitcoin-bot/shared/runtime/sidecar/sidecar_health.json
+
+Verify RELEASE_MODE, execution_mode, active_pair, pair_generation,
+pair_config_hash, pair_switch_stage, reconciliation status, user-stream status,
+unresolved intents and entries_enabled. Entries must remain false after install,
+restart, ambiguity or pair change until the owner explicitly resumes.
+In the owner-only private Telegram chat, run /audit and preserve the redacted
+report. It is a read-only state/health check and cannot certify profitability.

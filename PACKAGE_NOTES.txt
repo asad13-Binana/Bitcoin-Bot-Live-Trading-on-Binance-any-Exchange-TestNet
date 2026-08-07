@@ -1,0 +1,22 @@
+PACKAGE: bitcoin-bot-mode-separated
+PACKAGE MODE: immutable RELEASE_MODE is live or testnet
+DEFAULT: simulation; entries off
+RUNTIME: moneyflow, freqtrade, execution-sidecar, telegram-broker
+TELEGRAM SELF-AUDIT: owner-only /audit; read-only; no sidecar command or repair/resume path
+MARKET: one owner-selected, current Binance BTC-base Spot pair
+PAIR CHANGE: select -> reconcile -> manual-swap acknowledgement -> apply -> heartbeat verify -> explicit resume
+ORDER OWNER: execution-sidecar only
+PUBLIC CONTEXT: Spot + exact same-symbol USD-M where available
+OPTIONAL EXTERNAL CONTEXT: Bitcoin-only CoinGecko/CoinMarketCap telemetry; advisory, disabled by default, quota bounded
+SIGNAL TIMEFRAMES: 1m entry, 5m hard trend filter
+TELEMETRY TIMEFRAMES: 1m, 5m, 15m, 1h, 2h, 4h, 1d
+PROMOTION: Testnet/soak/drills + exact Freqtrade ZIP + offline Ed25519 evidence
+LIVE CERTIFICATION: not established
+PROFITABILITY: canonical 2025-01-01 through 2026-07-29 backtest failed (-49.10 percent; profit factor 0.3019; max drawdown 49.11 percent)
+ORACLE TARGET: Ubuntu 22.04/24.04 on A1 Flex 2 OCPU/12 GB; pinned runtime images include linux/arm64
+ORACLE DATABASE: not used; the reviewed Setup-Oracle-DB-Free action is intentionally excluded
+ORACLE DEPLOYMENT: manual simulation only through the restricted self-hosted runner and one-use root-approved artifact hash
+SECRETS INCLUDED: none
+
+Use the root docker-compose.yml and deploy/ scripts only. The nested Freqtrade compose
+file is an offline analysis profile, not an independent runtime deployment.

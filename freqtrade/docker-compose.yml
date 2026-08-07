@@ -1,0 +1,22 @@
+# ARCHIVED OFFLINE-ONLY COMPOSE FILE.
+# Runtime deployment must use ../docker-compose.yml from the release root.
+# This profile exists only for validation, public data download, and backtesting.
+services:
+  freqtrade:
+    image: freqtradeorg/freqtrade:2026.6@sha256:d451af021d5e08b70580c0eea5848534e9846b57391b34821c0a5814416397e6
+    restart: 'no'
+    stop_grace_period: 5m
+    mem_limit: 1g
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    volumes:
+    - ./user_data:/freqtrade/user_data
+    command: 'trade --logfile /freqtrade/user_data/logs/freqtrade.log --config /freqtrade/user_data/config.json
+      --strategy IctSmcStrategy
+
+      '
+    profiles:
+    - offline-audit

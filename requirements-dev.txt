@@ -1,0 +1,4 @@
+-r requirements.services.txt
+-r monitoring/requirements-monitoring-dev.txt
+PyYAML==6.0.2
+pip-audit==2.9.0

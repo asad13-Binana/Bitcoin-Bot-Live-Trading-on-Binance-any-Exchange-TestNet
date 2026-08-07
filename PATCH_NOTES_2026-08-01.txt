@@ -1,0 +1,142 @@
+BITCOIN BOT — POST-RELEASE PATCH NOTES
+Base release: BITCOIN-BOT-1.1 (Codex source package, 30 July 2026)
+Patch date:   1 August 2026
+Patch scope:  GitHub CI enablement only. No strategy, signal, execution,
+              risk, pair-policy or live-gate logic was altered.
+
+WHY THIS PATCH EXISTS
+
+The 30 July package was verified on a Windows audit host. Two code paths that
+only execute on Linux CI runners were therefore never exercised. Both were
+confirmed by direct execution on Linux before this patch was written, and both
+would have failed the first GitHub Actions run.
+
+CHANGE 1 — deploy/verify_release.sh, systemd-analyze branch
+
+  Symptom
+    On any host where systemd-analyze is installed but the bot is not yet
+    installed, the release gate aborted:
+
+      systemd-analyze verify   -> exit 1
+      deploy/verify_release.sh -> exit 1
+
+    Fourteen errors of the form:
+      Command /opt/bitcoin-bot/monitoring-current/bin/python is not executable
+      Command /usr/local/libexec/bitcoin-bot-monitor-snapshot is not executable
+      Failed to create bitcoin-bot-monitor-snapshot.service/start:
+        Unit docker.service not found.
+
+  Cause
+    systemd-analyze verify resolves each unit's ExecStart binary against the
+    machine running the check. Those paths exist only after installation on the
+    Oracle host. The script runs under 'set -euo pipefail', so a non-zero exit
+    aborted the entire gate. GitHub ubuntu-latest runners are full Ubuntu VMs
+    with systemd present, so the strict branch would have run there for the
+    first time and failed the CI step "Full offline verification" on Python
+    3.10, 3.11, 3.12 and 3.13 simultaneously. The dependent 'artifact' job would
+    never have started.
+
+    The unit files themselves are correct. No syntax error, no unknown
+    directive, no missing service/timer pairing.
+
+  Fix
+    The branch now distinguishes three environments:
+      - systemd-analyze absent            -> static pairing checks only
+      - bot installed on this host        -> strict verification, unchanged
+      - systemd-analyze present, bot not  -> verification runs, unresolved
+                                             install paths reported as a
+                                             warning instead of aborting
+    Strictness on the Oracle deployment host is preserved exactly. Only the
+    off-host case is downgraded.
+
+  Verified after patch
+    bash deploy/verify_release.sh -> exit 0
+    "Bitcoin Bot mode-separated release verification passed."
+
+CHANGE 2 — scripts/activate_codeowners.py (new file)
+
+  Symptom
+    docs/GITHUB_ORACLE_DEPLOYMENT.md instructs the operator to copy
+    .github/CODEOWNERS.example to .github/CODEOWNERS. Doing only that fails
+    the gate:
+
+      file-review ledger mismatch; missing=['.github/CODEOWNERS']; stale=[]
+      unmanifested file: .github/CODEOWNERS
+
+  Cause
+    docs/audit/FILE_REVIEW_LEDGER.csv enforces an exact path set, and
+    RELEASE_MANIFEST.json enforces an exact file set with hashes. The ledger is
+    hand-maintained by design: scripts/build_audit_ledgers.py regenerates only
+    FUNCTION_PARITY_MATRIX.csv, never the file-review ledger.
+
+  Fix
+    A helper script performs the three required steps atomically: writes
+    .github/CODEOWNERS with the real owner substituted, inserts the matching
+    ledger row, and rebuilds the manifest and release hash. It validates the
+    owner format, refuses the shipped placeholder, and is safe to re-run.
+
+  Usage
+    python scripts/activate_codeowners.py --owner @your-github-username
+    bash deploy/verify_release.sh
+
+CHANGE 3 — this file
+
+  PATCH_NOTES_2026-08-01.txt added so the package documents its own delta from
+  the Codex 30 July release.
+
+FILES CHANGED
+
+  modified  deploy/verify_release.sh
+  added     scripts/activate_codeowners.py
+  added     PATCH_NOTES_2026-08-01.txt
+  regenerated  docs/audit/FILE_REVIEW_LEDGER.csv   (two rows added)
+  regenerated  RELEASE_MANIFEST.json
+  regenerated  RELEASE_SHA256.txt
+
+  Unchanged: the protected strategy, all four protected signal methods, every
+  service module, the live-evidence gate, risk checks, pair policy, the CI
+  workflow, all deployment scripts and every test.
+
+  freqtrade/user_data/strategies/IctSmcStrategy.py SHA-256 remains
+  023d5f9a09c3a9057986ec1a79fe74cc987b79dd52c3453683d09d023f08e340
+
+THE MAINTENANCE RULE THIS PATCH DEMONSTRATES
+
+  Two separate ledgers guard this package and they are regenerated differently.
+
+    docs/audit/FILE_REVIEW_LEDGER.csv     hand-maintained, exact path set
+    docs/audit/FUNCTION_PARITY_MATRIX.csv generated, exact function hashes
+
+  When you ADD, REMOVE or RENAME any file:
+
+    1. edit docs/audit/FILE_REVIEW_LEDGER.csv by hand
+    2. python scripts/build_audit_ledgers.py        (no --check; rebuilds the
+                                                     function parity matrix)
+    3. python scripts/build_manifest.py
+    4. python scripts/build_audit_ledgers.py --check
+       python scripts/verify_manifest.py
+
+  When you only EDIT an existing file:
+
+    1. python scripts/build_audit_ledgers.py        (only if the file declares
+                                                     Python or Bash functions)
+    2. python scripts/build_manifest.py
+    3. python scripts/build_audit_ledgers.py --check
+       python scripts/verify_manifest.py
+
+  Step 2 is easy to forget. Omitting it produces:
+    'function-parity matrix is stale; run python scripts/build_audit_ledgers.py'
+  Order matters: regenerate the matrix BEFORE the manifest, because the matrix
+  file is itself manifested.
+
+  Run 'bash deploy/verify_release.sh' before every commit. It performs every
+  check the GitHub 'verify' job performs.
+
+WHAT THIS PATCH DOES NOT CHANGE
+
+  The strategy still fails its mandatory profitability gate: profit factor
+  0.3019 against a required 1.15, and 49.11 percent maximum account drawdown
+  against a permitted 20 percent. Real-money promotion remains prohibited.
+  VALIDATION_STATUS.json was deliberately not edited; its assessment of the
+  30 July source remains accurate and every external gate it lists as BLOCKED
+  or NOT RUN is still blocked or not run.

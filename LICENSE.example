@@ -1,0 +1,68 @@
+PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED
+
+Copyright (c) 2026 <LICENSE_OWNER>
+
+This software and its accompanying documentation, configuration, deployment
+scripts, audit evidence and trading strategy (collectively, "the Software")
+are the exclusive property of the copyright holder named above.
+
+NO LICENCE IS GRANTED. No person or entity is granted any right to use, copy,
+reproduce, modify, adapt, merge, publish, distribute, sublicense, sell, lease,
+lend, disclose or create derivative works of the Software, in whole or in
+part, in source or object form, by any means, without the prior express
+written permission of the copyright holder.
+
+Possession of a copy of the Software does not convey any licence or right of
+use. Any unauthorised use, reproduction or distribution is prohibited and may
+result in civil and criminal liability.
+
+NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NONINFRINGEMENT.
+
+NO LIABILITY
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+
+TRADING RISK NOTICE
+
+The Software is automated trading software that can place orders on a
+cryptocurrency exchange. Trading carries a substantial risk of loss and is not
+suitable for every person. Past or simulated performance is not indicative of
+future results, and backtested results do not represent actual trading.
+
+The Software is NOT certified for real-money trading. Its strategy has not
+passed its own mandatory profitability and drawdown gates. Any person who
+operates it does so entirely at their own risk and remains solely responsible
+for all resulting financial loss, for the security of their exchange API
+credentials, and for compliance with every law, regulation, tax obligation and
+exchange term of service applicable to them.
+
+Nothing in the Software or its documentation is financial, investment, legal or
+tax advice.
+
+-------------------------------------------------------------------------------
+HOW TO ACTIVATE THIS LICENCE
+
+This is a template. Do not commit it as LICENSE with the placeholder in place.
+Generate the real file, which also updates the audit ledger and manifest:
+
+    python scripts/activate_codeowners.py \
+        --owner @your-github-username \
+        --license-owner "Your Full Legal Name Or Company Ltd"
+
+TO CHOOSE A DIFFERENT LICENCE INSTEAD
+
+Replace this template's text before activating. Note that a permissive licence
+such as MIT is a genuine grant, not merely a disclaimer: it would allow anyone
+to use, copy, modify, distribute, sublicense and SELL this trading system.
+For a private, live-capable trading system that is rarely the intent.
+
+This notice is a baseline drafted for a private repository. It is not legal
+advice and does not guarantee protection from liability. Have a qualified
+lawyer review it before relying on it.

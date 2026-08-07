@@ -1,0 +1,43 @@
+[Unit]
+Description=Bitcoin bot read-only monitor API (Binance Spot Testnet)
+After=network-online.target docker.service
+Wants=network-online.target
+ConditionPathExists=/etc/bitcoin-bot/testnet-monitor.env
+
+[Service]
+Type=simple
+User=botmon
+Group=botmon
+EnvironmentFile=/etc/bitcoin-bot/testnet-monitor.env
+WorkingDirectory=/opt/bitcoin-bot/current
+ExecCondition=/opt/bitcoin-bot/monitoring-current/bin/python -m monitoring.control api
+ExecStart=/opt/bitcoin-bot/monitoring-current/bin/python -m uvicorn monitoring.api.app:app --host ${MONITOR_BIND_HOST} --port ${MONITOR_PORT} --no-access-log
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+ReadWritePaths=/var/log/bitcoin-bot/monitor
+ReadOnlyPaths=/var/lib/bitcoin-bot/shared /opt/bitcoin-bot/current
+
+[Install]
+WantedBy=multi-user.target

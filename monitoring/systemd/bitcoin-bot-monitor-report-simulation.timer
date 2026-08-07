@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Bitcoin bot Telegram monitor report (Simulation)
+
+[Timer]
+OnCalendar=*-*-* 23:55:00 UTC
+RandomizedDelaySec=5m
+Persistent=true
+Unit=bitcoin-bot-monitor-report-simulation.service
+
+[Install]
+WantedBy=timers.target

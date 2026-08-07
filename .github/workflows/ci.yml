@@ -1,0 +1,190 @@
+name: Verify and package Bitcoin Bot
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_oracle:
+        description: Deploy the verified artifact to the configured Oracle host
+        required: true
+        default: false
+        type: boolean
+      execution_mode:
+        description: Restricted Oracle workflow mode
+        required: true
+        default: simulation
+        type: choice
+        options: [simulation]
+      confirmation:
+        description: Type SIMULATION_ONLY to permit the Oracle job
+        required: true
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bitcoin-bot-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install verification dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Prove monitoring lock installs on this Python
+        run: |
+          python -m venv /tmp/monitor-lock-venv
+          /tmp/monitor-lock-venv/bin/python -m pip install --disable-pip-version-check \
+            --require-hashes -r monitoring/requirements-monitoring.lock
+          /tmp/monitor-lock-venv/bin/python -m pip check
+      - name: Full offline verification
+        run: bash ./deploy/verify_release.sh
+      - name: Service dependency vulnerability audit
+        run: python -m pip_audit -r requirements.services.lock --strict
+      - name: Monitoring dependency vulnerability audit
+        run: python -m pip_audit -r monitoring/requirements-monitoring.lock --strict
+
+  artifact:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install verification dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Create deterministic immutable artifact
+        run: |
+          printf '%s\n' "$GITHUB_SHA" > .git-commit
+          python scripts/build_manifest.py
+          mkdir -p /tmp/bitcoin-bot-artifact
+          tar --sort=name --mtime='UTC 2020-01-01' --owner=0 --group=0 --numeric-owner \
+            --format=posix --pax-option=delete=atime,delete=ctime \
+            --exclude='./.git' --exclude='./.env' --exclude='*.sqlite*' \
+            --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
+            --exclude='.ruff_cache' --exclude='*.zip' --exclude='*.tar.gz' \
+            --transform='s,^,bitcoin-bot/,' -cf - . | \
+            gzip -n -9 > "/tmp/bitcoin-bot-artifact/bitcoin-bot-${GITHUB_SHA}.tar.gz"
+          cd /tmp/bitcoin-bot-artifact
+          sha256sum "bitcoin-bot-${GITHUB_SHA}.tar.gz" > "bitcoin-bot-${GITHUB_SHA}.tar.gz.sha256"
+          cp "$GITHUB_WORKSPACE/deploy/install_artifact.sh" .
+      - name: Verify freshly extracted artifact
+        run: |
+          python - <<'PY'
+          import pathlib
+          import tarfile
+
+          archive = next(pathlib.Path('/tmp/bitcoin-bot-artifact').glob('bitcoin-bot-*.tar.gz'))
+          with tarfile.open(archive, 'r:gz') as source:
+              roots = set()
+              names = set()
+              for member in source.getmembers():
+                  path = pathlib.PurePosixPath(member.name)
+                  if path.is_absolute() or '..' in path.parts or '\\' in member.name:
+                      raise SystemExit(f'unsafe archive path: {member.name}')
+                  if member.issym() or member.islnk() or member.isdev() or member.isfifo():
+                      raise SystemExit(f'unsafe archive member type: {member.name}')
+                  normal = path.as_posix().rstrip('/')
+                  if normal in names:
+                      raise SystemExit(f'duplicate archive member: {member.name}')
+                  names.add(normal)
+                  if path.parts:
+                      roots.add(path.parts[0])
+              if roots != {'bitcoin-bot'}:
+                  raise SystemExit(f'unexpected archive roots: {roots}')
+              source.extractall('/tmp/bitcoin-bot-extracted', filter='data')
+          PY
+          cd /tmp/bitcoin-bot-extracted/bitcoin-bot
+          python scripts/verify_manifest.py
+          bash ./deploy/verify_release.sh
+          export FREQTRADE_API_PASSWORD='GENERATE_CI_ONLY_PASSWORD_000000'
+          export FREQTRADE_API_JWT_SECRET='GENERATE_CI_ONLY_JWT_SECRET_00000000000'
+          export FREQTRADE_API_WS_TOKEN='GENERATE_CI_ONLY_WS_TOKEN_0000000000000'
+          export SIGNAL_HMAC_KEY='GENERATE_CI_ONLY_SIGNAL_HMAC_00000000000'
+          export COMMAND_HMAC_KEY='GENERATE_CI_ONLY_COMMAND_HMAC_000000000'
+          export TELEGRAM_BOT_TOKEN='123456789:GENERATE_CI_ONLY_BOT_TOKEN_000000000'
+          export TELEGRAM_OWNER_CHAT_ID='1'
+          export SIDECAR_RELEASE_HASH='0000000000000000000000000000000000000000000000000000000000000000'
+          export DEPLOYED_RELEASE_HASH='0000000000000000000000000000000000000000000000000000000000000000'
+          export DEPLOYED_CONFIG_SHA256='1111111111111111111111111111111111111111111111111111111111111111'
+          make compose
+          docker compose --env-file .env.example build moneyflow
+          docker run --rm --entrypoint python bitcoin-bot-services:local -c \
+            "from pathlib import Path; p=Path('/app/freqtrade/user_data/strategies/IctSmcStrategy.py'); assert p.is_file() and p.stat().st_size > 0"
+          bash freqtrade/scripts/verify.sh
+          docker compose -f freqtrade/docker-compose.yml --profile offline-audit run --rm \
+            --entrypoint python \
+            -v "$PWD/freqtrade/tests:/freqtrade/audit-tests:ro" \
+            freqtrade /freqtrade/audit-tests/audit_probes.py
+          cmp RELEASE_MANIFEST.json "$GITHUB_WORKSPACE/RELEASE_MANIFEST.json"
+          cmp RELEASE_SHA256.txt "$GITHUB_WORKSPACE/RELEASE_SHA256.txt"
+      - uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: bitcoin-bot-${{ github.sha }}
+          path: /tmp/bitcoin-bot-artifact/*
+          retention-days: 14
+          if-no-files-found: error
+
+  deploy-oracle-simulation:
+    # Verification and packaging remain on isolated GitHub-hosted runners.
+    # Only a manual main-branch dispatch may reach the dedicated Oracle runner.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.deploy_oracle == true &&
+      inputs.execution_mode == 'simulation' &&
+      inputs.confirmation == 'SIMULATION_ONLY' &&
+      vars.ORACLE_DEPLOY_ENABLED == 'true'
+    needs: artifact
+    runs-on: [self-hosted, linux, oracle-sim]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: bitcoin-bot-${{ github.sha }}
+          path: ${{ runner.temp }}/bitcoin-bot-artifact
+      - name: Stage the verified workflow artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          artifact_dir="${RUNNER_TEMP}/bitcoin-bot-artifact"
+          mapfile -t archives < <(
+            find "$artifact_dir" -maxdepth 1 -type f \
+              -name 'bitcoin-bot-*.tar.gz' -print
+          )
+          [[ ${#archives[@]} == 1 ]]
+          checksum="${archives[0]}.sha256"
+          [[ -f "$checksum" && ! -L "$checksum" ]]
+          install -m 0600 "${archives[0]}" \
+            /var/lib/bitcoin-bot/incoming/bitcoin-bot-release.tar.gz
+          install -m 0600 "$checksum" \
+            /var/lib/bitcoin-bot/incoming/bitcoin-bot-release.tar.gz.sha256
+      - name: Root-approved simulation preflight
+        shell: bash
+        run: sudo /usr/local/sbin/bitcoin-bot-deploy preflight
+      - name: Atomic simulation install
+        shell: bash
+        run: sudo /usr/local/sbin/bitcoin-bot-deploy simulation
+      - name: Verify exact four-service simulation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo /usr/local/sbin/bitcoin-bot-deploy verify

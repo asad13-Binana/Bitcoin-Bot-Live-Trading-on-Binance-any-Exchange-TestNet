@@ -1,0 +1,12 @@
+*
+!Dockerfile.services
+!requirements.services.lock
+!services/
+!services/**
+!freqtrade/
+!freqtrade/user_data/
+!freqtrade/user_data/strategies/
+!freqtrade/user_data/strategies/IctSmcStrategy.py
+!RELEASE_MANIFEST.json
+!RELEASE_SHA256.txt
+!VALIDATION_STATUS.json

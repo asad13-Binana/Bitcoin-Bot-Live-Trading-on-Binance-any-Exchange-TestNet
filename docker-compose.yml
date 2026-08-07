@@ -1,0 +1,281 @@
+name: bitcoin-bot
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-service-hardening: &service-hardening
+  user: "${BOT_UID:-1000}:${BOT_GID:-1000}"
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp:size=32m,mode=1777
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging: *default-logging
+
+services:
+  moneyflow:
+    <<: *service-hardening
+    build:
+      context: .
+      dockerfile: Dockerfile.services
+    image: bitcoin-bot-services:${RELEASE_TAG:-local}
+    command: python -m services.moneyflow.service
+    environment:
+      DEPLOYED_RELEASE_HASH: ${DEPLOYED_RELEASE_HASH:?installer must bind the release hash}
+      DEPLOYED_CONFIG_SHA256: ${DEPLOYED_CONFIG_SHA256:?installer must bind the config hash}
+      SHARED_ROOT: /app/shared
+      RUNTIME_DIR: /app/shared/runtime/moneyflow
+      ACTIVE_PAIR_FILE: /app/shared/pair/active_pair.json
+      PAIRLIST_FILE: /app/shared/pair/current_pairlist.json
+      FREQTRADE_ACTIVE_CONFIG: /app/shared/pair/freqtrade-active.json
+      MONEYFLOW_FILE: /app/shared/moneyflow/latest.json
+      BTC_QUOTE_ALLOWLIST: ${BTC_QUOTE_ALLOWLIST:-}
+      MONEYFLOW_REFRESH_SECONDS: ${MONEYFLOW_REFRESH_SECONDS:-15}
+      MONEYFLOW_DEPTH_LIMIT: ${MONEYFLOW_DEPTH_LIMIT:-100}
+      MONEYFLOW_TRADE_LIMIT: ${MONEYFLOW_TRADE_LIMIT:-500}
+      MONEYFLOW_DEPTH_BAND_BPS: ${MONEYFLOW_DEPTH_BAND_BPS:-10}
+      FLOW_MIN_TAKER_BUY_RATIO: ${FLOW_MIN_TAKER_BUY_RATIO:-0.55}
+      FLOW_MIN_SPOT_IMBALANCE: ${FLOW_MIN_SPOT_IMBALANCE:-0.05}
+      HTTP_TIMEOUT_SECONDS: ${HTTP_TIMEOUT_SECONDS:-15}
+      PUBLIC_HTTP_MAX_ATTEMPTS: ${PUBLIC_HTTP_MAX_ATTEMPTS:-4}
+      COINGECKO_CONTEXT_ENABLED: ${COINGECKO_CONTEXT_ENABLED:-false}
+      COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
+      COINMARKETCAP_CONTEXT_ENABLED: ${COINMARKETCAP_CONTEXT_ENABLED:-false}
+      COINMARKETCAP_API_KEY: ${COINMARKETCAP_API_KEY:-}
+      EXTERNAL_MARKET_REFRESH_SECONDS: ${EXTERNAL_MARKET_REFRESH_SECONDS:-300}
+      EXTERNAL_MARKET_STALE_AFTER_SECONDS: ${EXTERNAL_MARKET_STALE_AFTER_SECONDS:-900}
+      EXTERNAL_MARKET_HTTP_TIMEOUT_SECONDS: ${EXTERNAL_MARKET_HTTP_TIMEOUT_SECONDS:-10}
+      COINGECKO_MAX_REQUESTS_PER_MINUTE: ${COINGECKO_MAX_REQUESTS_PER_MINUTE:-96}
+      COINGECKO_MAX_MONTHLY_ATTEMPTS: ${COINGECKO_MAX_MONTHLY_ATTEMPTS:-9600}
+      COINMARKETCAP_MAX_REQUESTS_PER_MINUTE: ${COINMARKETCAP_MAX_REQUESTS_PER_MINUTE:-28}
+      COINMARKETCAP_MAX_MONTHLY_ATTEMPTS: ${COINMARKETCAP_MAX_MONTHLY_ATTEMPTS:-9600}
+      EXTERNAL_MARKET_CACHE_FILE: /app/shared/moneyflow/external_market_cache.json
+      EXTERNAL_MARKET_QUOTA_DB: /app/shared/runtime/moneyflow/external_market_quota.sqlite3
+      AUDIT_LOG: /app/shared/audit/events.jsonl
+      AUDIT_LOG_MAX_BYTES: ${AUDIT_LOG_MAX_BYTES:-10485760}
+      AUDIT_LOG_BACKUPS: ${AUDIT_LOG_BACKUPS:-5}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ${SHARED_HOST_PATH:-./shared}/pair:/app/shared/pair:ro
+      - ${SHARED_HOST_PATH:-./shared}/moneyflow:/app/shared/moneyflow
+      - ${SHARED_HOST_PATH:-./shared}/runtime/moneyflow:/app/shared/runtime/moneyflow
+      - ${SHARED_HOST_PATH:-./shared}/audit:/app/shared/audit
+    mem_limit: 180m
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import json,time;d=json.load(open('/app/shared/runtime/moneyflow/moneyflow_health.json'));assert d.get('ok') is True and time.time()-float(d['ts'])<60\""]
+      interval: 20s
+      timeout: 8s
+      retries: 6
+      start_period: 20s
+
+  freqtrade:
+    image: freqtradeorg/freqtrade:2026.6@sha256:d451af021d5e08b70580c0eea5848534e9846b57391b34821c0a5814416397e6
+    user: "${BOT_UID:-1000}:${BOT_GID:-1000}"
+    restart: unless-stopped
+    depends_on:
+      moneyflow:
+        condition: service_healthy
+    environment:
+      DEPLOYED_RELEASE_HASH: ${DEPLOYED_RELEASE_HASH:?installer must bind the release hash}
+      DEPLOYED_CONFIG_SHA256: ${DEPLOYED_CONFIG_SHA256:?installer must bind the config hash}
+      FREQTRADE__API_SERVER__ENABLED: "true"
+      FREQTRADE__API_SERVER__LISTEN_IP_ADDRESS: "0.0.0.0"
+      FREQTRADE__API_SERVER__USERNAME: ${FREQTRADE_API_USERNAME:-freqtrade}
+      FREQTRADE__API_SERVER__PASSWORD: ${FREQTRADE_API_PASSWORD:?set FREQTRADE_API_PASSWORD}
+      FREQTRADE__API_SERVER__JWT_SECRET_KEY: ${FREQTRADE_API_JWT_SECRET:?set FREQTRADE_API_JWT_SECRET}
+      FREQTRADE__API_SERVER__WS_TOKEN: ${FREQTRADE_API_WS_TOKEN:?set FREQTRADE_API_WS_TOKEN}
+      ACTIVE_PAIR_FILE: /freqtrade/shared/pair/active_pair.json
+      SIGNAL_INBOX: /freqtrade/shared/signals/inbox
+      SIGNAL_PROCESSED: /freqtrade/shared/signals/processed
+      SIGNAL_REJECTED: /freqtrade/shared/signals/rejected
+      SIGNAL_HEARTBEAT: /freqtrade/shared/freqtrade/signal_seam_heartbeat.json
+      SIGNAL_HMAC_KEY: ${SIGNAL_HMAC_KEY:?set SIGNAL_HMAC_KEY}
+      ENVELOPE_RELEASE_HASH: ${SIDECAR_RELEASE_HASH:-}
+      PYTHONPATH: /freqtrade/services_src
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./freqtrade/user_data/config.json:/freqtrade/user_data/config.json:ro
+      - ./freqtrade/user_data/strategies:/freqtrade/user_data/strategies:ro
+      - ./services:/freqtrade/services_src/services:ro
+      - ./RELEASE_SHA256.txt:/freqtrade/services_src/RELEASE_SHA256.txt:ro
+      - ${SHARED_HOST_PATH:-./shared}/pair:/freqtrade/shared/pair:ro
+      - ${SHARED_HOST_PATH:-./shared}/signals:/freqtrade/shared/signals
+      - ${SHARED_HOST_PATH:-./shared}/freqtrade:/freqtrade/shared/freqtrade
+    command: >-
+      trade --logfile /freqtrade/shared/freqtrade/logs/freqtrade.log
+      --config /freqtrade/user_data/config.json
+      --config /freqtrade/shared/pair/freqtrade-active.json
+      --strategy IctSmcStrategy
+    mem_limit: 520m
+    stop_grace_period: 2m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import json,urllib.request;from datetime import datetime,timezone;assert urllib.request.urlopen('http://127.0.0.1:8080/api/v1/ping',timeout=4).status==200;d=json.load(open('/freqtrade/shared/freqtrade/signal_seam_heartbeat.json'));age=(datetime.now(timezone.utc)-datetime.fromisoformat(str(d['ts']).replace('Z','+00:00'))).total_seconds();assert d.get('ok') is True and d.get('whitelist')==1 and d.get('active_pairs')==1 and -30<age<120\""]
+      interval: 30s
+      timeout: 8s
+      retries: 8
+      start_period: 30s
+    logging: *default-logging
+
+  execution-sidecar:
+    <<: *service-hardening
+    image: bitcoin-bot-services:${RELEASE_TAG:-local}
+    command: python -m services.execution_sidecar.main
+    depends_on:
+      moneyflow:
+        condition: service_healthy
+      freqtrade:
+        condition: service_healthy
+    environment:
+      DEPLOYED_RELEASE_HASH: ${DEPLOYED_RELEASE_HASH:?installer must bind the release hash}
+      DEPLOYED_CONFIG_SHA256: ${DEPLOYED_CONFIG_SHA256:?installer must bind the config hash}
+      EXECUTION_MODE: ${EXECUTION_MODE:-simulation}
+      LIVE_TRADING_ENABLED: ${LIVE_TRADING_ENABLED:-false}
+      BINANCE_API_KEY: ${BINANCE_API_KEY:-}
+      BINANCE_API_SECRET: ${BINANCE_API_SECRET:-}
+      BINANCE_HTTP_TIMEOUT_SECONDS: ${BINANCE_HTTP_TIMEOUT_SECONDS:-10}
+      BINANCE_RECV_WINDOW_MS: ${BINANCE_RECV_WINDOW_MS:-5000}
+      BINANCE_TIME_SYNC_MAX_RTT_MS: ${BINANCE_TIME_SYNC_MAX_RTT_MS:-2000}
+      # Blank selects the official Spot Testnet host in testnet mode and the
+      # official production host in live mode. Override only for a certified proxy.
+      BINANCE_SPOT_EXECUTION_PUBLIC_BASE: ${BINANCE_SPOT_EXECUTION_PUBLIC_BASE:-}
+      ACTIVE_PAIR: ${ACTIVE_PAIR:-BTC/USDT}
+      BTC_QUOTE_ALLOWLIST: ${BTC_QUOTE_ALLOWLIST:-}
+      TRADE_SIZE_QUOTE: ${TRADE_SIZE_QUOTE:-100}
+      MAX_ENTRY_OPEN_SECONDS: ${MAX_ENTRY_OPEN_SECONDS:-300}
+      PROTECTION_MODE: ${PROTECTION_MODE:-OCO_TRAILING}
+      AUTO_CONFIRM: "false"
+      SHARED_ROOT: /app/shared
+      RUNTIME_DIR: /app/shared/runtime/sidecar
+      ACTIVE_PAIR_FILE: /app/shared/pair/active_pair.json
+      PAIRLIST_FILE: /app/shared/pair/current_pairlist.json
+      FREQTRADE_ACTIVE_CONFIG: /app/shared/pair/freqtrade-active.json
+      ELIGIBLE_PAIRS_FILE: /app/shared/pair/eligible_pairs.json
+      FREQTRADE_HEARTBEAT_FILE: /app/shared/freqtrade/signal_seam_heartbeat.json
+      MONEYFLOW_FILE: /app/shared/moneyflow/latest.json
+      SIGNAL_INBOX: /app/shared/signals/inbox
+      SIGNAL_PROCESSED: /app/shared/signals/processed
+      SIGNAL_REJECTED: /app/shared/signals/rejected
+      COMMAND_INBOX: /app/shared/commands/inbox
+      COMMAND_RESULTS_DIR: /app/shared/command_results
+      REQUIRE_FLOW_CONTEXT: ${REQUIRE_FLOW_CONTEXT:-false}
+      REQUIRE_MATCHING_FUTURES: ${REQUIRE_MATCHING_FUTURES:-false}
+      MAX_FLOW_AGE_SECONDS: ${MAX_FLOW_AGE_SECONDS:-45}
+      MONEYFLOW_REFRESH_SECONDS: ${MONEYFLOW_REFRESH_SECONDS:-15}
+      MONEYFLOW_DEPTH_LIMIT: ${MONEYFLOW_DEPTH_LIMIT:-100}
+      MONEYFLOW_TRADE_LIMIT: ${MONEYFLOW_TRADE_LIMIT:-500}
+      MONEYFLOW_DEPTH_BAND_BPS: ${MONEYFLOW_DEPTH_BAND_BPS:-10}
+      FLOW_MIN_TAKER_BUY_RATIO: ${FLOW_MIN_TAKER_BUY_RATIO:-0.55}
+      FLOW_MIN_SPOT_IMBALANCE: ${FLOW_MIN_SPOT_IMBALANCE:-0.05}
+      PAIR_COOLDOWN_SECONDS: ${PAIR_COOLDOWN_SECONDS:-60}
+      MAX_STOPOUTS_PER_PAIR_DAY: ${MAX_STOPOUTS_PER_PAIR_DAY:-3}
+      MAX_STOPOUTS_GLOBAL_DAY: ${MAX_STOPOUTS_GLOBAL_DAY:-10}
+      MAX_SIGNAL_AGE_SECONDS: ${MAX_SIGNAL_AGE_SECONDS:-180}
+      MAX_CANDLE_AGE_SECONDS: ${MAX_CANDLE_AGE_SECONDS:-180}
+      TAKE_PROFIT_PCT: ${TAKE_PROFIT_PCT:-1.2}
+      FIXED_STOP_PCT: ${FIXED_STOP_PCT:-2.0}
+      TRAILING_DELTA_BIPS: ${TRAILING_DELTA_BIPS:-40}
+      LIMIT_FILL_BUFFER_BIPS: ${LIMIT_FILL_BUFFER_BIPS:-20}
+      FEE_PCT_PER_SIDE: ${FEE_PCT_PER_SIDE:-0.1}
+      BREAK_EVEN_SLIPPAGE_PCT: ${BREAK_EVEN_SLIPPAGE_PCT:-0.05}
+      SPOT_FILTER_MAX_AGE_SECONDS: ${SPOT_FILTER_MAX_AGE_SECONDS:-300}
+      AUTO_PROTECTION_ENABLED: ${AUTO_PROTECTION_ENABLED:-false}
+      AUTO_BREAK_EVEN_TRIGGER_PCT: ${AUTO_BREAK_EVEN_TRIGGER_PCT:-0.5}
+      AUTO_TIGHT_TRAIL_BIPS: ${AUTO_TIGHT_TRAIL_BIPS:-20}
+      SIGNAL_HMAC_KEY: ${SIGNAL_HMAC_KEY:?set SIGNAL_HMAC_KEY}
+      COMMAND_HMAC_KEY: ${COMMAND_HMAC_KEY:?set COMMAND_HMAC_KEY}
+      LIVE_EVIDENCE_PUBLIC_KEY: ${LIVE_EVIDENCE_PUBLIC_KEY:-}
+      LIVE_MIN_BACKTEST_TRADES: ${LIVE_MIN_BACKTEST_TRADES:-100}
+      LIVE_MIN_PROFIT_FACTOR: ${LIVE_MIN_PROFIT_FACTOR:-1.15}
+      LIVE_MIN_PROFIT_TOTAL: ${LIVE_MIN_PROFIT_TOTAL:-0}
+      LIVE_MAX_DRAWDOWN_ACCOUNT: ${LIVE_MAX_DRAWDOWN_ACCOUNT:-0.20}
+      LIVE_MIN_BACKTEST_FEE: ${LIVE_MIN_BACKTEST_FEE:-0.001}
+      LIVE_EVIDENCE_RECHECK_SECONDS: ${LIVE_EVIDENCE_RECHECK_SECONDS:-30}
+      ENVELOPE_RELEASE_HASH: ${SIDECAR_RELEASE_HASH:-}
+      SIDECAR_RELEASE_HASH: ${SIDECAR_RELEASE_HASH:-}
+      LIVE_EVIDENCE_FILE: /app/shared/runtime/sidecar/LIVE_EVIDENCE.json
+      AUDIT_LOG: /app/shared/audit/events.jsonl
+      AUDIT_LOG_MAX_BYTES: ${AUDIT_LOG_MAX_BYTES:-10485760}
+      AUDIT_LOG_BACKUPS: ${AUDIT_LOG_BACKUPS:-5}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ${SHARED_HOST_PATH:-./shared}/pair:/app/shared/pair
+      - ${SHARED_HOST_PATH:-./shared}/freqtrade:/app/shared/freqtrade:ro
+      - ${SHARED_HOST_PATH:-./shared}/moneyflow:/app/shared/moneyflow:ro
+      - ${SHARED_HOST_PATH:-./shared}/signals:/app/shared/signals
+      - ${SHARED_HOST_PATH:-./shared}/commands:/app/shared/commands
+      - ${SHARED_HOST_PATH:-./shared}/command_results:/app/shared/command_results
+      - ${SHARED_HOST_PATH:-./shared}/runtime/sidecar:/app/shared/runtime/sidecar
+      - ${SHARED_HOST_PATH:-./shared}/audit:/app/shared/audit
+    mem_limit: 360m
+    stop_grace_period: 2m
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import json,time;d=json.load(open('/app/shared/runtime/sidecar/sidecar_health.json'));assert d['ok'] and time.time()-float(d['ts'])<15\""]
+      interval: 20s
+      timeout: 8s
+      retries: 6
+      start_period: 30s
+
+  telegram-broker:
+    <<: *service-hardening
+    image: bitcoin-bot-services:${RELEASE_TAG:-local}
+    command: python -m services.telegram_broker.bot
+    depends_on:
+      execution-sidecar:
+        condition: service_healthy
+      freqtrade:
+        condition: service_healthy
+    environment:
+      DEPLOYED_RELEASE_HASH: ${DEPLOYED_RELEASE_HASH:?installer must bind the release hash}
+      DEPLOYED_CONFIG_SHA256: ${DEPLOYED_CONFIG_SHA256:?installer must bind the config hash}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN}
+      TELEGRAM_OWNER_CHAT_ID: ${TELEGRAM_OWNER_CHAT_ID:?set TELEGRAM_OWNER_CHAT_ID}
+      CALLBACK_TTL_SECONDS: ${CALLBACK_TTL_SECONDS:-120}
+      FREQTRADE_API_URL: http://freqtrade:8080/api/v1
+      FREQTRADE_API_USERNAME: ${FREQTRADE_API_USERNAME:-freqtrade}
+      FREQTRADE_API_PASSWORD: ${FREQTRADE_API_PASSWORD:?set FREQTRADE_API_PASSWORD}
+      EXECUTION_MODE: ${EXECUTION_MODE:-simulation}
+      REQUIRE_FLOW_CONTEXT: ${REQUIRE_FLOW_CONTEXT:-false}
+      REQUIRE_MATCHING_FUTURES: ${REQUIRE_MATCHING_FUTURES:-false}
+      BTC_QUOTE_ALLOWLIST: ${BTC_QUOTE_ALLOWLIST:-}
+      SHARED_ROOT: /app/shared
+      RUNTIME_DIR: /app/shared/runtime/telegram
+      SIDECAR_RUNTIME_DIR: /app/shared/runtime-readonly/sidecar
+      DEPLOYMENT_STATUS_FILE: /app/shared/runtime-readonly/deployment_status.json
+      LIVE_EVIDENCE_FILE: /app/shared/runtime-readonly/sidecar/LIVE_EVIDENCE.json
+      ACTIVE_PAIR_FILE: /app/shared/pair/active_pair.json
+      MONEYFLOW_FILE: /app/shared/moneyflow/latest.json
+      SIGNAL_INBOX: /app/shared/signals/inbox
+      SIGNAL_PROCESSED: /app/shared/signals/processed
+      SIGNAL_REJECTED: /app/shared/signals/rejected
+      COMMAND_INBOX: /app/shared/commands/inbox
+      COMMAND_RESULTS_DIR: /app/shared/command_results
+      COMMAND_HMAC_KEY: ${COMMAND_HMAC_KEY:?set COMMAND_HMAC_KEY}
+      ENVELOPE_RELEASE_HASH: ${SIDECAR_RELEASE_HASH:-}
+      AUDIT_LOG: /app/shared/audit/events.jsonl
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ${SHARED_HOST_PATH:-./shared}/pair:/app/shared/pair:ro
+      - ${SHARED_HOST_PATH:-./shared}/moneyflow:/app/shared/moneyflow:ro
+      - ${SHARED_HOST_PATH:-./shared}/signals:/app/shared/signals:ro
+      - ${SHARED_HOST_PATH:-./shared}/commands:/app/shared/commands
+      - ${SHARED_HOST_PATH:-./shared}/command_results:/app/shared/command_results
+      - ${SHARED_HOST_PATH:-./shared}/runtime/telegram:/app/shared/runtime/telegram
+      - ${SHARED_HOST_PATH:-./shared}/runtime:/app/shared/runtime-readonly:ro
+      - ${SHARED_HOST_PATH:-./shared}/audit:/app/shared/audit
+    mem_limit: 140m
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import json,time;d=json.load(open('/app/shared/runtime/telegram/telegram_health.json'));assert d['ok'] and time.time()-float(d['ts'])<150\""]
+      interval: 30s
+      timeout: 8s
+      retries: 5
+      start_period: 60s

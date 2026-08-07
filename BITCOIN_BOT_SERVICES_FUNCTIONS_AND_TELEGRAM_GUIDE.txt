@@ -1,0 +1,1571 @@
+BITCOIN BOT — FULL SERVICES, FUNCTIONS AND TELEGRAM OPERATOR GUIDE
+Audit/rebuild date: 30 July 2026
+Package scope: one owner-selected Binance BTC-base Spot pair; four runtime services
+Locked strategy SHA-256: 023d5f9a09c3a9057986ec1a79fe74cc987b79dd52c3453683d09d023f08e340
+
+VERDICT AND MEANING OF COMPLETE REVIEW
+This guide accounts for every release-file ledger entry and every non-test Python and Bash callable declaration in the package. That is a complete inventory boundary, not a claim that trading software can be proven 100% bug-free or profitable. Docker/Oracle, authenticated Binance Testnet, real Telegram delivery, restart/failure drills and soak evidence remain external gates.
+The protected strategy, indicators, entry/exit conditions, ROI, stop-loss, trailing rules, stake logic and backtest code were not changed in this rebuild.
+The exact strategy backtest remains a live blocker: 2,349 trades, -49.10% total profit, profit factor 0.3019 and 49.11% maximum drawdown on BTC/USDT from 1 January 2025 through 29 July 2026 with 0.1% fee and protections enabled. The exact repeat on 30 July produced the identical canonical trade-list SHA-256 1b57fda8be10717cfddeaf87d2ceeff188bd34bc4e6ad6f5d21d19e03d92d415; raw result ZIP SHA-256 is 5c068ab2f614853788c51976c7512d6a4321c5a02936d4a4d3e42472bbd91d49.
+
+1. RUNTIME TOPOLOGY AND RESPONSIBILITY
+moneyflow
+  Uses credential-free Binance public Spot/order-book/trade/kline data and public USD-M context. It may add optional Bitcoin-only CoinGecko/CoinMarketCap telemetry. External-provider output is explicitly advisory_only=true and affects_entry_decision=false. It writes bounded moneyflow snapshots and health.
+freqtrade
+  Runs the locked 1-minute IctSmcStrategy with 5-minute informative indicators. Runtime order entry is denied; it emits signed signals and a pair-seam heartbeat. Freqtrade exposes only the internal API used by Telegram and health checks. It is not the authenticated Binance order owner.
+execution-sidecar
+  Is the only service that receives Binance API credentials and the only authenticated Spot order owner. It validates the selected BTC pair and exchange filters, stores durable intents/state, reconciles ambiguity, manages entries and exchange-native OTO/OCO/trailing protection, handles partial fills and user-stream recovery, and defaults to simulation with entries off.
+telegram-broker
+  Is the owner-only private-chat control plane. It has no Binance credentials. It sends signed commands to the sidecar, calls the internal Freqtrade API, requires one-use expiring confirmation for money-affecting actions, redacts all output, and now provides a consolidated read-only /audit command.
+monitoring
+  Is a separate read-only API/reporting/systemd layer. It receives no Binance or trading Telegram credentials and no Docker socket. It can alert and report but cannot trade, repair, or guarantee delivery.
+
+2. END-TO-END DATA AND CONTROL FLOW
+Public Binance data -> moneyflow snapshot -> locked Freqtrade indicators/signals -> signed signal envelope -> execution-sidecar validation/reconciliation -> simulation or authenticated Spot execution -> durable SQLite/JSON/audit state.
+Telegram owner -> private-chat authorization -> optional one-use confirmation -> signed command inbox or internal Freqtrade API -> result -> final redaction -> owner chat.
+GitHub hosted verification -> deterministic tarball -> Oracle self-hosted runner staging -> independent root-approved full tar SHA-256 -> restricted root wrapper -> existing atomic installer/rollback -> exact four-service and application-health verification.
+
+3. DEPLOYMENT SAFETY FUNCTIONS
+The GitHub deployment job is manual, main-branch-only, simulation-only and requires SIMULATION_ONLY plus ORACLE_DEPLOY_ENABLED=true. The Oracle gha-runner account is separate from the bot deployment user, cannot read /etc/bitcoin-bot/.env, and is not in the Docker or sudo groups.
+The root-owned bitcoin-bot-deploy wrapper accepts exactly preflight, simulation or verify. It rejects Testnet/live/production, requires empty Binance credentials, validates a one-use root-approved tarball SHA-256 independently of the repository checksum, safely extracts and verifies the manifest/secret scan/protected strategy hash, then calls the existing transactional installer. Approval is consumed before install so replay requires fresh administrator approval.
+Use docs/GITHUB_ORACLE_DEPLOYMENT.md for the exact two-pass GitHub/Oracle procedure. Deployment success is infrastructure evidence only and cannot override the failed strategy gate.
+
+4. TELEGRAM SETUP AND USE
+Create a dedicated bot with BotFather, put its token only in /etc/bitcoin-bot/.env, and set TELEGRAM_OWNER_CHAT_ID to the numeric private-chat owner ID. Never paste either value into GitHub, logs or chat. The broker refuses a command unless both the sender user ID and private chat ID match the configured owner.
+Start in EXECUTION_MODE=simulation with LIVE_TRADING_ENABLED=false, AUTO_CONFIRM=false, AUTO_PROTECTION_ENABLED=false, empty Binance keys and entries off. After the four services are healthy, send /menu in the owner private chat.
+
+Telegram command inventory:
+  /menu, /owner
+    Purpose: Show the owner-only inline control menu.
+    Safety: Read-only
+  /audit
+    Purpose: Run the consolidated release, health, freshness, BTC-pair, unresolved-intent and entries-off self-audit.
+    Safety: Read-only; GET /ping only
+  /status
+    Purpose: Return execution-sidecar status.
+    Safety: Read-only sidecar request
+  /balance
+    Purpose: Return the sidecar balance view.
+    Safety: Read-only sidecar request
+  /profit
+    Purpose: Return the sidecar profit report.
+    Safety: Read-only sidecar request
+  /pair
+    Purpose: Show the active BTC-base Spot pair.
+    Safety: Read-only sidecar request
+  /pairs [page]
+    Purpose: Show eligible current Binance BTC-base Spot pairs.
+    Safety: Read-only; selection is separate
+  /flow
+    Purpose: Show bounded Spot/futures/public-provider money-flow context.
+    Safety: Read-only; provider data is advisory
+  /lastsignal
+    Purpose: Show the newest bounded signal record and its queue location.
+    Safety: Read-only
+  /logs
+    Purpose: Show bounded redacted audit and Freqtrade log tails.
+    Safety: Read-only
+  /deploy
+    Purpose: Show deployment_status.json.
+    Safety: Read-only
+  /backtest
+    Purpose: Show whether signed promotion evidence exists; it does not run a backtest.
+    Safety: Read-only
+  /settings
+    Purpose: Show non-secret release, pair, sidecar and configuration flags.
+    Safety: Read-only
+  /start
+    Purpose: Ask for one-use confirmation, start Freqtrade, then enable sidecar entries; rolls Freqtrade back to paused if the sidecar refuses.
+    Safety: Confirmation required
+  /stop, /pause
+    Purpose: Disable sidecar entries and pause Freqtrade.
+    Safety: Immediate fail-safe control
+  /reconcile
+    Purpose: Request authoritative sidecar reconciliation.
+    Safety: State-check/control request
+  /restartws
+    Purpose: Restart the authenticated user stream.
+    Safety: Confirmation required
+  /fixed_oco
+    Purpose: Select FIXED_OCO for future entries.
+    Safety: Confirmation required
+  /oco_trailing
+    Purpose: Select OCO_TRAILING for future entries.
+    Safety: Confirmation required
+  /trailing_only
+    Purpose: Select TRAILING_ONLY for future entries.
+    Safety: Confirmation required
+  /convert SYMBOL MODE
+    Purpose: Convert protection for a bot-owned position to FIXED_OCO, OCO_TRAILING or TRAILING_ONLY.
+    Safety: Confirmation required
+  /breakeven SYMBOL
+    Purpose: Request fee/slippage-aware break-even protection.
+    Safety: Confirmation required
+  /lockprofit SYMBOL [PCT]
+    Purpose: Request a stop above entry; default 0.2 percent.
+    Safety: Confirmation required
+  /tighttrail SYMBOL [BIPS]
+    Purpose: Request a tighter trailing delta; default 20 BIPS and exchange filters still apply.
+    Safety: Confirmation required
+  /autoprotection on|off
+    Purpose: Change automatic protection policy where the execution mode permits it.
+    Safety: Confirmation required
+  /emergency SYMBOL
+    Purpose: Request the bounded emergency exit for durable bot-owned exposure.
+    Safety: Confirmation required; not a guarantee of fill
+  /setsize QUOTE_AMOUNT
+    Purpose: Set positive finite quote stake for future entries where policy permits.
+    Safety: Confirmation required
+  /setmax 1
+    Purpose: Set maximum position count; sidecar policy enforces its allowed value.
+    Safety: Confirmation required
+  /switchpair BTC/QUOTE
+    Purpose: Select and disarm, prove flat state, then wait for manual quote-asset swap acknowledgement.
+    Safety: Confirmation required; entries remain off
+  /swapdone
+    Purpose: Acknowledge the Binance-side manual swap, recheck flat/funding/filters, apply pair, reload and verify.
+    Safety: Confirmation required; entries remain off
+  /verifypair
+    Purpose: Recheck the staged pair switch heartbeat after reload.
+    Safety: Read/check request; never resumes
+
+One-use confirmation behavior:
+  A money-affecting command first displays CONFIRM and Cancel buttons. The callback token expires, can be consumed once, and a token-specific cancellation invalidates that exact confirmation. Replaying a used callback is rejected. Pair switching never resumes entries automatically.
+
+5. HOW TO USE /audit
+Send /audit in the configured owner private chat. It performs no sidecar command and no repair. Its only network action is the internal read-only Freqtrade GET /ping.
+A healthy report requires: deployment status DEPLOYED; release validation and both container/monitoring gates passed; all four release-hash sources and both release paths consistent; configured, deployment, validation and sidecar execution modes equal; simulation flag consistent; entries_enabled=false; zero unresolved intents; an idle pair-switch state; one matching BTC/QUOTE pair across the pair, sidecar and moneyflow records; Freqtrade ping; and fresh healthy sidecar, moneyflow and Telegram files.
+If ok=false, inspect the named issues, keep entries off, use /status, /deploy and /logs, then investigate on Oracle. Do not use /start merely to clear a warning. /audit reports evidence; it does not certify profitability, Binance account permissions, real fills or network reliability.
+
+6. IMPORTANT FAILURE AND PROMOTION BOUNDARIES
+Simulation may still expose software defects but cannot prove authenticated order lifecycle. Spot Test Network uses virtual assets and periodically resets. Testnet fills do not reproduce production liquidity. Real stop-limit orders can trigger without filling; cancel/replace is inherently non-atomic; network ambiguity can leave exposure uncertain. All such cases must fail closed and be reconciled.
+No live promotion is authorized. The strategy must be redesigned only under a separate explicit instruction, frozen, tested on training and untouched out-of-sample data, checked for lookahead/recursive issues, exercised on Testnet, deployed through Oracle failure drills, soaked for at least 14 days, and supported by fresh signed evidence. A passing future backtest would still not guarantee profit.
+
+7. TELEGRAM PROMPT/CALL-SITE INVENTORY
+The following list accounts for every send, confirmation-prompt and confirmation-button call site in services/telegram_broker/bot.py. Expressions are source representations; dynamic values are bounded and pass through the final redaction sink.
+Total prompt/send call sites: 57
+  line 114: confirm_button: confirm_button(label, action, args)
+  line 116: send: send(text, chat, [[confirmation], [{"text": "Cancel", "callback_data": "cancel|" + token}]])
+  line 427: send: send("BTC pair menu unavailable: " + str(error), chat)
+  line 431: send: send("BTC pair menu unavailable: registry contains no eligible pairs.", chat)
+  line 457: send: send( f"Eligible Binance BTC-base Spot pairs — page {page + 1}/{pages}. " "Selection never resumes entries automatically.", chat, buttons, )
+  line 467: _ask_confirm: _ask_confirm(chat, "CONFIRM resume", "resume_entries", text= "Resume Freqtrade signal generation and sidecar entries?")
+  line 472: send: send(json.dumps({"sidecar": sidecar, "freqtrade": freqtrade}, indent=2), chat)
+  line 476: _ask_confirm: _ask_confirm(chat, "CONFIRM mode", "set_mode", {"mode": mode}, f"Use {mode} for future entries?")
+  line 480: send: send(json.dumps(result, indent=2)[:3900], chat)
+  line 484: _ask_confirm: _ask_confirm( chat, "CONFIRM manual swap completed", "complete_pair_switch", text=( "Confirm only after any required Binance-side quote-asset swap " "is complete. The sidecar will recheck flat state, funding, " "filters and protection capability before applying the pair." ), )
+  line 495: send: send( json.dumps( sidecar_command("verify_pair_switch", wait=True), indent=2, )[:3900], chat, )
+  line 503: send: send(json.dumps(_flow_summary(), indent=2)[:3900], chat)
+  line 505: send: send(_latest_signal(), chat)
+  line 507: send: send((_tail_audit(25) + "\n\n" + json.dumps(ft_call("GET", "/logs?limit=20"), indent=2))[-3900:], chat)
+  line 509: send: send(json.dumps(sidecar_command("reconcile", wait=True), indent=2), chat)
+  line 511: _ask_confirm: _ask_confirm(chat, "CONFIRM restart", "restart_stream")
+  line 513: send: send(json.dumps(read_json(DEPLOYMENT_STATUS_FILE, {}), indent=2), chat)
+  line 515: send: send(json.dumps(_self_audit(), indent=2)[:3900], chat)
+  line 517: send: send(_settings(), chat)
+  line 519: send: send(_backtest_status(), chat)
+  line 521: send: send("Use /emergency <current BTC symbol>, for example /emergency BTCUSDT.", chat)
+  line 523: send: send("Use /tighttrail BTCUSDT 20. Binance filters clamp the final delta.", chat)
+  line 525: send: send("Use /breakeven BTCUSDT. The replacement stop includes configured fees/slippage.", chat)
+  line 527: send: send("Use /lockprofit BTCUSDT 0.2 to request a stop above entry.", chat)
+  line 529: send: send(help_text(), chat)
+  line 543: send: send(json.dumps({ "sidecar": sidecar, "freqtrade": ft, "freqtrade_rollback": rollback, }, indent=2), chat)
+  line 549: send: send(json.dumps(sidecar_command("restart_stream", wait=True), indent=2), chat)
+  line 551: send: send(json.dumps(sidecar_command("mode", args, wait=True), indent=2), chat)
+  line 554: send: send(json.dumps({ "sidecar": sidecar, "next_action": ( "Complete any required quote-asset swap on Binance, then use " "/swapdone. No pair configuration has changed yet." if sidecar.get("ok") is True else "Pair selection was refused; inspect the sidecar result." ), "entries": "remain OFF", }, indent=2)[:3900], chat)
+  line 576: send: send(json.dumps({ "sidecar": sidecar, "freqtrade_reload": reload_result, "pair_verification": verification, "next_action": ( "If verification is still pending, wait for a fresh strategy " "heartbeat and use /verifypair. Resume separately with /start." ), "entries": "remain OFF until explicit resume", }, indent=2)[:3900], chat)
+  line 588: send: send(json.dumps(sidecar_command(action, args, wait=True), indent=2), chat)
+  line 600: send: send("Bitcoin Spot bot owner controls", chat, menu())
+  line 608: send: send("Pair-menu page must be a positive integer.", chat)
+  line 627: send: send("Pair rejected: " + why, chat)
+  line 628: _ask_confirm: _ask_confirm(chat, "CONFIRM pair switch", "switch_pair", {"pair": pair}, f"Switch active Spot pair to {pair}? Requires verified flat account; entries stay off.")
+  line 633: send: send("Invalid protection mode.", chat)
+  line 634: _ask_confirm: _ask_confirm(chat, "CONFIRM conversion", "convert", {"symbol": parts[1].upper(), "mode": mode})
+  line 637: _ask_confirm: _ask_confirm(chat, "CONFIRM break-even", "break_even", {"symbol": parts[1].upper()})
+  line 641: send: send("Invalid profit percentage.", chat)
+  line 643: send: send("Profit percentage must be within (0,100].", chat)
+  line 644: _ask_confirm: _ask_confirm(chat, "CONFIRM profit lock", "lock_profit", {"symbol": parts[1].upper(), "profit_pct": pct})
+  line 648: send: send("Invalid trailing delta.", chat)
+  line 649: _ask_confirm: _ask_confirm(chat, "CONFIRM tight trail", "tight_trailing", {"symbol": parts[1].upper(), "delta_bips": bips})
+  line 652: _ask_confirm: _ask_confirm(chat, "CONFIRM automatic protection", "auto_protection", {"enabled": parts[1].lower() == "on"})
+  line 655: _ask_confirm: _ask_confirm(chat, "CONFIRM emergency exit", "emergency_exit", {"symbol": parts[1].upper()})
+  line 659: send: send("Invalid quote amount.", chat)
+  line 661: send: send("Quote amount must be positive and finite.", chat)
+  line 662: _ask_confirm: _ask_confirm(chat, "CONFIRM trade size", "set_size", {"quote_amount": value})
+  line 665: send: send("Invalid position count.", chat)
+  line 666: _ask_confirm: _ask_confirm(chat, "CONFIRM max positions", "set_max", {"count": value})
+  line 668: send: send(help_text(), chat)
+  line 688: send: send("Pair action rejected: " + reason, chat)
+  line 694: send: send("Pair rejected: " + why, chat)
+  line 695: _ask_confirm: _ask_confirm( chat, "CONFIRM pair switch", "switch_pair", {"pair": pair, "registry_hash": item["args"].get("registry_hash")}, f"Switch active Spot pair to {pair}? The sidecar will refresh " "Binance metadata, verify clean durable/exchange state and " "disarm entries. It will then wait for /swapdone; it will not " "change the pair or resume entries automatically.", )
+  line 706: send: send("Pair action rejected: unexpected callback action.", chat)
+  line 710: send: send("Action canceled." if canceled else "Cancellation rejected: " + reason, chat)
+  line 715: send: send("Confirmation rejected: " + reason, chat)
+
+8. COMPLETE NON-TEST PYTHON AND BASH FUNCTION INVENTORY
+Total callable declarations: 569
+Kinds: function=533, shell_function=36
+Python rows carry an exact function source hash. Bash rows carry the exact containing-file hash; the release manifest independently binds every byte of every file.
+
+FILE: deploy/bitcoin-bot-deploy (10 callable(s))
+  line 31-31 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=83c74aaea675230852f235539abcda9c4cbca1d74bcf6f270a8c9e8d2de3f8af
+  line 33-33 | shell_function | require_canonical_dir | PRESERVE_AND_REGRESSION_TEST | sha256=83c74aaea675230852f235539abcda9c4cbca1d74bcf6f270a8c9e8d2de3f8af
+  line 44-44 | shell_function | require_canonical_file | PRESERVE_AND_REGRESSION_TEST | sha256=83c74aaea675230852f235539abcda9c4cbca1d74bcf6f270a8c9e8d2de3f8af
+  line 56-56 | shell_function | approved_digest | PRESERVE_AND_REGRESSION_TEST | sha256=83c74aaea675230852f235539abcda9c4cbca1d74bcf6f270a8c9e8d2de3f8af
+  line 68-68 | shell_function | simulation_env_preflight | PRESERVE_AND_REGRESSION_TEST | sha256=83c74aaea675230852f235539abcda9c4cbca1d74bcf6f270a8c9e8d2de3f8af
+  line 159-159 | shell_function | prepare_approved_artifact | PRESERVE_AND_REGRESSION_TEST | sha256=83c74aaea675230852f235539abcda9c4cbca1d74bcf6f270a8c9e8d2de3f8af
+  line 191-191 | shell_function | verify_approved_archive | PRESERVE_AND_REGRESSION_TEST | sha256=83c74aaea675230852f235539abcda9c4cbca1d74bcf6f270a8c9e8d2de3f8af
+  line 278-278 | shell_function | consume_approval | PRESERVE_AND_REGRESSION_TEST | sha256=83c74aaea675230852f235539abcda9c4cbca1d74bcf6f270a8c9e8d2de3f8af
+  line 293-293 | shell_function | verify_runtime | PRESERVE_AND_REGRESSION_TEST | sha256=83c74aaea675230852f235539abcda9c4cbca1d74bcf6f270a8c9e8d2de3f8af
+  line 414-414 | shell_function | cleanup | PRESERVE_AND_REGRESSION_TEST | sha256=83c74aaea675230852f235539abcda9c4cbca1d74bcf6f270a8c9e8d2de3f8af
+
+FILE: deploy/install_artifact.sh (22 callable(s))
+  line 24-24 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 25-25 | shell_function | as_root | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 26-26 | shell_function | require_canonical_dir | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 35-35 | shell_function | is_timestamp_release_dir | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 44-44 | shell_function | require_release_config | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 55-55 | shell_function | project_empty | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 60-60 | shell_function | switch_current | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 65-65 | shell_function | clear_current | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 85-85 | shell_function | placeholder | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 90-90 | shell_function | require_secret | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 130-130 | shell_function | bounded_provider_cap | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 291-291 | shell_function | cleanup | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 434-434 | shell_function | verify_live_candidate | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 466-466 | shell_function | activate_live_evidence | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 509-509 | shell_function | compose_for | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 598-598 | shell_function | submit_old_command | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 649-649 | shell_function | stack_healthy | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 673-673 | shell_function | write_deployment_status | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 719-719 | shell_function | write_release_validation | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 774-774 | shell_function | mark_release_success | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 812-812 | shell_function | rollback | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+  line 924-924 | shell_function | on_cutover_failure | PRESERVE_AND_REGRESSION_TEST | sha256=ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab
+
+FILE: deploy/install_monitoring.sh (1 callable(s))
+  line 13-13 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=06d5ec680975e263a2b6b65e57e25622b1b87b62662777d84a2fa4e31dbf74db
+
+FILE: deploy/oracle_setup.sh (3 callable(s))
+  line 22-22 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=bb14c98c2906ed85027f0373136d62c775f328c26a6cc7197cd7ab59aef16b0d
+  line 23-23 | shell_function | as_root | PRESERVE_AND_REGRESSION_TEST | sha256=bb14c98c2906ed85027f0373136d62c775f328c26a6cc7197cd7ab59aef16b0d
+  line 241-241 | shell_function | cleanup_sudoers | PRESERVE_AND_REGRESSION_TEST | sha256=bb14c98c2906ed85027f0373136d62c775f328c26a6cc7197cd7ab59aef16b0d
+
+FILE: deploy/verify_stack_identity.py (7 callable(s))
+  line 28-33 | function | file_sha256 | PRESERVE_AND_REGRESSION_TEST | sha256=847e6a61274a87cef079878e55b0213bab33a2dfca5cce72010e4697cf66c27f
+  line 36-42 | function | _env_map | PRESERVE_AND_REGRESSION_TEST | sha256=11c4462bf633cbeb8587a2b2c3e5c4bfbc154da452a45f8d8badc98dc6aa9dac
+  line 45-102 | function | validate_snapshot | PRESERVE_AND_REGRESSION_TEST | sha256=82584dcbbbcac014465241b17aa56cd7104f4cb4fa8db621937739af7660f036
+  line 105-121 | function | _run | PRESERVE_AND_REGRESSION_TEST | sha256=ac535cb92e8b0dc994b7625114285582d0b04341e6f33c282acf6662831d89cf
+  line 124-194 | function | verify | PRESERVE_AND_REGRESSION_TEST | sha256=0619bcb845f6db1a64ff2f1237c4444cd2604d108447221f275e7c17489d81c6
+  line 197-206 | function | parser | PRESERVE_AND_REGRESSION_TEST | sha256=8e07a3423ecbd915324c2d8505e23011458f729e9903484a6c38b88b30e29f01
+  line 209-216 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=e8106aa1261327ab78ac5bea5534d90505c18517005d767a6f0084509cc30f27
+
+FILE: freqtrade/user_data/strategies/IctSmcStrategy.py (15 callable(s))
+  line 82-99 | function | IctSmcStrategy.protections | PRESERVE_AND_REGRESSION_TEST | sha256=f4803fad5becad09969321b4b4efa81c3ae0c783e0bd093df119bc72aa0e68f2
+  line 108-109 | function | IctSmcStrategy._active_pair_path | PRESERVE_AND_REGRESSION_TEST | sha256=9675062ada2bebe7ac97870a85ab9f7a9a0d88a366b867d491f76a8a3170d86c
+  line 111-135 | function | IctSmcStrategy._active_pair_state | PRESERVE_AND_REGRESSION_TEST | sha256=e1b49b5e929321ffec3f4ac5dfa18fec6bff9956bd3e766f7eacb46f106b8ffe
+  line 137-142 | function | IctSmcStrategy._is_active_pair | PRESERVE_AND_REGRESSION_TEST | sha256=c51e5e343ce184ca4ac31e38ca9d83dff5042b0cb96a13bf9e55832a03079127
+  line 144-188 | function | IctSmcStrategy._emit_signal | PRESERVE_AND_REGRESSION_TEST | sha256=cc3c5312fe9caf0307aa2c11e8314b04f51f90b6f051675046cf02512c655558
+  line 193-201 | function | IctSmcStrategy._seam_error | PRESERVE_AND_REGRESSION_TEST | sha256=e19384cdc54d686f22a2506714c93a5b9b77ccede6c6c96570264446645981e6
+  line 203-223 | function | IctSmcStrategy._seam_heartbeat | PRESERVE_AND_REGRESSION_TEST | sha256=02716a39b7c1f31052345ffd4786ef9d03913a57d2cb76d3fd92da283386adeb
+  line 225-227 | function | IctSmcStrategy._runmode_value | PRESERVE_AND_REGRESSION_TEST | sha256=6b169741e87b7c416a00ba92be65d76ab68e12b46a0b40ab4c54981abccd5a72
+  line 229-261 | function | IctSmcStrategy.bot_loop_start | PRESERVE_AND_REGRESSION_TEST | sha256=9b4d0ff3bc71088d59a01a980599fcbd65979f053e80b00208f1dd505fcecf37
+  line 263-264 | function | IctSmcStrategy.bot_start | PRESERVE_AND_REGRESSION_TEST | sha256=63d1e9b62fd76377facbb293bf05c1593b59e8d7d247569cce3640f0437e2abd
+  line 266-276 | function | IctSmcStrategy.confirm_trade_entry | PRESERVE_AND_REGRESSION_TEST | sha256=932bc6f7696c0c2bac5f33e0301b5a439f440adc8f096c8ae325c523238c0740
+  line 280-289 | function | IctSmcStrategy.populate_indicators_5m | FINGERPRINT_PROTECTED | sha256=1bd1bac05c7e4ad85f4a56a33c0607eddb4172d5274e48416e2c0e7b0fb08f18
+  line 292-321 | function | IctSmcStrategy.populate_indicators | FINGERPRINT_PROTECTED | sha256=3e514b5bbf40a8ab3ec26d9ded5a0118192608be7bcd30a103b201e6197362c1
+  line 323-349 | function | IctSmcStrategy.populate_entry_trend | FINGERPRINT_PROTECTED | sha256=86577ed448af74fd06bfe1a9a82306319fd16f193a78b2045e4888391ce2ca82
+  line 351-361 | function | IctSmcStrategy.populate_exit_trend | FINGERPRINT_PROTECTED | sha256=49478a63c8d81a485f3e35b92d275b835c898d2328f0510270fb11c5805d30b6
+
+FILE: monitoring/api/app.py (14 callable(s))
+  line 23-29 | function | _base | PRESERVE_AND_REGRESSION_TEST | sha256=35f21532694a5f9832bca04b92107a5a6813bb2a233171a462eebc93d8bc0c10
+  line 32-33 | function | _payload | PRESERVE_AND_REGRESSION_TEST | sha256=dd03a728674754e7dc68be39f33a614f164517b249528f7cc89c5a487e47d932
+  line 37-47 | function | health | PRESERVE_AND_REGRESSION_TEST | sha256=e7026f2819d7f19079565ef66b8e1668a65f78bc992c272c8dc5f18f71938119
+  line 51-63 | function | status | PRESERVE_AND_REGRESSION_TEST | sha256=a3b29d7fd2deced201819eccb26317e0372c4aca4422bdfcaeb5db030a0d430d
+  line 67-76 | function | performance | PRESERVE_AND_REGRESSION_TEST | sha256=1d1ae1269c496f9c857d4f808c000c2490ec5bbe042fc9af75888f3a6177e280
+  line 80-88 | function | trades | PRESERVE_AND_REGRESSION_TEST | sha256=fb28d26cdb88a42607c35b5dd8e31e7b63227356153633377eca8aac2541f545
+  line 92-100 | function | errors | PRESERVE_AND_REGRESSION_TEST | sha256=45b64b51af5dcee36aae80f91c0db94f925709b009b1920e690b78f582b993f7
+  line 104-108 | function | crashes | PRESERVE_AND_REGRESSION_TEST | sha256=e6b04cff4fdd62b81035e6c400268138a77f83b54b4a3b91473b7c074d6b91b3
+  line 112-116 | function | latency | PRESERVE_AND_REGRESSION_TEST | sha256=3b6dff388836a4830408006af7d5ad8f8ac6c8640fe5516deeeb568ea2891dc5
+  line 120-125 | function | system | PRESERVE_AND_REGRESSION_TEST | sha256=22eb9903691649a56629dd3e0b0096ace813578a2f29d9c8491fe82dcb240695
+  line 129-130 | function | deployment | PRESERVE_AND_REGRESSION_TEST | sha256=8fffc2d545eb55b513fcbec25bb121f9c439dcbf42aadf89abc9d9a3422f5c9d
+  line 134-135 | function | pair | PRESERVE_AND_REGRESSION_TEST | sha256=a000c5d46b0d6057d4562ca163f705953b4b456fd31fcec468bbe9cdc6dc8dcf
+  line 139-144 | function | moneyflow | PRESERVE_AND_REGRESSION_TEST | sha256=f9c1dc5f5da1c8d5fb872c4b57c86f62361b60af453dfd68bed3a0804d10ffd0
+  line 148-175 | function | report | PRESERVE_AND_REGRESSION_TEST | sha256=65494045a0781bce902797aa2690d6db6576140b06a9c5b749c4b2f2ba8d8b3e
+
+FILE: monitoring/api/authentication.py (5 callable(s))
+  line 25-38 | function | audit | PRESERVE_AND_REGRESSION_TEST | sha256=2f7adf0188b18a0270bedc3c3a135ef0194adbce90a032e02a7bd075833aa283
+  line 41-47 | function | _audit_or_503 | PRESERVE_AND_REGRESSION_TEST | sha256=1d16d68eb56f9007f7f8ffa042698f516463180ed9deeb029c9b9ae61bd18468
+  line 50-51 | function | _client_ip | PRESERVE_AND_REGRESSION_TEST | sha256=747971612ff08b4f16c035555905916ae1cb848bb24e5ca49e57d7934bc6ac34
+  line 54-59 | function | _allowed | PRESERVE_AND_REGRESSION_TEST | sha256=b2d96f929acf1561949b8b71a0b4ad0a0f78038dd61b503b159089d093c4800c
+  line 62-92 | function | require_bearer | PRESERVE_AND_REGRESSION_TEST | sha256=ae3aa08759e3c0503765b7d38917323860ad68944d701086ed5cd247a77f73b8
+
+FILE: monitoring/api/configuration.py (9 callable(s))
+  line 15-20 | function | _int | PRESERVE_AND_REGRESSION_TEST | sha256=9bb10eac6bfc0c912fe1ffd64c0f568e3a8e2f5447eef40fe558296e603a059a
+  line 23-24 | function | _bool | PRESERVE_AND_REGRESSION_TEST | sha256=45d9408f8ea4d63aaa69f0bf3d16e8a77f84524628595311faecfaeff953224e
+  line 33-35 | function | secret_is_configured | PRESERVE_AND_REGRESSION_TEST | sha256=f9214879a8771a0eb5efbcccd549a3def8989dba5f5d223338851589171cbcb4
+  line 38-50 | function | loopback_http_url | PRESERVE_AND_REGRESSION_TEST | sha256=d85415f55a5df580d96ac7c4a443a332a4182906c3498b5d0c503adcc32ee254
+  line 63-151 | function | Config.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=decc8a814765cf78aa87eacee38f97b1b0951be45586eca6992642d8b547bf4b
+  line 153-158 | function | Config.banner | PRESERVE_AND_REGRESSION_TEST | sha256=6ad0f93af1bface726c6503c1dbf560ab8879b04ab9b1e5e67ffa2c54c97e0e8
+  line 160-166 | function | Config.allowed_networks | PRESERVE_AND_REGRESSION_TEST | sha256=4dc2b6b2f74408ce2645456b4925f0a7f287ad340539a29a72620ab0599ddf9f
+  line 168-183 | function | Config.runtime_errors | PRESERVE_AND_REGRESSION_TEST | sha256=060e04c29b7595bff7694d5ad3b36926955054afe82aa25e8b2668f3aa3d1a8a
+  line 189-194 | function | reload | PRESERVE_AND_REGRESSION_TEST | sha256=2cd68aac378f798fa6f12e9350dc3df1c95655cf297fe783a65747186e7ad052
+
+FILE: monitoring/api/database.py (3 callable(s))
+  line 15-19 | function | _read_only_sql | PRESERVE_AND_REGRESSION_TEST | sha256=b4e060ceb8889089fda4cb0749b35297aa92bb8a0334917ce242938ac322eab7
+  line 22-40 | function | query | PRESERVE_AND_REGRESSION_TEST | sha256=23bc0c881e5ba48038bf525d8990e152d0b9ad7607f3bc4279a665d10b5c51bf
+  line 43-67 | function | status | PRESERVE_AND_REGRESSION_TEST | sha256=ae21db54222a8c5fbd4a53867395f217a12553cc5d1d277748e8183a3886bdeb
+
+FILE: monitoring/api/log_redaction.py (2 callable(s))
+  line 44-54 | function | redact | PRESERVE_AND_REGRESSION_TEST | sha256=05216e91652642fa9eff3b4c5816d5a091b954ef8bb35ba392dfe258f03b6a66
+  line 57-72 | function | redact_obj | PRESERVE_AND_REGRESSION_TEST | sha256=d92561c3c17b1b56bf5713fa4dfa713339eda6c7137f46c152c8d64289a5f373
+
+FILE: monitoring/api/metrics.py (30 callable(s))
+  line 29-33 | function | _iso | PRESERVE_AND_REGRESSION_TEST | sha256=657bf848c191724c799073cd591e2ccc89c21386b690fc0b2c983e58ee86c0d6
+  line 36-52 | function | _parse_time | PRESERVE_AND_REGRESSION_TEST | sha256=819921c89e1cfe5d1fc899d72a282d70a15e544f8dbf25738f70faefc014abd9
+  line 55-60 | function | _safe_float | PRESERVE_AND_REGRESSION_TEST | sha256=f6f187b4438831a0a972b16fcd4c3300a05e9432480834dd4f1c05ce9e5860f0
+  line 63-74 | function | _safe_json | PRESERVE_AND_REGRESSION_TEST | sha256=2a6019b4130ff02ce5164122d587501ad0b4d7b3cf6b6120ae833fa60be3576f
+  line 77-89 | function | file_freshness | PRESERVE_AND_REGRESSION_TEST | sha256=217030a8935897b0833b0e9f302863a9434564031319244c7feef3a3304b5a5a
+  line 92-106 | function | _health | PRESERVE_AND_REGRESSION_TEST | sha256=be8493701c0e817dcbbf702091a296dea100907356b6f11ed2f92b958be87db9
+  line 109-124 | function | _file_health | PRESERVE_AND_REGRESSION_TEST | sha256=2142a9dc03820e9edb5deaef53c0e62938bdcfe49c5e785016093835caea903f
+  line 127-141 | function | runtime_health | PRESERVE_AND_REGRESSION_TEST | sha256=132709bb75e70be04f40a7e93d31a9c0caeba655b21f8697ee3c819180562db4
+  line 144-163 | function | container_state | PRESERVE_AND_REGRESSION_TEST | sha256=a6ba39d28eae952f720db974ead41ea0e6bfa23c0fca212a3f461b12360d5682
+  line 166-193 | function | system_resources | PRESERVE_AND_REGRESSION_TEST | sha256=bc31616735882c52b96b5930e7b95a0aebcb26118daad26ba7d53647f255a6e6
+  line 196-231 | function | binance_latency | PRESERVE_AND_REGRESSION_TEST | sha256=ccad901d622c892f4c0a974a20ecf983ec831b83ab01c969a3cae160fedf7ddc
+  line 219-221 | function | binance_latency.percentile | PRESERVE_AND_REGRESSION_TEST | sha256=bc4eb5ccfbc1ec2841c705bf5799446e963e7f7b1b4bf9375dc49e8265ddd485
+  line 234-251 | function | _tail_text | PRESERVE_AND_REGRESSION_TEST | sha256=29c71787fa16808afc4c9173781dc73e83d724050d35c603025ccbdb5529de9e
+  line 254-256 | function | tail_log | PRESERVE_AND_REGRESSION_TEST | sha256=b381d6e99964f99c343f797edf198cf34a1688cdff4797747ee3119367a0b983
+  line 259-260 | function | log_freshness | PRESERVE_AND_REGRESSION_TEST | sha256=2784423e75df832c824db106e6093fcb5af562c5e8c51c70b7c3e068c6e32ee0
+  line 263-275 | function | error_lines | PRESERVE_AND_REGRESSION_TEST | sha256=50c788d96b17e4937a90fa3f31096ae446900aa725c3570b66c8e9830544e7a3
+  line 278-280 | function | _log_line_epoch | PRESERVE_AND_REGRESSION_TEST | sha256=b291fc3c45c9650d0e7bdf6ea9e4507d2d86848b4220a2aeffd22ddefe4d903b
+  line 283-320 | function | crash_blocks | PRESERVE_AND_REGRESSION_TEST | sha256=68abad25762c1095c2830d4f9e44baeb4540ff92a9cfb2eae018616dabd1115b
+  line 323-330 | function | databases | PRESERVE_AND_REGRESSION_TEST | sha256=50f3472ef059819a3f731245af6056455fc90537d54da24aa13a4e8cb9decf8f
+  line 333-358 | function | execution_state | PRESERVE_AND_REGRESSION_TEST | sha256=3c54d409030686a7d89bf034d4de44f7005975a108343a6786dd222dac5510ad
+  line 361-373 | function | _read_jsonl_tail | PRESERVE_AND_REGRESSION_TEST | sha256=f7e3136043737493330caa6a44d507a10e419a509c5438bce7ad6f1cda729f6c
+  line 376-418 | function | performance | PRESERVE_AND_REGRESSION_TEST | sha256=7e14d68a360d4b8f4eaf8cee136b97ce5d5f1421055586a8e88b7c8188813558
+  line 421-433 | function | recent_trades | PRESERVE_AND_REGRESSION_TEST | sha256=4594ab0ecb912877b436c5065424cb56440307fb7601701ffb26c7c4f0f40252
+  line 436-459 | function | signal_performance | PRESERVE_AND_REGRESSION_TEST | sha256=6c20adb8dac98e6163f6e34ce4344d661759870551dae42dc0cd6a104454e327
+  line 462-508 | function | order_quality | PRESERVE_AND_REGRESSION_TEST | sha256=7d7904f16a7278c67c8fde9586c73ec116826a68d43f533fe1b6a71a7f201e57
+  line 511-527 | function | websocket_status | PRESERVE_AND_REGRESSION_TEST | sha256=9fead83c93d49e235bbde417e31206946efa922a731afb88262a0f8f4b481fdb
+  line 530-564 | function | active_pair_status | PRESERVE_AND_REGRESSION_TEST | sha256=4716d779041e73f8b366cced422195c3514cc84c7d510842e5a0bd099dd3b0c7
+  line 567-680 | function | moneyflow_status | PRESERVE_AND_REGRESSION_TEST | sha256=ae818c1d82447e41bc38ae08930544d8aeb831ff89c4b430475629d54d11b96b
+  line 683-703 | function | deployment_info | PRESERVE_AND_REGRESSION_TEST | sha256=c3937af690727ba0022f476123ed3b2ad490383145d925dbd0209dd8d3794d1f
+  line 706-721 | function | recent_security_warnings | PRESERVE_AND_REGRESSION_TEST | sha256=62ea5fe0228ebb2c1fc148f55edacb3364f70975baf22e7a9679b4c49eafd363
+
+FILE: monitoring/control.py (2 callable(s))
+  line 10-29 | function | check | PRESERVE_AND_REGRESSION_TEST | sha256=412a16345a8c39754ef4b93cd6ef3c1daed88a3244b02dced4e6114235f009b1
+  line 32-37 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=b1cef0affd16cd5c39e41a2514f09e7588e96bb993c2bd8321a81a442b549b39
+
+FILE: monitoring/mcp/monitor_mcp_server.py (17 callable(s))
+  line 18-24 | function | _base_url | PRESERVE_AND_REGRESSION_TEST | sha256=ffd6fbdada5c82a5487f3984596f5e3188f2597993a7b41983c8793b0091b8ad
+  line 27-45 | function | _get | PRESERVE_AND_REGRESSION_TEST | sha256=370496c15d61990c065d135773bd110b054e12c707ef33a2bddd1db91b80736c
+  line 48-52 | function | _clamp | PRESERVE_AND_REGRESSION_TEST | sha256=865de0b7645c4a5024b3d77a5737d7940e1d89a528f0f5912f27b83a2769bc54
+  line 55-120 | function | create_server | PRESERVE_AND_REGRESSION_TEST | sha256=15962fef13597c229529d0e66695312227c43dfa967cbfcbf5120184e921f57b
+  line 61-63 | function | create_server.bot_health | PRESERVE_AND_REGRESSION_TEST | sha256=520337d7abbd59592d8d0391969f5bc73e283126e7789dc2f40ccd5d034261e8
+  line 66-68 | function | create_server.bot_status | PRESERVE_AND_REGRESSION_TEST | sha256=c305fe9a932b236a9cbf7e4201314e6987a16180f9f1aff1d1de7d2e8f9a16c1
+  line 71-73 | function | create_server.bot_performance | PRESERVE_AND_REGRESSION_TEST | sha256=3c8529a65ab5a35af054ec85b8a3d0a28dd48625f68586a279de03059926b99c
+  line 76-78 | function | create_server.bot_recent_trades | PRESERVE_AND_REGRESSION_TEST | sha256=6331e6bf9787ef377e8dead5726b0f30eb87203a4e21defea37d39c97abcfbba
+  line 81-83 | function | create_server.bot_errors | PRESERVE_AND_REGRESSION_TEST | sha256=a672a20f7a85c15f111c7e1eeddf16fae271e502f6096a203946279183b91fb1
+  line 86-88 | function | create_server.bot_crashes | PRESERVE_AND_REGRESSION_TEST | sha256=2f90dc99df1f2f54d8e4fc173560fe09fea9a678ce77ab75e33374cce8c1b138
+  line 91-93 | function | create_server.bot_binance_latency | PRESERVE_AND_REGRESSION_TEST | sha256=bb8f88a33cbf62f8d5bed8667cf8023f22b0c2b8e888ee993cc1b78a96058d3a
+  line 96-98 | function | create_server.bot_system_resources | PRESERVE_AND_REGRESSION_TEST | sha256=f7641118399ee9cae583afc8b3942c46071b6052684b21304823918da3ae313d
+  line 101-103 | function | create_server.bot_deployment_status | PRESERVE_AND_REGRESSION_TEST | sha256=821d862205ddd21d21859b5260bce4fba53059d0d4ec535594dca2d2035585d0
+  line 106-108 | function | create_server.bot_market_context | PRESERVE_AND_REGRESSION_TEST | sha256=a9a0c778aa5324b6ed1464fe576b787ce64f0f4fc3726dbb4d3d23158632e85e
+  line 111-113 | function | create_server.bot_daily_report | PRESERVE_AND_REGRESSION_TEST | sha256=c8d17462506dbefe2e28e5e0a4e0a209141ba2ca4adcd2d4d28d5f79ed720303
+  line 116-118 | function | create_server.bot_custom_report | PRESERVE_AND_REGRESSION_TEST | sha256=60fc2fe8eaa65e1ee2d0ef3a3b3cf25c7c27d2f6f677a2e5aee462165c500fae
+  line 123-125 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=31fdef83e4e907a485fa97e6407c4e3e7927a5195097f9a8772950493863e9d8
+
+FILE: monitoring/snapshot.py (3 callable(s))
+  line 24-61 | function | collect | PRESERVE_AND_REGRESSION_TEST | sha256=cff29a330593346f7329b96f54df475d0ddf59ef0fbd1bf2ed17295a51e47705
+  line 64-80 | function | atomic_write | PRESERVE_AND_REGRESSION_TEST | sha256=a21fcd6a39d5f34be909618cd4dca49fc54311c1aee5311b1469c9d921527de4
+  line 83-92 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=481e9009723b80093c856cfb906bfdc88a4ae82b38dcd13ecf53136e6e404c8b
+
+FILE: monitoring/telegram/telegram_reporter.py (4 callable(s))
+  line 17-19 | function | _failure | PRESERVE_AND_REGRESSION_TEST | sha256=182533b0a39c053b5e6c3c7e668189d0833321870f039fb0f9ce0c14be02fba8
+  line 22-51 | function | _format | PRESERVE_AND_REGRESSION_TEST | sha256=1fc5e5c08cc16831d748a7aed463aa025b2b90c5122a943f7d9ccb71454d9581
+  line 54-67 | function | _send | PRESERVE_AND_REGRESSION_TEST | sha256=13690e50d2cdd89ff67c91c061028d5d4a86ce8a08f0b3aed876c11a43efb082
+  line 70-117 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=b1d7e98af59f925f3b1a3724b5740a5721713a3bd7d3bddea01dae5514b03545
+
+FILE: scripts/build_audit_ledgers.py (12 callable(s))
+  line 43-56 | function | release_paths | PRESERVE_AND_REGRESSION_TEST | sha256=6534b70b1878cc340850477dbad7d2545b71ae6e0e4aaa1cec96065c45a74851
+  line 60-64 | function | FunctionVisitor.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=8df0963c814dae2585a1be9dff824edd559fde4d35607634e96f7c7b371d459a
+  line 66-96 | function | FunctionVisitor._visit_function | PRESERVE_AND_REGRESSION_TEST | sha256=0d0eaa7a90a8f179211d60d3384e7993eba49be657839dd1d3e1dfe7dabe5edc
+  line 98-101 | function | FunctionVisitor.visit_ClassDef | PRESERVE_AND_REGRESSION_TEST | sha256=e18b07eea947e98f15c841ad8fcd8fa252e36b7889dafb5442137a56e8d81808
+  line 103-104 | function | FunctionVisitor.visit_FunctionDef | PRESERVE_AND_REGRESSION_TEST | sha256=a3cfc000ca6b40a0d08e7ab5aaece1934c0b14389d76074f525eb1a0c5248071
+  line 106-107 | function | FunctionVisitor.visit_AsyncFunctionDef | PRESERVE_AND_REGRESSION_TEST | sha256=391dedeaf570867af6b90b7612612703ac85f9e37272fbf5f599dccb3e6107f8
+  line 110-124 | function | python_function_rows | PRESERVE_AND_REGRESSION_TEST | sha256=5d7ffd07dad0ab7026ee3a0fa83e843fb40c3fb44cd65bae39860b92146568e0
+  line 127-160 | function | shell_function_rows | PRESERVE_AND_REGRESSION_TEST | sha256=9351d696086a72b89c64273c8fd2903aa600ad4de471059ad68b63eba09b088c
+  line 163-172 | function | function_rows | PRESERVE_AND_REGRESSION_TEST | sha256=b037bb8eb9a566e507bee69b78b56e474ab66b95c58e752613b65a1bc39490ff
+  line 175-185 | function | matrix_text | PRESERVE_AND_REGRESSION_TEST | sha256=eca84f1058587ccced5b9f9cc2d515d1ac471c3f6d57e5cdcb3648b3499554ae
+  line 188-204 | function | verify_file_ledger | PRESERVE_AND_REGRESSION_TEST | sha256=a3a62eaada459842c3cd8140fe48db7d377ce36b1a84c00f24283300114dd162
+  line 207-239 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=1832679118a79c22c2d8bb2d7c3c0ee6f3b531106bf2f4d975d851f27df40571
+
+FILE: scripts/build_manifest.py (2 callable(s))
+  line 46-47 | function | sha | PRESERVE_AND_REGRESSION_TEST | sha256=35b5b3454a88d2449f46f4dc3ad36a7e13b940072403c2b416b4dbef88e39ae5
+  line 50-111 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=a4cb266fe2455b6028cebdf7aedaf0696f7d085f0313d565c5f3fb9f61b218a3
+
+FILE: scripts/build_release_zip.py (5 callable(s))
+  line 18-23 | function | sha256 | PRESERVE_AND_REGRESSION_TEST | sha256=1ab08ec7db4fe5963209e4eb6371d40b5ffd1f81d53f5804eb321406c338181b
+  line 26-37 | function | release_files | PRESERVE_AND_REGRESSION_TEST | sha256=02dc137a41343ae65e5bffc2533a59917dbcbbd2117a3ba8c798b4234fafe882
+  line 40-48 | function | ensure_external_output | PRESERVE_AND_REGRESSION_TEST | sha256=b42ff67f580d10db7c77d046036809d183ff3350b2469469bc26d75f22cf1cca
+  line 51-98 | function | build | PRESERVE_AND_REGRESSION_TEST | sha256=63ccc6b1dec7bd455e1ffed1aeb826b7b9b5c4ee39d095737f7be9b63b4caa88
+  line 101-112 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=ac6ec8eed0c58b5a032a0ba15ee4837cae0503a81322b7c40d209d6f711c55d7
+
+FILE: scripts/certify_live_evidence.py (6 callable(s))
+  line 42-54 | function | _load_risk_env | PRESERVE_AND_REGRESSION_TEST | sha256=9230c2063d5c436a9d700eb22a8636f505aa2adc38b05cfb4aa68cd2c4a5fd5e
+  line 57-75 | function | _keygen | PRESERVE_AND_REGRESSION_TEST | sha256=b232fb0d670460a032044abaa52e4e889f76d625d6ec6c99877ec0870c0c3ad7
+  line 78-87 | function | _template | PRESERVE_AND_REGRESSION_TEST | sha256=b5b5ed57cec0ab37d3c8bb99cd6ef56eab83be010aba774cf2a89072731bb17f
+  line 90-174 | function | _certify | PRESERVE_AND_REGRESSION_TEST | sha256=6547d51ab3bf970136fcbfebb7c2658108008765d514aded61f0bcb1824e0388
+  line 177-198 | function | _parser | PRESERVE_AND_REGRESSION_TEST | sha256=58b90bf47bd9fafe25ae77c4a914cf02122e1b9a7db0d15618220d98461224ff
+  line 201-203 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=9e1194a5afa3de794a2ce3e3a214c22c9bd78c6b3aa49a1e208f4bbe4c822e7b
+
+FILE: scripts/verify_binance_public_kline_archive.py (8 callable(s))
+  line 30-35 | function | file_sha256 | PRESERVE_AND_REGRESSION_TEST | sha256=f7e0b5503199ef10ddf025ba3c07c40e851ef72048c49841189cd9945371fc6e
+  line 38-59 | function | expected_checksum | PRESERVE_AND_REGRESSION_TEST | sha256=501eea122096f117c84719001fde3c1f67e246feac189ec8462d222f62e81dcf
+  line 62-94 | function | safe_members | PRESERVE_AND_REGRESSION_TEST | sha256=90d7b5c097db2d719e98d134f420c3cdfa88f493967cccc615addb34592661ee
+  line 97-103 | function | timestamp_unit | PRESERVE_AND_REGRESSION_TEST | sha256=1074c90b5f4f7c5d39830bbf869fc9991fdb7d091f5f6f3d3000f69ec12eb2db
+  line 106-117 | function | decimal_value | PRESERVE_AND_REGRESSION_TEST | sha256=35a2969776b8425c67e3a9ed9e57d46807e282a46356a3df6fde2a8d81fa5c32
+  line 120-199 | function | inspect_kline_csv | PRESERVE_AND_REGRESSION_TEST | sha256=2e8e748c03de1d672a59c0e4440a59fce7239249d9075c1bf129aa4ca0ec7dbb
+  line 202-223 | function | verify_archive | PRESERVE_AND_REGRESSION_TEST | sha256=d356b5a4a859fcbdf90f5fcb58ff6e37620f4e5301a9d00993cb52455e87be26
+  line 226-244 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=46eade2a24851e471306327727ed5d0e4f134e932753fa34dac31264cadc545d
+
+FILE: scripts/verify_live_evidence.py (1 callable(s))
+  line 22-53 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=f7f8a60072ee6a469f92578744706143d20f99ef0ae6d1d2550ef5b73ca1c9b3
+
+FILE: scripts/verify_manifest.py (3 callable(s))
+  line 10-11 | function | sha | PRESERVE_AND_REGRESSION_TEST | sha256=35b5b3454a88d2449f46f4dc3ad36a7e13b940072403c2b416b4dbef88e39ae5
+  line 14-25 | function | current_release_files | PRESERVE_AND_REGRESSION_TEST | sha256=8f8538fbc97341a5d35d746a3ad0753e0885617434c7e3bb81c9648b21dbf0d8
+  line 28-90 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=60082163664f2cf2f04ce54322074b4b89e4fc0be8c1ffff65125140b4e66bde
+
+FILE: services/common/atomic.py (3 callable(s))
+  line 7-19 | function | _fsync_parent_directory | PRESERVE_AND_REGRESSION_TEST | sha256=338e145ef11ce980e062d290125df9d062b95c3ca0a5bcd9d5d4a28145986086
+  line 22-45 | function | atomic_write_json | PRESERVE_AND_REGRESSION_TEST | sha256=01bb904814104d3bd49a8cc4b7f9e574ecd27816ecb4bc8e630b03da8b2953ae
+  line 48-53 | function | read_json | PRESERVE_AND_REGRESSION_TEST | sha256=45657427e99e7a80288206d141d807d33de3b3a1e5447ac3cd66548e058fbe11
+
+FILE: services/common/audit.py (6 callable(s))
+  line 15-16 | function | _lock_exclusive | PRESERVE_AND_REGRESSION_TEST | sha256=2fb119cd3b141a19670f604fd865da13c066a1837e3aee07e2d3d58e9a5a73e6
+  line 18-19 | function | _unlock | PRESERVE_AND_REGRESSION_TEST | sha256=99de6f3c4a64d9a9d4a0c2f7e9144df22bd482ce2db801ab7f9ac4f41c17efbd
+  line 23-25 | function | _lock_exclusive | PRESERVE_AND_REGRESSION_TEST | sha256=f914600c35a8fa5a68d3a344164bac15046c8f2d66dbd3fcc89d88146fea1832
+  line 27-29 | function | _unlock | PRESERVE_AND_REGRESSION_TEST | sha256=a1f502376dd09199bf12ed8dff3e7cba74a63ec6a2009385ee3bb6c1ddd958bb
+  line 34-52 | function | _rotate | PRESERVE_AND_REGRESSION_TEST | sha256=ff7f91a659d8bfa94c8897f33a800e130cc921186d89e150a0f5fbf87fc77fc0
+  line 55-85 | function | audit | PRESERVE_AND_REGRESSION_TEST | sha256=261d56d0cfc05eb7ea6d46c3b824895a65e14bbb172dd1e9d94af77b568e6c22
+
+FILE: services/common/binance_public.py (9 callable(s))
+  line 37-40 | function | BinanceRateLimitError.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=3afda7f184a2668c95780b17a5a0096f0167fcee30b0462021b3001c4065a527
+  line 44-51 | function | BinancePublicClient.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=941af830479dd2c530807859bc9a70db4ee111ef1f951ae13365168ce386c399
+  line 54-59 | function | BinancePublicClient._retry_after_seconds | PRESERVE_AND_REGRESSION_TEST | sha256=d1a5d07f60ae80d06f5c85204bfe2d7f4eb149d465f5e36114f20458bfe9ab93
+  line 61-98 | function | BinancePublicClient.get | PRESERVE_AND_REGRESSION_TEST | sha256=f042fb8ef2a1be03b1f32c94afa8cc24af4d9be7da900f41339735078b768a73
+  line 101-107 | function | BinancePublicClient.exchange_info | PRESERVE_AND_REGRESSION_TEST | sha256=02b205e6617ef800034e55726dde7864024bcbdd64e7cb2dfefff35d43c31de3
+  line 109-117 | function | BinancePublicClient.execution_rules | PRESERVE_AND_REGRESSION_TEST | sha256=9ceefcbf3d5df50c883712afd0981e07a5450cea62fb40270dcafe5f5f66ba4d
+  line 119-120 | function | BinancePublicClient.ticker_price | PRESERVE_AND_REGRESSION_TEST | sha256=6e7970721cca162e34948662099097a0e714d6ce0623e8fad5f6fd2d2eff0525
+  line 125-148 | function | BinancePublicClient.reference_price | PRESERVE_AND_REGRESSION_TEST | sha256=39f2f5a5622dd5f21cc52cbc6662c3e599b67ef53b6abbe0e860cc2a7092387c
+  line 150-156 | function | BinancePublicClient.exact_spot_symbol | PRESERVE_AND_REGRESSION_TEST | sha256=a4a1c5132cedc84f05a00ff9c9372c87c526b9d4990e6f1f017794bd2957e81e
+
+FILE: services/common/config_bounds.py (3 callable(s))
+  line 16-27 | function | env_int | PRESERVE_AND_REGRESSION_TEST | sha256=81f4054d6c210d1f445333d49f68af092d4e66a8e1ae3d64dbf2c79d666b641a
+  line 30-43 | function | env_float | PRESERVE_AND_REGRESSION_TEST | sha256=6118739711a42da95ebf9ef8c5854dd6d49799b7eb0e6926ac7a02c2fd8c3b43
+  line 46-51 | function | env_choice | PRESERVE_AND_REGRESSION_TEST | sha256=11f07bf2931c10bffca11032f1d6c239a6dcb1cf9486e9836b6e3c5a7fbe8443
+
+FILE: services/common/envelope.py (6 callable(s))
+  line 60-61 | function | canonical_bytes | PRESERVE_AND_REGRESSION_TEST | sha256=977528c902e960bc37ccffba5e2f114366fe7786e1ce4eba0fc34ba4b97a358c
+  line 64-78 | function | installed_release_hash | PRESERVE_AND_REGRESSION_TEST | sha256=6385e27edd0ce931c87065f9f73a2ee9eaad05af89ba0ee62069d19f8f8a6f06
+  line 81-91 | function | load_key | PRESERVE_AND_REGRESSION_TEST | sha256=331d91084b40f5125f80dc9f16357ca2682de761562f49ce2681536704aa27a5
+  line 94-129 | function | sign_envelope | PRESERVE_AND_REGRESSION_TEST | sha256=7552d9b2cfbd000187ce809775ff081b0a2b40b9e0b9d60b3e18525e04b1aab5
+  line 132-182 | function | verify_envelope | PRESERVE_AND_REGRESSION_TEST | sha256=51e7b1990c9a0ff764afff09f5e035daa3544206bee56ee779f6f08968e713c6
+  line 185-193 | function | read_verified_file | PRESERVE_AND_REGRESSION_TEST | sha256=d475a13ff91482d1f632b61a263f5a7b8f2f015778de34a67982a9e4ae8a4048
+
+FILE: services/common/evidence_signature.py (5 callable(s))
+  line 26-28 | function | canonical_bytes | PRESERVE_AND_REGRESSION_TEST | sha256=b73d328e79e6601562f4bacf228b6b701478a13fb794ffc50c43fa4170d627ca
+  line 31-32 | function | public_key_b64 | PRESERVE_AND_REGRESSION_TEST | sha256=1b0b85fb98fd75659e0abca5d6bc194b7fcfed567659372859e42c880f6f3e07
+  line 35-50 | function | import_public_key | PRESERVE_AND_REGRESSION_TEST | sha256=0f91ac3429b5532745020db82489171abe5c87e94ef5706d808bfcf5f4fbb6f8
+  line 53-78 | function | sign_document | PRESERVE_AND_REGRESSION_TEST | sha256=56cde11bbe2777de83fb009f0aa4d27e0863b6c2044bd17b5a8b8f491a7f663d
+  line 81-130 | function | verify_document | PRESERVE_AND_REGRESSION_TEST | sha256=56a1d3b3731cb7607bb9a65ecbcb172bff8ad7a5680865a1dc8483042f51cd7f
+
+FILE: services/common/market_policy.py (8 callable(s))
+  line 24-30 | function | _quotes | PRESERVE_AND_REGRESSION_TEST | sha256=8e746a3dbce4e212d357dab6cf135548219552f267ac4b6fa558ee98a8a7c69f
+  line 33-38 | function | allowed_quotes_from_env | PRESERVE_AND_REGRESSION_TEST | sha256=9a1c56cba37d720c4774d9134841903f7ce5d65bc164c8c60d2fe0bc120120b3
+  line 41-56 | function | canonical_pair | PRESERVE_AND_REGRESSION_TEST | sha256=aaccae62d139818f6be30a6c047edeea8efbd80fa8f0a191cf53263c09c264ac
+  line 59-60 | function | symbol_for_pair | PRESERVE_AND_REGRESSION_TEST | sha256=eca545bdebb4c1bf20b503d270509629817e520040f0ae8e9a24e27599814921
+  line 63-64 | function | quote_for_pair | PRESERVE_AND_REGRESSION_TEST | sha256=4bbfacc1c838ca4c587d3d2a73a19f7515d82638ba68e894db00b965d1256cc3
+  line 67-111 | function | validate_exchange_symbol | PRESERVE_AND_REGRESSION_TEST | sha256=1c5ccb8515a14bd50001ca5411ab8d88f5130a52239c1f84c354c05e47a8832a
+  line 114-126 | function | pair_state_hash | PRESERVE_AND_REGRESSION_TEST | sha256=5a45a0a9724108a26acd1faa3bbfd212d6b5bce8caa65f5f3bb89c53e3922067
+  line 129-140 | function | pair_config_hash | PRESERVE_AND_REGRESSION_TEST | sha256=cce6bf1288f28d48a7c968ff8a4d3a2f5e9b22041998a1f0336af70da285a1b2
+
+FILE: services/common/models.py (1 callable(s))
+  line 42-43 | function | Signal.to_dict | PRESERVE_AND_REGRESSION_TEST | sha256=4000cec762a8fe3edc614a12651846308521a4ef750d90cf11ed6c730583b21c
+
+FILE: services/common/pair_registry.py (7 callable(s))
+  line 32-46 | function | PairRegistry.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=b3200230ab8dedf1fb86bcb605c88b9e6e8005a506d80a4356efa7bd8680ead5
+  line 49-62 | function | PairRegistry._registry_hash | PRESERVE_AND_REGRESSION_TEST | sha256=526430a994105318b4ef3a4bef482589376fda769165fbe8dc3f1af7c0110559
+  line 64-101 | function | PairRegistry._row | PRESERVE_AND_REGRESSION_TEST | sha256=56ac7c64e827796d1032d2e5451fe203fb194337f2236e12ffc3894208d0c07b
+  line 103-150 | function | PairRegistry._validate_snapshot | PRESERVE_AND_REGRESSION_TEST | sha256=810d3c6c38ec60260dcd0e565db60bbc4090a143e021996e74c172db24b51a5a
+  line 152-165 | function | PairRegistry._cached | PRESERVE_AND_REGRESSION_TEST | sha256=4c6bed932bb0f3dcf2ad4be771dd64a512a67319e11fb4b8c4e5055e307b4e6b
+  line 167-208 | function | PairRegistry.refresh | PRESERVE_AND_REGRESSION_TEST | sha256=b887319d5e283b623bea7f1a509b0cbafdfa81174b3bee76fe108165962ac282
+  line 210-224 | function | PairRegistry.require_pair | PRESERVE_AND_REGRESSION_TEST | sha256=516cb37381446f54a3c4b8934b76cf8102e2d26fb3635c7bd82001152e0de6e7
+
+FILE: services/common/redaction.py (3 callable(s))
+  line 25-34 | function | _configured_secrets | PRESERVE_AND_REGRESSION_TEST | sha256=3554b1949f19c473508813b6bb74fc02fc19d35c72c37d3b095624ae3e89c2c4
+  line 37-44 | function | redact_text | PRESERVE_AND_REGRESSION_TEST | sha256=68e5377f620e472bac7b344153bc20193d3df70730e7c38922dee7c65ddc39bb
+  line 47-57 | function | redact | PRESERVE_AND_REGRESSION_TEST | sha256=b437b1e56e2a38b0c9b36c88802ddc4812e1b452ea509970de1888d0733cf19a
+
+FILE: services/common/retention.py (1 callable(s))
+  line 7-43 | function | prune_files | PRESERVE_AND_REGRESSION_TEST | sha256=70ee7794290779a1b7c46abd8c0b3952a0750fcbb07f3c24777cf78de3c6985c
+
+FILE: services/common/strategy_fingerprint.py (8 callable(s))
+  line 39-48 | function | _method_node | PRESERVE_AND_REGRESSION_TEST | sha256=1cf65e2eafd32ff99579184d46da598418f35cc7f5981b14760d3c7a9bbc6045
+  line 51-57 | function | method_source_segment_from_text | PRESERVE_AND_REGRESSION_TEST | sha256=58a95f01f021f1ec8d3e19e086cdb340ee52bf73da0b04711e8fa7e2a4719311
+  line 60-63 | function | method_source_segment | PRESERVE_AND_REGRESSION_TEST | sha256=9fd8da33315e6ed0314ac0d74fbc5da0761bd4f2781c8ea83c5fe41aad9ef7c8
+  line 66-68 | function | source_hash | PRESERVE_AND_REGRESSION_TEST | sha256=9eeb247e5bd012f83f369c852e55fbc7916f63430665381c2ffd0e37de75f53e
+  line 71-81 | function | token_stream | PRESERVE_AND_REGRESSION_TEST | sha256=4d39743d88062c9ac37fb59b1c60e8cc71feb34bef4002b126732d7439e1113b
+  line 84-87 | function | token_hash | PRESERVE_AND_REGRESSION_TEST | sha256=38043eede2947f1f3b6d0922c22f0cc4edb742c3e7cd2aeb214fe141aa4a898c
+  line 90-97 | function | fingerprints | PRESERVE_AND_REGRESSION_TEST | sha256=d3491b8193163b29254da3e18da2da5c2cbdfc9a9f63fa40a97d5a76aeeb17a5
+  line 100-112 | function | fingerprints_source | PRESERVE_AND_REGRESSION_TEST | sha256=42bcf4c98ad3fdd5d902fcdc3c1592ec95729405c9e570fad0367ece5c4e2f13
+
+FILE: services/execution_sidecar/bitcoin_adapter.py (54 callable(s))
+  line 53-54 | function | _decimal | PRESERVE_AND_REGRESSION_TEST | sha256=a2318e0a7dd3275664f546f851cf768ba65e0fc0ba0ceeb19f140c929e2709d4
+  line 60-98 | function | BitcoinSpotAdapter.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=cbdb1ad1bc0aac5b84fc434929ccc7b5d5ffc49c52ce00c7ee31cca804276b10
+  line 101-128 | function | BitcoinSpotAdapter._rules | PRESERVE_AND_REGRESSION_TEST | sha256=7c19210a33271b6b7e525b714295d221b4a9c3835421074c3bdbcdef7d9ca4e0
+  line 131-154 | function | BitcoinSpotAdapter._require_mode_capabilities | PRESERVE_AND_REGRESSION_TEST | sha256=89b5076ebdce562e6ac9e7eaf46df8503e4a7bcd8dd888f42b132ceb7cdb2c37
+  line 157-161 | function | BitcoinSpotAdapter._price | PRESERVE_AND_REGRESSION_TEST | sha256=dd25750327990413487be398a12724b86e398af94151525589617378f56ac4a3
+  line 163-167 | function | BitcoinSpotAdapter._best_ask | PRESERVE_AND_REGRESSION_TEST | sha256=b1c96531e6d111c3b502fe023f83c6e044f78ef8ab515775432de72bbe24230f
+  line 169-173 | function | BitcoinSpotAdapter._best_bid | PRESERVE_AND_REGRESSION_TEST | sha256=a500deb797581d518d2a6390fab0e63df46d13818758a1eba9cb0c7c06cdb839
+  line 175-177 | function | BitcoinSpotAdapter._current | PRESERVE_AND_REGRESSION_TEST | sha256=6103b27a9534b3254526a63c4228ee98d58f62901cf061d0079657cd9be275cb
+  line 180-189 | function | BitcoinSpotAdapter._balances | PRESERVE_AND_REGRESSION_TEST | sha256=2fad60c1987fcecab0f48da4930365683fb62de8f66bec72541f7d2553765dbc
+  line 191-192 | function | BitcoinSpotAdapter._free | PRESERVE_AND_REGRESSION_TEST | sha256=3b0bf05c08a8859937ac7a5863fe0daff8d692a05f2b8ff84251ee1f4278c69e
+  line 195-216 | function | BitcoinSpotAdapter._response_ids | PRESERVE_AND_REGRESSION_TEST | sha256=10040110b589bd13c6b4d7930e9784b4fea641cb4240797404668c78cb0551bd
+  line 219-234 | function | BitcoinSpotAdapter._rest_event | PRESERVE_AND_REGRESSION_TEST | sha256=30ca536ba9c23b874c78dde615528ee8e88e8eb8383d86cbd6752219427553db
+  line 236-240 | function | BitcoinSpotAdapter._record_authenticated_event | PRESERVE_AND_REGRESSION_TEST | sha256=39015ded4cd7e655c9d3d2dd4f0c51b903521ec58be228227a99478302996516
+  line 242-249 | function | BitcoinSpotAdapter._record_response_events | PRESERVE_AND_REGRESSION_TEST | sha256=c21248b31905579972399bff79b95dff886b79d2162f1ccf4611ce8ee75e630e
+  line 251-293 | function | BitcoinSpotAdapter._bind_confirmed_intent | PRESERVE_AND_REGRESSION_TEST | sha256=9e6c883b26e390aebe07ab971b67b627b2d5dd1b1cb4474d6b118b36f22b3aa0
+  line 295-303 | function | BitcoinSpotAdapter._preflight | PRESERVE_AND_REGRESSION_TEST | sha256=8da4151b0915dabaf06d1555d82b5f2f40bab651b78e85f49f3b1008927e042f
+  line 305-311 | function | BitcoinSpotAdapter._lookup | PRESERVE_AND_REGRESSION_TEST | sha256=e937df6925aea5e172cbb5ea4ba80dbc260a9da3583e220e56e30128e75f1ba0
+  line 313-359 | function | BitcoinSpotAdapter._submit_once | PRESERVE_AND_REGRESSION_TEST | sha256=e262aaafce877643952a277b46ce928202caf5f7d5dba985687b855e8b907ea3
+  line 362-365 | function | BitcoinSpotAdapter._terminal_order_status | PRESERVE_AND_REGRESSION_TEST | sha256=001b1615248551fafbcc51cafc6e16922da4ee60729f197d3bff06361c2b1a5a
+  line 368-372 | function | BitcoinSpotAdapter._terminal_list_status | PRESERVE_AND_REGRESSION_TEST | sha256=29f22e667828fa64ba31a476588c0cfdf0e39c8da45faa0491dddd8452f8df0b
+  line 375-384 | function | BitcoinSpotAdapter._intent_request | PRESERVE_AND_REGRESSION_TEST | sha256=d2f49e55a550dabba85a2ec7002eab22583ec5c8c2a658f0b69153495ffa916c
+  line 386-417 | function | BitcoinSpotAdapter._resume_existing_prepared_submission | PRESERVE_AND_REGRESSION_TEST | sha256=cb0dec5c7a897537dca1f30aacf3e0e53f39fae42b4f9a94ed8e661293d1e59f
+  line 419-576 | function | BitcoinSpotAdapter._resume_prepared_replacement | PRESERVE_AND_REGRESSION_TEST | sha256=2b8b2a7a2df6225e75a27396a4f7003c133872e14be4af03451a0806e7a28514
+  line 578-707 | function | BitcoinSpotAdapter._resolve_operation_intents | PRESERVE_AND_REGRESSION_TEST | sha256=90e6cf38043c6e91385c8d4e482ceda51240eef698f32b795fd35aa7c4c09939
+  line 709-715 | function | BitcoinSpotAdapter._pause | PRESERVE_AND_REGRESSION_TEST | sha256=25a25ae946a98a94a52f1055655a2c0468552c21e3edab7b882a318608ecc73b
+  line 718-739 | function | BitcoinSpotAdapter.start | PRESERVE_AND_REGRESSION_TEST | sha256=0159683fd0fdcec9f404dc485f952ba81964e35e9c9d7e9edd9cbafe1440aeac
+  line 741-752 | function | BitcoinSpotAdapter.set_enabled | PRESERVE_AND_REGRESSION_TEST | sha256=aa414fe73b229b4c89602a36ea205b17601cf9ca03371f10746c1547f7f253be
+  line 754-807 | function | BitcoinSpotAdapter.submit | PRESERVE_AND_REGRESSION_TEST | sha256=d8b28682cd5adf5606414665e8a30ee6ca5a2eb3fac686f402be4d1f607ca431
+  line 810-821 | function | BitcoinSpotAdapter._on_order_update | PRESERVE_AND_REGRESSION_TEST | sha256=f8a3e4e02ac631a6890785dc1bb4de38573684b71c0938fc279e7cd4fda8afa2
+  line 823-828 | function | BitcoinSpotAdapter._on_list_update | PRESERVE_AND_REGRESSION_TEST | sha256=19e7740aa7d46da4933c23b03c9d5a2a96e6ebe7ab57b0282cccc4739adf7fc4
+  line 830-834 | function | BitcoinSpotAdapter._on_resync | PRESERVE_AND_REGRESSION_TEST | sha256=6393e8ced46ee1908aa683a3941bf07ff43e5c1e82988884a12ccd6dfd5d3432
+  line 837-845 | function | BitcoinSpotAdapter._durable_protection_is_open | PRESERVE_AND_REGRESSION_TEST | sha256=fbe46e09395983b4069238f35721cdbc863cad980f24544281dcc5b21ff9b9f4
+  line 847-879 | function | BitcoinSpotAdapter._cancel_entry_list | PRESERVE_AND_REGRESSION_TEST | sha256=50218a0b70020f84b7dac9006a8c76fa4a9cdde00662c5cf2e38d7c062ab94cd
+  line 881-961 | function | BitcoinSpotAdapter._place_partial_protection | PRESERVE_AND_REGRESSION_TEST | sha256=10db4b49f6fae8b449c84d2ed6d14ce9f756514891923fc196182abb41999058
+  line 963-1013 | function | BitcoinSpotAdapter._expire_stale_entry | PRESERVE_AND_REGRESSION_TEST | sha256=255f0af5ec548d840833ac73e78973783660ec820099078d45a637d000887ca0
+  line 1015-1042 | function | BitcoinSpotAdapter.tick | PRESERVE_AND_REGRESSION_TEST | sha256=9e2d8d36e639e73a101fbd92efe22ebec98a8e102c07aedf86b769802f108ed8
+  line 1045-1113 | function | BitcoinSpotAdapter._cancel_protection | PRESERVE_AND_REGRESSION_TEST | sha256=03b4766a5bf653c788d32c531e99d9a5a2ec231a5328f271975c413e83f4b8fd
+  line 1115-1215 | function | BitcoinSpotAdapter.convert | PRESERVE_AND_REGRESSION_TEST | sha256=6cf29fd46ce4902c69c3cfc722d394ee733a7408f7a8fc420febfec3c274ee8c
+  line 1217-1249 | function | BitcoinSpotAdapter.maybe_auto_manage | PRESERVE_AND_REGRESSION_TEST | sha256=144cda99a1b56e0bc656cebac1bedd68eff8bda580bc6c71cc4b47b76383c1e6
+  line 1252-1354 | function | BitcoinSpotAdapter._reconciled_ownership | PRESERVE_AND_REGRESSION_TEST | sha256=f18c0808395c7ce627952a267b99c2a4ac20bcb6a0aef7271efac1f0c3119661
+  line 1356-1418 | function | BitcoinSpotAdapter._refresh_durable_exchange_state | PRESERVE_AND_REGRESSION_TEST | sha256=f0a82ba325cb60ae4e71b31c223d57b7cb6feab095bf06f280ba030d3d4155f6
+  line 1420-1502 | function | BitcoinSpotAdapter.verified_reconcile | PRESERVE_AND_REGRESSION_TEST | sha256=e74a65c7d7f94c3cd1dee12b801e9cc2d5d7072fa8b4c172999cbea0c26cacfe
+  line 1504-1505 | function | BitcoinSpotAdapter.reconcile | PRESERVE_AND_REGRESSION_TEST | sha256=fa681431869f939343ea7726d4364e75572ce8ede0078c3adb74a70a3d4789f9
+  line 1507-1547 | function | BitcoinSpotAdapter.verify_flat_for_switch | PRESERVE_AND_REGRESSION_TEST | sha256=7b2e1bc88bbe6b005d27b2346ba97e6f661aa510e4eea3a893728c404e4c4fc1
+  line 1549-1557 | function | BitcoinSpotAdapter.validate_pair | PRESERVE_AND_REGRESSION_TEST | sha256=459eae58567cc3adc0e2394f7ec5c93c63cbc11f319eb7471b1bb2663a13afa3
+  line 1559-1587 | function | BitcoinSpotAdapter.validate_pair_funding | PRESERVE_AND_REGRESSION_TEST | sha256=a6bf3b2bf7b0534ec79b22475f02bec58af9aace0208b175c0588ab8be19cf36
+  line 1589-1663 | function | BitcoinSpotAdapter.emergency_exit | PRESERVE_AND_REGRESSION_TEST | sha256=62066cf673a5cb0a2a777e0cd719dd26f403ed428c7f60c6e4bda91b8600e23b
+  line 1665-1670 | function | BitcoinSpotAdapter.status | PRESERVE_AND_REGRESSION_TEST | sha256=07823ea73d73e592e6c20f85ee2a43700b4dd71aaf4cb6580cdd0f99f532950e
+  line 1672-1673 | function | BitcoinSpotAdapter.positions | PRESERVE_AND_REGRESSION_TEST | sha256=2fba889d4f429c1dfd2a60e9ce00176f68cd9deab19212270bdc80284e9c9886
+  line 1675-1680 | function | BitcoinSpotAdapter.balance | PRESERVE_AND_REGRESSION_TEST | sha256=dde7d22e7c473c48a046a2577b89581e8d00c3c469318a37bab2d52fef41db00
+  line 1682-1684 | function | BitcoinSpotAdapter.profit | PRESERVE_AND_REGRESSION_TEST | sha256=ba225bf5f67cb54bd8f8b69cd75063c9adbf7db0cbac85b50445de12b061a648
+  line 1686-1694 | function | BitcoinSpotAdapter.restart_user_stream | PRESERVE_AND_REGRESSION_TEST | sha256=1746901fedda7a87b9b601d34f73848674a2460ad35937e443e7e2e9341bc95e
+  line 1696-1706 | function | BitcoinSpotAdapter.set_size | PRESERVE_AND_REGRESSION_TEST | sha256=c8f00dbfd474700a1db9e721144c763f91683ad83aade91583a2f8a99c4c7b23
+  line 1708-1710 | function | BitcoinSpotAdapter.set_max | PRESERVE_AND_REGRESSION_TEST | sha256=25f22282a61b5e51bce27d8eeade6047450fbbfff8e30756442b75b2f67a0cc6
+
+FILE: services/execution_sidecar/client_ids.py (3 callable(s))
+  line 14-20 | function | ClientOrderIds.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=5861b57849d6db61f42f7b91c210d9d8d7b95f0625f5b7c3ffb1fac44acc09e2
+  line 22-33 | function | ClientOrderIds.new | PRESERVE_AND_REGRESSION_TEST | sha256=aca6d1f5b5c6d3b3fc10774af74a0fa92c87188f3e063db38b402cf92ac0f265
+  line 36-38 | function | looks_owned | PRESERVE_AND_REGRESSION_TEST | sha256=f85e42b7bffd85d625584f8180292b3504ac6758de1b632ca112cc78d23d0a33
+
+FILE: services/execution_sidecar/filters.py (10 callable(s))
+  line 49-52 | function | OrderLeg.__post_init__ | PRESERVE_AND_REGRESSION_TEST | sha256=468c934e826bec800605a27bd48545a3dc3c6fe2b383b5f6d1f4d497dc6a17af
+  line 55-107 | function | legs_from_request | PRESERVE_AND_REGRESSION_TEST | sha256=1f7c1afc24e2cbcb3d5c4fde514e20aaeecc1737e973440baff51588555f598c
+  line 111-116 | function | SpotFilterValidator.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=b5e3f53d27470edbdac4fe0bcbaff4d8ff87aed976064d75721890b2177d4c88
+  line 119-133 | function | SpotFilterValidator._symbol_entry | PRESERVE_AND_REGRESSION_TEST | sha256=71d9865a175fdb705f90951b490b54f058d6b8afeb552813ad0b8789071c3dad
+  line 135-140 | function | SpotFilterValidator._reference_price | PRESERVE_AND_REGRESSION_TEST | sha256=e2d9d49d8303158b66e8a59973c57241e812e0264709ed1ee291c7451ee8dd1e
+  line 142-158 | function | SpotFilterValidator._fallback_reference_price | PRESERVE_AND_REGRESSION_TEST | sha256=0421f84a59f19c11df8e437d199f4102b1684604f4c2f463fef74f7f069eb921
+  line 160-176 | function | SpotFilterValidator._official_reference_price | PRESERVE_AND_REGRESSION_TEST | sha256=cfb8a480677f30c713c53a10efc4fa79db4e7e971a4fbc4db484ad4cab06eae7
+  line 178-248 | function | SpotFilterValidator._price_range_rule | PRESERVE_AND_REGRESSION_TEST | sha256=c00e3d189584702626f95089297fb4145847c39c12e82932724cd54522de906b
+  line 252-256 | function | SpotFilterValidator._dec | PRESERVE_AND_REGRESSION_TEST | sha256=d3c98a310a9f3a86d18ad7d651e3c5a5ac4a9554901c89ab1dd2bcd7f021c5fa
+  line 258-451 | function | SpotFilterValidator.validate_replacement | PRESERVE_AND_REGRESSION_TEST | sha256=16f7a153bfbfb51982f6e630d10492de11ec27ecf5a1538a07eaf8702bbc16a6
+
+FILE: services/execution_sidecar/live_evidence.py (11 callable(s))
+  line 43-44 | function | evidence_path | PRESERVE_AND_REGRESSION_TEST | sha256=8a168c1faa4f826d4e09b8c77657b3b5ae4c45907486e132ea18d3cf5dae2317
+  line 47-51 | function | _boolean | PRESERVE_AND_REGRESSION_TEST | sha256=d2c02f60a93dc78206ca45294485afd7b6441c458a7f4a922652d37f0254b773
+  line 54-61 | function | _number_text | PRESERVE_AND_REGRESSION_TEST | sha256=7c057b78f477f5cc399d7b1f82c8c520c6c6613fd23b30b07d893f0f88f20187
+  line 64-115 | function | runtime_risk_policy | PRESERVE_AND_REGRESSION_TEST | sha256=0bf8a3835fe1f8d8e6ed28686a5b7939a1cdfdf11505e6e8cbd9846c84969c6d
+  line 118-121 | function | risk_policy_sha256 | PRESERVE_AND_REGRESSION_TEST | sha256=c39d23db4569cd3470f4dfed55e79c3a986b16a87dfb350b097b52e265027bce
+  line 124-125 | function | _backtest_root | PRESERVE_AND_REGRESSION_TEST | sha256=93ba90f136c742158ad4ac86e9cebc0898fc9a54af79a8813487ab291b2c8be3
+  line 128-140 | function | _safe_backtest_target | PRESERVE_AND_REGRESSION_TEST | sha256=02966d29c856cc83538d82268f75a2fd6aa3e3fcc10aa61735aa9518c9601a9d
+  line 143-192 | function | _read_result_document | PRESERVE_AND_REGRESSION_TEST | sha256=0bdc80d10a1796872fe65c3e6bbc798f466774b52bd8410d0eac2fbff2594449
+  line 195-202 | function | _finite | PRESERVE_AND_REGRESSION_TEST | sha256=6e0cda9f44b554f70b4f00810404660c165d0b4ee7be27d07e06413827513d64
+  line 205-299 | function | verified_backtest | PRESERVE_AND_REGRESSION_TEST | sha256=34b8c1ef2213b740dd22dedd074d3008a23908d9cdf6e7d3c3c1e3ccca7a010c
+  line 302-345 | function | verify_live_evidence | PRESERVE_AND_REGRESSION_TEST | sha256=6bc90f2e90049ee67a18c68ee64d185cbfed600d5d3b59214fcaafdb4d81311a
+
+FILE: services/execution_sidecar/main.py (11 callable(s))
+  line 56-58 | function | notify | PRESERVE_AND_REGRESSION_TEST | sha256=2238ab6241ba16227141f9143e32ecbe897ca78b984463a8d6a97eb6cbd7fb98
+  line 61-63 | function | _safe_command_id | PRESERVE_AND_REGRESSION_TEST | sha256=7bf4ec40d7509d2fb770e1db0a610d237b3a428367eb6b5ae0e55336f05fc4d9
+  line 66-71 | function | _active_symbol | PRESERVE_AND_REGRESSION_TEST | sha256=740c284fa50af6fbfe4e12f541cfe004d9282abd62267461e7e9090a213421d9
+  line 74-87 | function | _disarm | PRESERVE_AND_REGRESSION_TEST | sha256=5416a4ee3d52da78fc148604cbb8dc1aeca1833b5c12bc8cf7a61fa179a389d9
+  line 90-134 | function | freqtrade_pair_ready | PRESERVE_AND_REGRESSION_TEST | sha256=9d1044d30b3d2a5dc2cac4a2ec8804d19023e5c8ddb63c171649d1b0793038a7
+  line 137-143 | function | _write_command_result | PRESERVE_AND_REGRESSION_TEST | sha256=78543f6e0a17e2f9e6889eab0e2358f88a7fff4147c61bbff8d578d9f81014f8
+  line 146-353 | function | process_command | PRESERVE_AND_REGRESSION_TEST | sha256=6a94ed57c4f7f4bbce43d4e0391020498ba77c6f4df830d626994217071cf4a8
+  line 356-376 | function | _capture_live_evidence_lease | PRESERVE_AND_REGRESSION_TEST | sha256=458d1350f84b810e8b27283d9eb1fa1ddb8b3f14bfb88e7077e906addd59374c
+  line 379-424 | function | enforce_live_evidence_lease | PRESERVE_AND_REGRESSION_TEST | sha256=7a609230862256572191b5bc7bdd8e459a0cbcb86dcdefa716b8f42405c49f28
+  line 427-478 | function | live_interlock | PRESERVE_AND_REGRESSION_TEST | sha256=1e4229be61477db09c25c6d7009663ba2643ed6a40fff8790182821a4bd73cca
+  line 481-652 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=06d529fac5282c68af9f94a3121f2c72498b8cd096b5df23c774b7c3ed906236
+
+FILE: services/execution_sidecar/order_manager.py (6 callable(s))
+  line 24-36 | function | OrderManager.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=055a9a969b8e2c50501671654a9252781907477585f308cf2ae726bf64f95400
+  line 38-60 | function | OrderManager._flow_gate | PRESERVE_AND_REGRESSION_TEST | sha256=5a3a4065aff38755c3338c5bddd9fa4b0a88f7d15f7f3d8b2b69d43962e54ac3
+  line 62-141 | function | OrderManager.process_signal | PRESERVE_AND_REGRESSION_TEST | sha256=76de00ba134202ab82558e4cdb6c232192fbc9be72277a71558048f7e13a2ddc
+  line 143-149 | function | OrderManager._pause | PRESERVE_AND_REGRESSION_TEST | sha256=22045a340db8e3666d150631bc0b022217aaf342c2f30610b0bc989c90cc1f9f
+  line 152-159 | function | OrderManager.move | PRESERVE_AND_REGRESSION_TEST | sha256=6dc5d2d0cddae4ec8e581993bb8ef18bf37eee520efc6eb046469f6d4f5f3a20
+  line 161-167 | function | OrderManager.reject | PRESERVE_AND_REGRESSION_TEST | sha256=d6e65435bc24a8b8679a858c2f8d030cf8c0bb962a15cd68efa0d48dfd1377af
+
+FILE: services/execution_sidecar/package_mode.py (2 callable(s))
+  line 15-27 | function | load_package_mode | PRESERVE_AND_REGRESSION_TEST | sha256=bed1838d9d30743862f4439be9b38ed6e71cb4acae81e6e42c04c67c709cc6b5
+  line 30-46 | function | enforce_package_mode | PRESERVE_AND_REGRESSION_TEST | sha256=00e47f2f956df932162ea1f97566aab500aac636d5a1b47b30675af5dd019c08
+
+FILE: services/execution_sidecar/pair_control.py (15 callable(s))
+  line 45-60 | function | PairController.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=352d810770c1b39a3f973642daab22218bb9fec3823c491ac4317d849533fdcc
+  line 62-77 | function | PairController._build_state | PRESERVE_AND_REGRESSION_TEST | sha256=5d1b909c0aa754bd8caa0c6ad598731215627b85989797968725ac00de9d7b8c
+  line 79-93 | function | PairController._validate_state | PRESERVE_AND_REGRESSION_TEST | sha256=bd6920097e0988d236dea19967d3a21e69feaa81e230eba7c810f906eddea4c4
+  line 95-99 | function | PairController.load | PRESERVE_AND_REGRESSION_TEST | sha256=39f93eb980754281189cdefb725671cb861255e292238e634fe4c41a39b7d762
+  line 101-115 | function | PairController._publish | PRESERVE_AND_REGRESSION_TEST | sha256=8846b8a44831c3bf4f8cce9d0b653b8531be9a41613ba1f5245326d06ddec8be
+  line 117-155 | function | PairController._switch_state | PRESERVE_AND_REGRESSION_TEST | sha256=3ea31c12209344748609e2f45af097e139d066bf863027fce7aa628cd4078d81
+  line 157-191 | function | PairController.switch_status | PRESERVE_AND_REGRESSION_TEST | sha256=8607402af1b32c7294d08cc82b22c8b40491bad891faf75e9dcff143887c5986
+  line 193-219 | function | PairController.bootstrap | PRESERVE_AND_REGRESSION_TEST | sha256=f725616071f5c74b8db775f1148bc60a36b07359af7b797bee1bb6acb0b22b92
+  line 221-248 | function | PairController.switch | PRESERVE_AND_REGRESSION_TEST | sha256=ea6ab0f85db34330be84061eabb5e8e5ea9db2be7014ed18df5f35b6ae70b740
+  line 250-348 | function | PairController.begin_switch | PRESERVE_AND_REGRESSION_TEST | sha256=d67b7b848df98bab5d23af577938d548c81609a0bae76cc396d22949ee049fe8
+  line 350-438 | function | PairController.complete_switch | PRESERVE_AND_REGRESSION_TEST | sha256=ebdea93c6bdce428bb1401bbfe0ddc8fd61e38fcece3bb871605104ac91e7cef
+  line 440-454 | function | PairController.mark_pair_verified | PRESERVE_AND_REGRESSION_TEST | sha256=314b2f154afd7ba0f8ac56b38ceb4b354bbb643d4b75be7d54288e7924031dba
+  line 456-462 | function | PairController.require_resume_ready | PRESERVE_AND_REGRESSION_TEST | sha256=0bab21711f28f132cd36627933e83e91c05c5770a47b5e5ab1bc50a6a470b5c5
+  line 464-471 | function | PairController.mark_active_after_resume | PRESERVE_AND_REGRESSION_TEST | sha256=349cc55cd1c0609bbaa734480ee3f337e1f79f0975617f489fc2ef347f569ce7
+  line 473-479 | function | PairController.eligible_pairs | PRESERVE_AND_REGRESSION_TEST | sha256=8e132e349f6a9abc99742af7b502b8b680d7de932ff36e413393b8ff95d95196
+
+FILE: services/execution_sidecar/protection_modes.py (8 callable(s))
+  line 10-14 | function | floor_step | PRESERVE_AND_REGRESSION_TEST | sha256=91c99ab92d319f5094adc497c3c8204e9ae8e18b02282cf5bcd1b0785fe6997d
+  line 17-19 | function | decimal_text | PRESERVE_AND_REGRESSION_TEST | sha256=8bd7c8130fcd8d58d6daf300659c41f04d96e658ea1536c666636f557a2f51eb
+  line 34-36 | function | OrderRequestFactory.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=9d9e6f9440496f6a776b665caf1f519a3cd08c04daf63644718fb3f1e364bfad
+  line 39-40 | function | OrderRequestFactory._delta | PRESERVE_AND_REGRESSION_TEST | sha256=e3dd44d94125c16c3136934b431ae8ec22a5dfba09585abb7255460111bf82d7
+  line 42-46 | function | OrderRequestFactory.pending_qty | PRESERVE_AND_REGRESSION_TEST | sha256=74e78720b10894a27f51b6a62ab75b82f0bfdf93635225a8eed9c39c01f9ae9f
+  line 48-93 | function | OrderRequestFactory.entry | PRESERVE_AND_REGRESSION_TEST | sha256=94cbd7c0cd1763e004bb4fc307f22c3b91d23ef4bdd8ea84ffd005c6ddc1c862
+  line 95-136 | function | OrderRequestFactory.replacement | PRESERVE_AND_REGRESSION_TEST | sha256=aea603cf94b29489b0d14d7d88d02368adb16fb038d99d397bd5ed7f16973bb8
+  line 139-151 | function | fee_adjusted_break_even | PRESERVE_AND_REGRESSION_TEST | sha256=c8d3014fd6c76d8aac529f4f46d6a9685542b52b27ec236a40eb971dbc133d32
+
+FILE: services/execution_sidecar/reconciler.py (1 callable(s))
+  line 5-17 | function | reconcile | PRESERVE_AND_REGRESSION_TEST | sha256=b2f111944df82d9827c2ae5931dcbf9d6bacd0a3209ab4f8a39d5b2c129f57ca
+
+FILE: services/execution_sidecar/risk_checks.py (12 callable(s))
+  line 30-52 | function | FreshSignalGuard.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=b350f5cc4f4986c7681c229287dd0f729318a46f0479f6d7570a1ff480cdafc1
+  line 54-79 | function | FreshSignalGuard._validate_state | PRESERVE_AND_REGRESSION_TEST | sha256=d08e201d4291ff6c2f7b64200edc4653c18460b651cad31c75ed85af966a61f5
+  line 82-86 | function | FreshSignalGuard._dt | PRESERVE_AND_REGRESSION_TEST | sha256=d296d53a24b2646c1eb6ab9c028aa21bf724a9cb2b9652ce1abcae2b3172174b
+  line 89-90 | function | FreshSignalGuard._day | PRESERVE_AND_REGRESSION_TEST | sha256=ad978566f9fa51dc3057c8ae918e4fa45d5620f97c098f75894e4b45694271ea
+  line 92-94 | function | FreshSignalGuard._save | PRESERVE_AND_REGRESSION_TEST | sha256=ecdc5d15727cc2e06749ac5d56d73fce2ea4811f470b713fa2131e2bb3d395e8
+  line 96-99 | function | FreshSignalGuard.set_global_pause | PRESERVE_AND_REGRESSION_TEST | sha256=13db8ef436250d3405a6e0f73fca2fa75cb2c8fc0cf4a80b88df691e28c110f9
+  line 101-104 | function | FreshSignalGuard.clear_global_pause | PRESERVE_AND_REGRESSION_TEST | sha256=7691382a965c94d4f8c2f50f848a7600d3cb6d736d528d8e70a37feb50339c40
+  line 106-162 | function | FreshSignalGuard.allow | PRESERVE_AND_REGRESSION_TEST | sha256=67fe27e9c5502348947a933a3cccc5d63c22ecf91efedaf80c8dc496cdadb3d7
+  line 164-173 | function | FreshSignalGuard.record | PRESERVE_AND_REGRESSION_TEST | sha256=dccc8523332a3d4e91ab5d6009a9fecc7fd3728062d70fd3b7c243bb68f061a7
+  line 175-193 | function | FreshSignalGuard.record_stopout | PRESERVE_AND_REGRESSION_TEST | sha256=0626008476c6e143ae99cc4c4133a560e8f639dd8e17b6fbf8cee751634776b9
+  line 195-232 | function | FreshSignalGuard._classify_protective_exit | PRESERVE_AND_REGRESSION_TEST | sha256=f9255e5d7f53bb5a13bf15a34a11074b14b57427c77eb8f36b37fa4198b8eed3
+  line 234-247 | function | FreshSignalGuard.on_exchange_event | PRESERVE_AND_REGRESSION_TEST | sha256=0469662f2530b311ddb32bd31051d9b144d855153ff0094d743e13d5a3ed82eb
+
+FILE: services/execution_sidecar/simulation_adapter.py (26 callable(s))
+  line 17-18 | function | _SimTrader.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=ed6d5f4324a8aa0137564f91031956ed0c1b9d054f0cc8bae18da19aa6570718
+  line 20-21 | function | _SimTrader.is_running | PRESERVE_AND_REGRESSION_TEST | sha256=e9bdd4e2c175ece4e32d4e41ab4f2cbd431bd0ec2cbeeff30a4df67778963ffd
+  line 25-35 | function | SimulationAdapter.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=7caa7120d64616356e61f17a7c057bc1143dc6dca2958bf99bc2bed95b625857
+  line 37-41 | function | SimulationAdapter.start | PRESERVE_AND_REGRESSION_TEST | sha256=7cc4c8df7cebd7af75f7c208ca9d57c2ae199bb6f47dfbc19331ffc200c62150
+  line 43-44 | function | SimulationAdapter.tick | PRESERVE_AND_REGRESSION_TEST | sha256=aa709bd7455eabd354c9c157968a2621f626da5ce41cde7c41a649e1009731a6
+  line 46-47 | function | SimulationAdapter.maybe_auto_manage | PRESERVE_AND_REGRESSION_TEST | sha256=9049d9115b1dae6b5ca8b95798be9ef0099c246a7e0a8536a5c28eb373d969c3
+  line 49-51 | function | SimulationAdapter.set_enabled | PRESERVE_AND_REGRESSION_TEST | sha256=07a9acd8df073a51b7d7ebb6933b985f0404d401085ef828049049b22ed8ee6d
+  line 53-62 | function | SimulationAdapter._next_fault | PRESERVE_AND_REGRESSION_TEST | sha256=02d4b708c3e1c99c40ed74855cbe257985186897864af91b5e8346bb87d0e0a9
+  line 64-67 | function | SimulationAdapter._emit | PRESERVE_AND_REGRESSION_TEST | sha256=caffd25b36787712f04522a647fe78b38c5ea978c309dc9e6c85f14be2622db7
+  line 69-76 | function | SimulationAdapter._intent | PRESERVE_AND_REGRESSION_TEST | sha256=5cee9263a90d9855065e4bc42989d30f476f70da36ebd7606e4100a95af3e007
+  line 78-138 | function | SimulationAdapter.submit | PRESERVE_AND_REGRESSION_TEST | sha256=88affd846b591b93968378b7d683cda5ca15b6dd68f2bffae4195cf59b54e1e7
+  line 140-143 | function | SimulationAdapter.status | PRESERVE_AND_REGRESSION_TEST | sha256=9f352a311c4b371469f4a1588f522be1a0b1b7f60b813345d273f948997b8f47
+  line 145-146 | function | SimulationAdapter.positions | PRESERVE_AND_REGRESSION_TEST | sha256=0a8ba72579b386f0ba59f122e74cac623dab60b31423de26d0ec683dea3a5097
+  line 148-150 | function | SimulationAdapter.balance | PRESERVE_AND_REGRESSION_TEST | sha256=e0b3f8c25a558106ad8883af535b14a868c14cecabc86ec9105bef055338744e
+  line 152-154 | function | SimulationAdapter.profit | PRESERVE_AND_REGRESSION_TEST | sha256=6fd4dad064e7c9b60d94f8793cd541ad4b8ab6cd7d6befbfec58083a36e59d98
+  line 156-157 | function | SimulationAdapter.restart_user_stream | PRESERVE_AND_REGRESSION_TEST | sha256=965691024e8ac1af75929373b0ad0b2cc3b12e4907dcfa6805d709094f7bd37f
+  line 159-161 | function | SimulationAdapter.validate_pair | PRESERVE_AND_REGRESSION_TEST | sha256=abcb1319f50f693c461bb5c88772ecc0aa714e9a22eca8fbe9bd39fee0c8529e
+  line 163-172 | function | SimulationAdapter.validate_pair_funding | PRESERVE_AND_REGRESSION_TEST | sha256=93d0ad0ac1657413c2c42809358921175cb30136c51b2ab5ca2ad2e7f8b0bdca
+  line 174-179 | function | SimulationAdapter.set_size | PRESERVE_AND_REGRESSION_TEST | sha256=c92e5ea84ce82f7a4cf9cf67358e5ff44d0660756ab0247dd143e8cebcb6391d
+  line 181-185 | function | SimulationAdapter.set_max | PRESERVE_AND_REGRESSION_TEST | sha256=4417c2a108ad815a5dd79995699cce25f97dbe6f0e9390b0e214dbe5960ad955
+  line 187-203 | function | SimulationAdapter.emergency_exit | PRESERVE_AND_REGRESSION_TEST | sha256=8e1e60a6acad293d33de64f380eec496a7906517b27f78d3b5cd033513428672
+  line 205-219 | function | SimulationAdapter.convert | PRESERVE_AND_REGRESSION_TEST | sha256=738c52df0db1aba5fde7fcb78d3d12eab87f2f256267d5ddeee455af679906f5
+  line 221-225 | function | SimulationAdapter.mirror_positions | PRESERVE_AND_REGRESSION_TEST | sha256=7eb345b683e86e703a2b78a2aefec1f4e5d5f8a84b1aef2bc71059ac24f67059
+  line 227-234 | function | SimulationAdapter.verified_reconcile | PRESERVE_AND_REGRESSION_TEST | sha256=f5118985cf9b4c2d186a5085a46982f79459435676561244a3d1705616cb1758
+  line 236-238 | function | SimulationAdapter.reconcile | PRESERVE_AND_REGRESSION_TEST | sha256=49b225712c32f637dd9b09f56fce189d42e6cffd36e3349e4182bf35fecd4cb5
+  line 240-248 | function | SimulationAdapter.verify_flat_for_switch | PRESERVE_AND_REGRESSION_TEST | sha256=821d6eb05162a5cf94afe6b799d10fe29e70d0db5607651a104df1c537dc58e8
+
+FILE: services/execution_sidecar/spot_gateway.py (17 callable(s))
+  line 25-60 | function | BinanceSpotGateway.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=25b08c3450e769b4a5ea37f238537d621d733c1aa4a97894a2341cb092dd4281
+  line 62-89 | function | BinanceSpotGateway._sync_server_time | PRESERVE_AND_REGRESSION_TEST | sha256=6bb7b3adb5077a219c60ae12c0154713c6785c56d204d35d57fc7096157063a2
+  line 91-93 | function | BinanceSpotGateway.signed_timestamp_ms | PRESERVE_AND_REGRESSION_TEST | sha256=05358b7672a8fee7ce87ca7b57f0c64cb7f5364e2b66469f682ea1139cc37abb
+  line 95-128 | function | BinanceSpotGateway._install_weight_hook | PRESERVE_AND_REGRESSION_TEST | sha256=301cbcde20ac21f3c9b8fc2aa6f60ad8f4cb9ed058a2c2546737f2c5e6b1cba2
+  line 102-123 | function | BinanceSpotGateway._install_weight_hook.record | PRESERVE_AND_REGRESSION_TEST | sha256=09548c4f26ca4f8ac7578a33134c1e06dfab169bc4df1f5cc4262eec4dd002c9
+  line 130-163 | function | BinanceSpotGateway.classify_submission_error | PRESERVE_AND_REGRESSION_TEST | sha256=8b388548575b5b481958594bb91063525010809656ca130ad71d33a9ffa23617
+  line 165-170 | function | BinanceSpotGateway.symbol_info | PRESERVE_AND_REGRESSION_TEST | sha256=7321c58847db0e9b6c9fe682506b25f048a9f0b94eab6b4ac69f3b550fd21787
+  line 172-173 | function | BinanceSpotGateway.ticker_price | PRESERVE_AND_REGRESSION_TEST | sha256=7dffc3efcc676df6a8210b3b728925152ba23f885b11fa66c193b372d4dd6e4d
+  line 175-176 | function | BinanceSpotGateway.order_book | PRESERVE_AND_REGRESSION_TEST | sha256=c55f579cf76965f7f040c68c943f46340ea27037c960ab1e4ed473e0ec9aba8d
+  line 178-179 | function | BinanceSpotGateway.account | PRESERVE_AND_REGRESSION_TEST | sha256=78938d1b137539858a3742bb2e13246e0796e7bc192769a47697231b690a4dc1
+  line 181-182 | function | BinanceSpotGateway.open_orders | PRESERVE_AND_REGRESSION_TEST | sha256=71fbea53d56c7c9f7e3c075a0227f9940a06256c9beb74218bdc4089abd7aafa
+  line 184-185 | function | BinanceSpotGateway.open_order_lists | PRESERVE_AND_REGRESSION_TEST | sha256=5c350a138741abfa6d239d04c22a425f052c67284c9f098297de9b3e3566c0e1
+  line 187-195 | function | BinanceSpotGateway.get_order | PRESERVE_AND_REGRESSION_TEST | sha256=c5b681d6e871309c50df9fa588082c3e533302e2582123a460c282d50906ecc1
+  line 197-205 | function | BinanceSpotGateway.get_order_list | PRESERVE_AND_REGRESSION_TEST | sha256=b65b25660e2d38fe5719874b41093259a9988eed62e121552d899025ff15b8af
+  line 207-212 | function | BinanceSpotGateway.place | PRESERVE_AND_REGRESSION_TEST | sha256=0e3786b7289ed850647ed4f404a6134c1462c23a6bcb5fe5b5083e50757cf647
+  line 214-215 | function | BinanceSpotGateway.cancel_order | PRESERVE_AND_REGRESSION_TEST | sha256=f58aaa7c3ccb6c198d0b6718449533db9521059d5e3d432bad0bbbd9d7082697
+  line 217-219 | function | BinanceSpotGateway.cancel_order_list | PRESERVE_AND_REGRESSION_TEST | sha256=dbbd550a1d4120296a8d92549d2ce74fc01f11fba7a4b07db4c4417357dd78d1
+
+FILE: services/execution_sidecar/state_store.py (39 callable(s))
+  line 81-104 | function | StateStore.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=c28129547bce6cddede21bbb4735fd9bb4380bad2a77edd0ae8e31080a1d31a9
+  line 107-119 | function | StateStore._verify_integrity | PRESERVE_AND_REGRESSION_TEST | sha256=b879c3de2749c88bd116ffad8c299ba9b86ec7add5373d0192564589650af9d5
+  line 122-129 | function | StateStore._connect | PRESERVE_AND_REGRESSION_TEST | sha256=4df741376eea23cd5d3f4c32132e40af0df7727bb681481eb9e8f5c1a99d672c
+  line 132-133 | function | StateStore._now | PRESERVE_AND_REGRESSION_TEST | sha256=bbd5b50d4a54b1486363fb163ef0e39e8bea1bb0e62506a92d6e0a2f52abd2ab
+  line 135-137 | function | StateStore.save | PRESERVE_AND_REGRESSION_TEST | sha256=a7cde6cfdf0a7fa3f453f5acff2c4593f7dfddad4f2c81a1570dd3e5b77a1b37
+  line 139-140 | function | StateStore.get_mode | PRESERVE_AND_REGRESSION_TEST | sha256=c7603a0c2ca8860364f74e527f5e39a437fe26e00ab404d6566ef9d82e22b8a2
+  line 142-144 | function | StateStore.set_mode | PRESERVE_AND_REGRESSION_TEST | sha256=7c416ca79740bcdc7e9d39894f47dab79196d6e21d89b375f84ed0d6e8875ad0
+  line 146-147 | function | StateStore.entries | PRESERVE_AND_REGRESSION_TEST | sha256=f9a49211b2b9b562bfd5d19ffb90e6c5ccd05b05c624df5edff3ddc84bab1a7d
+  line 149-152 | function | StateStore.set_entries | PRESERVE_AND_REGRESSION_TEST | sha256=e039165e4317596a6ec7ed423bd6fb445f0cedec5e66bd450275e70d29c57b42
+  line 154-155 | function | StateStore.signal_seen | PRESERVE_AND_REGRESSION_TEST | sha256=b4ea03f46023431d6707c9687679c4dd01b5aff20c55fadadeec93151c7f4e84
+  line 157-160 | function | StateStore.signal_result | PRESERVE_AND_REGRESSION_TEST | sha256=023a09ece4f71124d62cef47ac08ede48a09f9736ba785829c35394b390d3b8e
+  line 162-170 | function | StateStore.claim_signal | PRESERVE_AND_REGRESSION_TEST | sha256=e37d07f3060cfe4218984e000f34810d84766425eaf265a954c14827a60fc6b4
+  line 172-179 | function | StateStore.record_signal | PRESERVE_AND_REGRESSION_TEST | sha256=f6fed154384fba44b35f33202d4a665479be7058ac04dce5db1e9fc8e4b332f0
+  line 181-182 | function | StateStore.command_seen | PRESERVE_AND_REGRESSION_TEST | sha256=e942438d93d5cd7a576ef77dc3c3804662f016c9b48565642a6b198b7a83c152
+  line 184-187 | function | StateStore.command_result | PRESERVE_AND_REGRESSION_TEST | sha256=69f1ce94301e769f1221dd6d0e8186cb5cfb442fa48df77864e6987d585c61f4
+  line 189-196 | function | StateStore.claim_command | PRESERVE_AND_REGRESSION_TEST | sha256=9a91cdd2fd56691f6765f82644d072088b18f5807bbea4e6c7a4af281cd232a8
+  line 198-204 | function | StateStore.record_command | PRESERVE_AND_REGRESSION_TEST | sha256=91394e9fa1468543d2ae321b7f4f285d82a458137f7bee53063f9efee7490d9c
+  line 207-237 | function | StateStore.prepare_intent | PRESERVE_AND_REGRESSION_TEST | sha256=c0c26a4c01a734b9accaf10568758cd0876c74da43475a1d2d00286ccc12c6d8
+  line 239-246 | function | StateStore.mark_intent_submitting | PRESERVE_AND_REGRESSION_TEST | sha256=b5b133e82441b7feead5fce14d21582fb50897c570753555714ca655cdaaf85a
+  line 248-262 | function | StateStore.finish_intent | PRESERVE_AND_REGRESSION_TEST | sha256=1dd2e27e0a08910e510a4c7d24087439c343b1806e61152359f2ba6ab3fdec79
+  line 264-268 | function | StateStore.intent | PRESERVE_AND_REGRESSION_TEST | sha256=1ec456d9cd32b97a253766b3a92f5938dc0ce3b016a9d8e13ddb3715211a56ea
+  line 270-276 | function | StateStore.unresolved_intents | PRESERVE_AND_REGRESSION_TEST | sha256=4b5516dd7b90b7223a4e21d4bfa069ff32c233fcdb6a62fad16b9467b9659f20
+  line 278-284 | function | StateStore.intents_for_trade | PRESERVE_AND_REGRESSION_TEST | sha256=99057881c34d47b47486ec9a21c5a11da1d4c06dfc4fa5db6430196924fa8882
+  line 286-293 | function | StateStore.active_trade_rows | PRESERVE_AND_REGRESSION_TEST | sha256=7a484d07d66803359ec4d1dc599290dff420777823b0e586467945806f763f1d
+  line 295-300 | function | StateStore.trade | PRESERVE_AND_REGRESSION_TEST | sha256=50a4d430b4e22f7115b211fe3b0afa7ce796645e1e91bb09b022794e3e0fe1a0
+  line 302-309 | function | StateStore.active_trade_for_symbol | PRESERVE_AND_REGRESSION_TEST | sha256=04629b6b8a608fc0978d991f0a0366bb40b596fd4c1001047bce41698af81119
+  line 311-326 | function | StateStore.average_entry_price_for_symbol | PRESERVE_AND_REGRESSION_TEST | sha256=8d6552f55218fed4f6695cae4d802bf126dfca73fecad9372fc33095529e5dac
+  line 328-346 | function | StateStore.backup | PRESERVE_AND_REGRESSION_TEST | sha256=f6303104438775527c80350b5b0bf11dca5ba6f0e4a397dd4e2ad76bb8359753
+  line 348-371 | function | StateStore.upsert_trade | PRESERVE_AND_REGRESSION_TEST | sha256=d57ac1dad2c0f83c775460050bd96a2464f8a7ed9e06cab4468376537d435ca7
+  line 373-379 | function | StateStore.register_symbol_pair | PRESERVE_AND_REGRESSION_TEST | sha256=fee4de8c7041b78603da7fb60d5863ab7135d7c3379c118b0d7f22e82b2d0e95
+  line 381-386 | function | StateStore.pair_for_symbol | PRESERVE_AND_REGRESSION_TEST | sha256=9a94c4f0c5974c8d2618075954fe25cafcc023d9fd4eeebc32c96f1632efa68f
+  line 389-405 | function | StateStore._state_rank | PRESERVE_AND_REGRESSION_TEST | sha256=835db1b72c10401266413c09bdb1c73615de96797e368dc7096a76573395fbdf
+  line 407-416 | function | StateStore._active_trade_id | PRESERVE_AND_REGRESSION_TEST | sha256=4fc6c7f288e3958e902a050f8d01fd4b8a36293eef42714c3643446dd8d1f089
+  line 419-436 | function | StateStore._event_identity | PRESERVE_AND_REGRESSION_TEST | sha256=fabea7432252d6f915000901dfc26ffacb4721021e19825ae1158505c25eda6b
+  line 438-535 | function | StateStore._event_updates | PRESERVE_AND_REGRESSION_TEST | sha256=3e056b3014880f90575a7cb5c6efd6c629c6a1f621b6467288e2a4087c5ca36e
+  line 537-543 | function | StateStore._apply_event | PRESERVE_AND_REGRESSION_TEST | sha256=f72ead73ec3f89d0335463703ac5ef88382c2d2ea6bc8665c20147a6c4e3c369
+  line 546-558 | function | StateStore._matching_trade_rows | PRESERVE_AND_REGRESSION_TEST | sha256=e2484afac444cfed996e5a785e3c2a4ef679a6df2c38eba8254563be77f0acd3
+  line 560-580 | function | StateStore.record_exchange_event | PRESERVE_AND_REGRESSION_TEST | sha256=f04f8f3d60552af5c9a6d45b67fe9cb3e64aa46d42551c43325cc70e6cd4818a
+  line 582-616 | function | StateStore.replay_exchange_events_for_trade | PRESERVE_AND_REGRESSION_TEST | sha256=d96eb2f9ddb6300321c6fd996eea418e4074b1c386c50d5cab577a92cf94b9f0
+
+FILE: services/execution_sidecar/user_data_stream.py (17 callable(s))
+  line 35-56 | function | ModernUserDataStream.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=1f16a0bb6723c03d233ac451d2f227c787b2657609cb3569279ef1d6a710cdca
+  line 58-74 | function | ModernUserDataStream._write_health | PRESERVE_AND_REGRESSION_TEST | sha256=fdd278fbcbbe650778d3fa0ee41dd17921fd952da00934614db2aa202d51452c
+  line 77-82 | function | ModernUserDataStream.endpoint | PRESERVE_AND_REGRESSION_TEST | sha256=fc88420cb95eed63dd988904fc8d7176829eb09d625ccd9e7f39331f62b6d0cc
+  line 85-90 | function | ModernUserDataStream._credentials | PRESERVE_AND_REGRESSION_TEST | sha256=9399b0e23fe977ece9f1c7067769e27d0fe7375573404dfb7c940461cd68650a
+  line 92-120 | function | ModernUserDataStream._subscription_request | PRESERVE_AND_REGRESSION_TEST | sha256=0f4fb68d6eacf14e24ecbed2d4ff0f2ba5c78aea54a0baa77adbffca00632cfd
+  line 122-134 | function | ModernUserDataStream._on_open | PRESERVE_AND_REGRESSION_TEST | sha256=cb9c4f61a49efb6a6a9d4f248e96d6ab17364c43792d6f9bfc4a8e318dbfe8db
+  line 136-155 | function | ModernUserDataStream._dispatch_event | PRESERVE_AND_REGRESSION_TEST | sha256=0f33e11ddac59d3b2c47299b56a2a3d0f7dc0da49c5bfa4af94ca4ba35bb97bd
+  line 157-165 | function | ModernUserDataStream._close_socket | PRESERVE_AND_REGRESSION_TEST | sha256=4683d3fc079064ce4cdabc094b4dd9c71f55e473ca485beb62fced463f71e3ab
+  line 167-195 | function | ModernUserDataStream._on_message | PRESERVE_AND_REGRESSION_TEST | sha256=a23f70dc2398d5795940cee7d60334b624c67d15c69b31ccd8ebe67b07dd08dd
+  line 197-199 | function | ModernUserDataStream._on_pong | PRESERVE_AND_REGRESSION_TEST | sha256=8fe01c7a5e5c3b859473d576140102e3e1066844dd28d4ffb5c51d87251d9ca0
+  line 201-207 | function | ModernUserDataStream._on_error | PRESERVE_AND_REGRESSION_TEST | sha256=585e453eec135d157c2628e0427375ec183a91643f51b3815bba4875c45f788b
+  line 209-217 | function | ModernUserDataStream._on_close | PRESERVE_AND_REGRESSION_TEST | sha256=69ee8da3b361eb77d2538bea777545a1c4cb2e5b17e9fbcf4bfd9c7ea684db50
+  line 219-243 | function | ModernUserDataStream._schedule_reconnect | PRESERVE_AND_REGRESSION_TEST | sha256=132f522b6a40485dbe846bb3a048db09030f19146cf94a84dafb992873c7959f
+  line 233-238 | function | ModernUserDataStream._schedule_reconnect.reconnect | PRESERVE_AND_REGRESSION_TEST | sha256=7d0c3c75a842c8d7893782ffc48c5765abeb39db3a5d56d9e91d9990465b6223
+  line 245-270 | function | ModernUserDataStream._connect | PRESERVE_AND_REGRESSION_TEST | sha256=14e32ef1a56aa585b681d874a0495dbb7fc8286405cb4e2c90d801cf25fa2dde
+  line 272-278 | function | ModernUserDataStream.start | PRESERVE_AND_REGRESSION_TEST | sha256=ee8a2b9c208c75f1619f67e3cc6fbe05aac90e4fd7c9e4a12e5080a83f677516
+  line 280-286 | function | ModernUserDataStream.stop | PRESERVE_AND_REGRESSION_TEST | sha256=30f799c64943071f89f766eb6af3451d839b6432199e7a2b1adaa4b70e5a0de3
+
+FILE: services/moneyflow/analytics.py (6 callable(s))
+  line 8-15 | function | _d | PRESERVE_AND_REGRESSION_TEST | sha256=19391bb9ef1af312da85eea92009cc46293ba1f6f3d9a5528f1357c24fec85f7
+  line 18-39 | function | depth_metrics | PRESERVE_AND_REGRESSION_TEST | sha256=b89ef5c4b7ffd5d53cb200eebf1eb8ed5756508468569fd0e202046f0d71a516
+  line 42-64 | function | aggregate_trade_flow | PRESERVE_AND_REGRESSION_TEST | sha256=8818e1ecd9d81a20071b214f4205d4dbc453e2c98fc164fdf32ef2dba279a2ac
+  line 67-87 | function | timeframe_context | PRESERVE_AND_REGRESSION_TEST | sha256=ee81bbd75ecf5133dd6a73be3abeaabccdcd887521f618577736286b749bd4b8
+  line 74-79 | function | timeframe_context.ema | PRESERVE_AND_REGRESSION_TEST | sha256=f7859413f3badd5306b4967e730af36f6edff651692201039ccca7f7c8d3a90f
+  line 90-114 | function | classify | PRESERVE_AND_REGRESSION_TEST | sha256=7d47cb6a3a3e4d5c0ea1dacdc58dfd1c4e6f569082432dc60d059d6cb0a21844
+
+FILE: services/moneyflow/client.py (10 callable(s))
+  line 8-11 | function | MoneyFlowClient.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=b739e2f806114a45d540654cd383f59696d49ead2938f7e95da94b06f3e709e1
+  line 13-18 | function | MoneyFlowClient.spot_exchange_symbol | PRESERVE_AND_REGRESSION_TEST | sha256=7b8eb5c3e45be731ce084907b68c3a654eb0f9a40f5e50771aacb2e73bb3df1e
+  line 20-26 | function | MoneyFlowClient.futures_exchange_symbol | PRESERVE_AND_REGRESSION_TEST | sha256=3059b4b9d72a153b151b52808860a6f0e69cdadd3d166566bc150f8945640431
+  line 28-29 | function | MoneyFlowClient.spot_depth | PRESERVE_AND_REGRESSION_TEST | sha256=d096951ac9efb6afcb1e96b8cd889c4a399db7468596a512e3d38fcc71246d8b
+  line 31-32 | function | MoneyFlowClient.futures_depth | PRESERVE_AND_REGRESSION_TEST | sha256=8365af1a9ac71f6ba983a424863f92ce6f37235685e7953e5ff4d2dab42d753e
+  line 34-35 | function | MoneyFlowClient.spot_aggregate_trades | PRESERVE_AND_REGRESSION_TEST | sha256=23f20411f9c0c7667151e3aec155394250ce85ce37cef06861d84cf0183989d3
+  line 37-40 | function | MoneyFlowClient.futures_taker | PRESERVE_AND_REGRESSION_TEST | sha256=0b62a47913e7c5c60bf18a54ab4f1725295d4dfce05c64d2e57f01402ce91ef3
+  line 42-43 | function | MoneyFlowClient.futures_open_interest | PRESERVE_AND_REGRESSION_TEST | sha256=bfe57c43e9bfc07b714c039f56d4dbcbb28aee1ab32967028876f60cbfc48e6c
+  line 45-46 | function | MoneyFlowClient.futures_premium | PRESERVE_AND_REGRESSION_TEST | sha256=0194dd6c7824e8383d2280fa7b80679126bd042cbd356f403f6dfeff9c129072
+  line 48-50 | function | MoneyFlowClient.klines | PRESERVE_AND_REGRESSION_TEST | sha256=061f622328daeb2ecea670f46138742664d9f651b1183f0d8dab44e9a22c39e6
+
+FILE: services/moneyflow/external_clients.py (12 callable(s))
+  line 39-42 | function | ProviderHTTPError.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=4cc97217d4f30de21bb4e4dab342b2dc187fb345b8e4b110e4e13faba33fcc0a
+  line 45-60 | function | _retry_after_seconds | PRESERVE_AND_REGRESSION_TEST | sha256=de7b50fe234f4710eb73205ce5b6361f6a94cb7cbeecb881c68ca53eba6c452c
+  line 63-97 | function | _read_json_response | PRESERVE_AND_REGRESSION_TEST | sha256=32aba74d6200f7967bef8499a3dc754e85225b9e7f74b5503609df8f2adc47c7
+  line 101-102 | function | _JsonTransport.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=5333f0c1dd8ad8829c16f10e6dd6bb94cc67c0f2c4aa6199f46022c94f0d3125
+  line 104-122 | function | _JsonTransport.get | PRESERVE_AND_REGRESSION_TEST | sha256=cf867226b4918bafc12df1563b3879a8ea9e03b5bac5e9e9527ac664cc036f6d
+  line 125-144 | function | _number | PRESERVE_AND_REGRESSION_TEST | sha256=01b58f65ddd815d9fa8b9e08afe4bf51138c30847f098b049f12e35a2a9e1a2d
+  line 147-155 | function | _iso_epoch | PRESERVE_AND_REGRESSION_TEST | sha256=db79ef9bfe7819dd77ba9d2f70db60a03d2e02bdfd5b28ca236fbb25f7d1877c
+  line 158-181 | function | _normalized_metrics | PRESERVE_AND_REGRESSION_TEST | sha256=d93996bd066eb0cdcef9bd7ca5b1219bda389c9c64c2aedad95cd68b8816acf6
+  line 187-190 | function | CoinGeckoClient.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=71785607868918d27281ea8782823a7fb1d3f2831d347f3eec5fa48d7ba31075
+  line 192-225 | function | CoinGeckoClient.fetch_bitcoin_usd | PRESERVE_AND_REGRESSION_TEST | sha256=4ef3f2c92ee0d5754ac2f2d91acae146bb1933730474854a44a0ab2fcdc83ee2
+  line 231-234 | function | CoinMarketCapClient.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=71785607868918d27281ea8782823a7fb1d3f2831d347f3eec5fa48d7ba31075
+  line 236-281 | function | CoinMarketCapClient.fetch_bitcoin_usd | PRESERVE_AND_REGRESSION_TEST | sha256=3361038dda95c504069dec006d3707f481d2f380b95ec2008e17e95937abf868
+
+FILE: services/moneyflow/external_context.py (30 callable(s))
+  line 39-41 | function | four_percent_below | PRESERVE_AND_REGRESSION_TEST | sha256=4018ff813d4e00ec18ab39d828ef412839dda619bb3097c91acb350a53fac92c
+  line 65-66 | function | _month_utc | PRESERVE_AND_REGRESSION_TEST | sha256=a1b9f669090dc6e78491ccfff3381ae8cc4f4d0e63a8f85066a5fff3cae79daf
+  line 69-70 | function | _minute_window | PRESERVE_AND_REGRESSION_TEST | sha256=987b78cefe694781d6c35dee91920e26038986b42e69a0c49c12d971c67b19e9
+  line 73-87 | function | _safe_storage_path | PRESERVE_AND_REGRESSION_TEST | sha256=b3d639e0c107d4b748d213036d00e79b38872026588d86bb5d301002f86f3b63
+  line 97-100 | function | QuotaLedger.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=9fa00899a2e170d4c399d51131ce7f79ec34890c20c02c3e0eaca6abc6a524c1
+  line 102-115 | function | QuotaLedger._validate_marker | PRESERVE_AND_REGRESSION_TEST | sha256=7332cf412abb1a9519866cb831dc34bff6f5e582679f2b4204f996749529d232
+  line 117-138 | function | QuotaLedger._create_marker | PRESERVE_AND_REGRESSION_TEST | sha256=42769ad2310b6e106708cc09a5906f20e2210b13023bb087643b0a5a855b08ab
+  line 140-159 | function | QuotaLedger._connect | PRESERVE_AND_REGRESSION_TEST | sha256=2a1adbfc55526a455e9cb4919b678c7def815e7644fa553601dc9641437a78fb
+  line 161-196 | function | QuotaLedger._initialize | PRESERVE_AND_REGRESSION_TEST | sha256=c2a7370ff7756ca5d32bad410f4c700e46bbfbb94c3a589938abffc7ed9b49a6
+  line 199-203 | function | QuotaLedger._validate | PRESERVE_AND_REGRESSION_TEST | sha256=132355cb44a4958e824601fac8bd111bf6cbb6940012b595ac1be87f0267d29b
+  line 206-236 | function | QuotaLedger._normalize_row | PRESERVE_AND_REGRESSION_TEST | sha256=96dbf24a9ddc6ee04f39d1d7451f2c02f030f46221a60ce10d56a7c5b6b4974b
+  line 239-252 | function | QuotaLedger._public | PRESERVE_AND_REGRESSION_TEST | sha256=6a14184d78c4b03bc6bf724ad59f5edf146978ff0813b3d7db75441ecf9c23e9
+  line 255-261 | function | QuotaLedger._read | PRESERVE_AND_REGRESSION_TEST | sha256=47eb2f0739afc9af8a7369df642676ab1fdcf51968eec9ae8efdfd38c7290e0e
+  line 264-288 | function | QuotaLedger._write | PRESERVE_AND_REGRESSION_TEST | sha256=773fc81951972c213d326f5ab2fa65469c4589406b0b54f111d742a1749b0953
+  line 290-356 | function | QuotaLedger.reserve | PRESERVE_AND_REGRESSION_TEST | sha256=b41f86568b30e3dc44ac724ef5251f21f5dcc9f1908d34a4c8327e5670eb3f60
+  line 358-375 | function | QuotaLedger.mark_success | PRESERVE_AND_REGRESSION_TEST | sha256=bcf647374ef400b07653f9381ef05386db0a9a7b775fe62d4062946d6956a3cc
+  line 377-424 | function | QuotaLedger.mark_failure | PRESERVE_AND_REGRESSION_TEST | sha256=927c72c770b632c5338c3bd6be9deb5eb3bc4e061d8a58abb69ffec8b1957c31
+  line 426-455 | function | QuotaLedger._mark | PRESERVE_AND_REGRESSION_TEST | sha256=9e113a00ddbbb3736890d3ab84e5d6f25a561490a1f4912044a64f9d22e41879
+  line 457-480 | function | QuotaLedger.status | PRESERVE_AND_REGRESSION_TEST | sha256=46fb87efa9416bd243464c9291a40cb27d2398cbbb2b387f138eed95df02a4c0
+  line 493-503 | function | _finite | PRESERVE_AND_REGRESSION_TEST | sha256=5f3bb3f6596c8e34921c4f33db63636e099aa624f880c56a0d3b1244f86ece33
+  line 506-545 | function | _sanitize_cached | PRESERVE_AND_REGRESSION_TEST | sha256=89707acc2684a7e6cfe4202da3bcc6b2fd17997797b3860e3aaa5187ff70804a
+  line 549-567 | function | ExternalContextManager.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=999a4f133ba4680cfc7cefb5abbad86d7d219cf8d026ac9da719c46fbcc42836
+  line 570-642 | function | ExternalContextManager.from_env | PRESERVE_AND_REGRESSION_TEST | sha256=9223d1830ca3a3ec9c51c37422663806a41f577e475ef0de1fc31a817efddcb9
+  line 644-662 | function | ExternalContextManager._load_cache | PRESERVE_AND_REGRESSION_TEST | sha256=aa953897a59ec4e77f09ca7cad4b5e99a5a0c6eee4f47a32617575b1bcb8b3de
+  line 664-674 | function | ExternalContextManager._save_cache | PRESERVE_AND_REGRESSION_TEST | sha256=97ae807ed7920a8bfc743ef946eabaef51068607c708a99134e4917fd462dbb5
+  line 677-688 | function | ExternalContextManager._empty_quota | PRESERVE_AND_REGRESSION_TEST | sha256=05c065fb535434e920e788877d3aed15ca4c1e29e0efdface6d3bbc20b8673e3
+  line 690-698 | function | ExternalContextManager._quota_status | PRESERVE_AND_REGRESSION_TEST | sha256=a44165fc539b3732adef8772c7335867d10a9da39fa3916a47608cf7788cfe4a
+  line 700-732 | function | ExternalContextManager._result | PRESERVE_AND_REGRESSION_TEST | sha256=881689f61e94cb341ee53566b83d8afc63c4f5613871e8c1d601e065401efe82
+  line 734-873 | function | ExternalContextManager._provider | PRESERVE_AND_REGRESSION_TEST | sha256=8e8510ca82fd161c066ffc37c7928b46cf07bfbcc5e2177dd643bd29efaab241
+  line 875-899 | function | ExternalContextManager.snapshot | PRESERVE_AND_REGRESSION_TEST | sha256=c84f7788a56fb7f4b07efb52c52c2feab22acfe7f70258257a25c8b98bd5d307
+
+FILE: services/moneyflow/service.py (3 callable(s))
+  line 31-101 | function | collect | PRESERVE_AND_REGRESSION_TEST | sha256=5d8e5423447d9512e437d024f9110cbd4755cf49f56a360d6767248bbe2d986a
+  line 104-126 | function | run_once | PRESERVE_AND_REGRESSION_TEST | sha256=31af769fcfe0dcbc53ece7775aeeadd94f451b7995b8256b471484950912a778
+  line 129-162 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=60ffff05e931b82fd1c783a5b4db2b2e0924c6fc87a8e9526061abecd9d6d72c
+
+FILE: services/telegram_broker/authorization.py (1 callable(s))
+  line 5-8 | function | is_owner | PRESERVE_AND_REGRESSION_TEST | sha256=64163ca832ce2057c48d116453b0c962f34c919f6bbaa41ea8c2c11195deca37
+
+FILE: services/telegram_broker/bot.py (26 callable(s))
+  line 45-46 | function | _safe_error | PRESERVE_AND_REGRESSION_TEST | sha256=e588b39b1c88ba97206eb4051501e8977ed60424c926c9d0b30ee189fd6fd4fc
+  line 49-56 | function | send | PRESERVE_AND_REGRESSION_TEST | sha256=ea2d5934e822552932f7a4c238285f1dd3126b3b782ebe7e2f8e73ff18e85f80
+  line 59-81 | function | sidecar_command | PRESERVE_AND_REGRESSION_TEST | sha256=d75f825eb60765b6c86f3f0eb38fb7e8b1aa65eac029cd595b7dcd950f93b274
+  line 84-97 | function | ft_call | PRESERVE_AND_REGRESSION_TEST | sha256=f065d686b9de9c6ee96e3630200b44e71fdea6c41c094d156b0b30d9c1202800
+  line 100-104 | function | normalize_pair_input | PRESERVE_AND_REGRESSION_TEST | sha256=083862611170c78d99b900b032f736718fbc8508a264ba2760d9092301d62230
+  line 107-110 | function | confirm_button | PRESERVE_AND_REGRESSION_TEST | sha256=8eeac0f890bc1f47fbe50c4b064760d6dcb5cba5deb149abb418e2b83307be72
+  line 113-117 | function | _ask_confirm | PRESERVE_AND_REGRESSION_TEST | sha256=8dfb79b6f020cd2fc93b0518110882a4b336fdba3a3367d3a0950f3d89fc22ea
+  line 120-148 | function | menu | PRESERVE_AND_REGRESSION_TEST | sha256=61fe35b439edb70da9f37eda672290e4599f601c3d874191e8ae42bf68eb4ee4
+  line 151-161 | function | help_text | PRESERVE_AND_REGRESSION_TEST | sha256=1d90a0cf02200d8434b647798b1ce919b7c114e50c8ebb3cee24fe00ef20edc8
+  line 164-172 | function | _latest_signal | PRESERVE_AND_REGRESSION_TEST | sha256=dc0f99e88cdd1f55c4bb49638fc4f6b3b1ca6e08c9967f1fc25c7137e1c97573
+  line 175-184 | function | _tail_audit | PRESERVE_AND_REGRESSION_TEST | sha256=418ebe136559928b105b7e40dbc580a8429aaea25d958ac36ed94874464c7dd8
+  line 187-203 | function | _settings | PRESERVE_AND_REGRESSION_TEST | sha256=dae7ac472040482d9383d4c89c9a2083f5061f111b7db0b2399b369d06cf01cc
+  line 206-210 | function | _backtest_status | PRESERVE_AND_REGRESSION_TEST | sha256=5641c487f8e7ceb4525025e747c6b66a5fb42f64d1fef09f4cbf55206a588d1e
+  line 213-363 | function | _self_audit | PRESERVE_AND_REGRESSION_TEST | sha256=39ac20fbc200c39a7cfb3d212d2c6eddc6f7b471daa67013fbe528e74ff44785
+  line 219-222 | function | _self_audit.record | PRESERVE_AND_REGRESSION_TEST | sha256=6e990ff24cf9c8fdcafa481d4c8536d88b075a7e6b80c64f743ba4d7f89dfb1e
+  line 224-228 | function | _self_audit.object_file | PRESERVE_AND_REGRESSION_TEST | sha256=44408d0f5d22dbcb8d2a036f00cc651f7bf94a5366da7e2595007456d5e69a78
+  line 230-242 | function | _self_audit.health | PRESERVE_AND_REGRESSION_TEST | sha256=6659d253cc6934eef4490a4f9fd94f61119ee904b96294c59e931d17ec0fc6e6
+  line 366-408 | function | _flow_summary | PRESERVE_AND_REGRESSION_TEST | sha256=677de9f412e1ef5ebca4a0b14c98d8365968a384595641a07c202302c2b75098
+  line 411-421 | function | _sidecar_json_result | PRESERVE_AND_REGRESSION_TEST | sha256=7d8e77de1531fb56508835e477dd7a92f72367c25b88f349e0e4f50291b6432e
+  line 424-462 | function | _show_pairs | PRESERVE_AND_REGRESSION_TEST | sha256=35cb8135ca217cda8139b2ea01ed29969218e0b654fb5bbed84528fb530073c2
+  line 465-529 | function | route | PRESERVE_AND_REGRESSION_TEST | sha256=d29731a600a9226a9e696b7ada7b8b3cbc9edd452f8c384fe49469f39936b319
+  line 532-588 | function | _confirm_action | PRESERVE_AND_REGRESSION_TEST | sha256=9a96d9dc9fa7fa445e64fe3706bf2b396bc38739a9098468e2ba574a8ad50ce8
+  line 591-668 | function | handle_message | PRESERVE_AND_REGRESSION_TEST | sha256=7ca738cc62e3ba7b30276f72975d4675657e73ec8c16f42a03692f8fc0f9cf2f
+  line 671-716 | function | handle_callback | PRESERVE_AND_REGRESSION_TEST | sha256=b71cc94450506ea0ee1833412b70ceeede92bb3204312cc4431cdafc76b5d05b
+  line 719-721 | function | _load_offset | PRESERVE_AND_REGRESSION_TEST | sha256=1daaf67bc81389c975b3101e71bdc6cbb2e9328e03a76eacd89db8dd88f71a47
+  line 724-750 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=a43d57cbcc8da61e737468dc9990b457c895f72d1bc45c9301fcb651ddca2fd7
+
+FILE: services/telegram_broker/callbacks.py (5 callable(s))
+  line 5-6 | function | CallbackStore.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=33c0c39ff7b465a1d225c69f7a87b5a29454a0cc14256c12b086f2136c439981
+  line 8-10 | function | CallbackStore._cleanup | PRESERVE_AND_REGRESSION_TEST | sha256=fc0afd00c4f725c42e5169c7f6c4e5240067803eafb6a7826176a1185510258f
+  line 12-17 | function | CallbackStore.issue | PRESERVE_AND_REGRESSION_TEST | sha256=6ef5f849b39714a4471133e36feca112d31461e016c555b5d95abcddc3993246
+  line 19-31 | function | CallbackStore.consume | PRESERVE_AND_REGRESSION_TEST | sha256=e614fc12cc559e36517ab0f590582b07f5daa9fe729a1c33641f43a286908caa
+  line 33-42 | function | CallbackStore.cancel | PRESERVE_AND_REGRESSION_TEST | sha256=f4a2cb86498952618f96937620276e3ec1591ffa399bebdd4a5ee686f2b3fd71
+
+9. COMPLETE RELEASE-FILE REVIEW LEDGER
+Ledger entries: 165
+Every path below must exactly match the physical non-cache release path set; scripts/build_audit_ledgers.py --check rejects missing or stale rows.
+  .dockerignore
+    Category: Packaging; scope: Archive/build exclusions
+    Disposition: REVIEWED
+    Result: Runtime state caches credentials databases logs and archives are excluded from image context.
+  .env.example
+    Category: Configuration; scope: Safety defaults secrets pair provider quotas timing and risk fields
+    Disposition: REVIEWED
+    Result: Simulation live-disabled entries-off posture uses placeholders; external providers are disabled by default; authenticated timeout recvWindow and time-sync latency are bounded.
+  .github/CODEOWNERS.example
+    Category: GitHub; scope: Review ownership policy template
+    Disposition: REVIEWED; SETUP REQUIRED
+    Result: Inactive example covers strategy manifest workflow installer root wrapper and Oracle setup; operator must replace the placeholder after creating the repository.
+  .github/workflows/ci.yml
+    Category: GitHub; scope: Pinned CI artifact and restricted Oracle simulation flow
+    Disposition: REVIEWED; EXTERNAL RUN BLOCKED
+    Result: Four-Python hosted verification and deterministic packaging remain; only manual confirmed main-branch simulation can target the non-Docker oracle-sim runner through the root wrapper.
+  .git-commit
+    Category: Release provenance; scope: Tracked source-ZIP placeholder overwritten only in CI artifact workspace
+    Disposition: REVIEWED
+    Result: Keeps the exact file ledger stable before and after CI writes GITHUB_SHA; the manifest binds the actual value in each artifact.
+  .gitignore
+    Category: Packaging; scope: Secret state database evidence and build exclusions
+    Disposition: REVIEWED
+    Result: Local credentials runtime state evidence keys databases and generated artifacts are excluded from normal Git tracking.
+  ARCHITECTURE.md
+    Category: Documentation; scope: Trust boundaries pair signal execution protection promotion
+    Disposition: REVIEWED
+    Result: Documents four-service ownership HMAC signal seam durable intent states and Ed25519 promotion boundary.
+  AUDIT_AND_RELEASE_NOTES_2026-07-22.md
+    Category: Audit; scope: Source verdict and material changes
+    Disposition: REVIEWED
+    Result: Records parent/donor findings Bitcoin-only consolidation and explicit external final-audit dependency.
+  BITCOIN_BOT_SERVICES_FUNCTIONS_AND_TELEGRAM_GUIDE.txt
+    Category: Documentation; scope: Complete service function file and Telegram operator inventory
+    Disposition: GENERATED; REVIEWED
+    Result: Human service guide plus complete non-test Python and Bash callable inventory and every release-file ledger entry; external runtime limits remain explicit.
+  BOT_SIMPLE_DESCRIPTION.txt
+    Category: Documentation; scope: Plain-language behavior and risk caveat
+    Disposition: REVIEWED
+    Result: Accurately limits scope to one BTC Spot pair and denies a profitability guarantee.
+  PACKAGE_NOTES.txt
+    Category: Packaging; scope: Release identity defaults runtime and market scope
+    Disposition: REVIEWED
+    Result: States mode-separated simulation-default four-service Bitcoin-only package provider boundary and staged pair switching.
+  README.md
+    Category: Documentation; scope: Operator overview architecture launch pair changes and limits
+    Disposition: REVIEWED
+    Result: Points to root immutable deployment and promotion guides; warns about stop-limit and external validation.
+  RELEASE_MANIFEST.json
+    Category: Release evidence; scope: File hashes strategy fingerprints and release metadata
+    Disposition: FINALIZED; VERIFIED
+    Result: Regenerated after the source/status freeze; exact 143-file set, sizes, hashes and strategy fingerprints verified.
+  RELEASE_MODE
+    Category: Release configuration; scope: Immutable package mode gate
+    Disposition: REVIEWED
+    Result: Value is live or testnet; each package permits simulation plus only its own authenticated execution mode.
+  RELEASE_SHA256.txt
+    Category: Release evidence; scope: Manifest-derived release identity
+    Disposition: FINALIZED; VERIFIED
+    Result: Regenerated with the final manifest; deliberately distinct from the adjacent external ZIP checksum.
+  VALIDATION_STATUS.json
+    Category: Audit evidence; scope: Final test/readiness claims
+    Disposition: FINALIZED; BITCOIN-ONLY
+    Result: Records exact offline results and keeps Docker Oracle Testnet Telegram strategy analysis and live promotion blocked.
+  Dockerfile.services
+    Category: Container; scope: Custom Python service image dependencies source and non-root runtime
+    Disposition: REVIEWED; BUILD BLOCKED
+    Result: Static image definition present; actual multi-architecture build/import execution requires Docker.
+  docker-compose.yml
+    Category: Deployment; scope: Canonical four-service topology secrets mounts hardening health timing and limits
+    Disposition: REVIEWED; RUNTIME BLOCKED
+    Result: Exactly moneyflow freqtrade execution-sidecar and telegram-broker; only sidecar receives Binance keys and signed-request timing controls; runtime proof requires Docker.
+  Makefile
+    Category: Developer tooling; scope: Verification audit manifest compose backtest helpers
+    Disposition: REVIEWED
+    Result: Targets delegate to canonical scripts; Docker and Freqtrade targets remain environment-dependent.
+  requirements-dev.txt
+    Category: Dependencies; scope: Offline verification dependency roots
+    Disposition: REVIEWED
+    Result: Combines custom-service and monitoring development dependencies plus YAML and pip-audit.
+  requirements.services.lock
+    Category: Dependencies; scope: Hash-pinned custom service runtime closure
+    Disposition: REVIEWED; VERIFIED
+    Result: Require-hashes dry-run, pip check and strict vulnerability audit passed on Python 3.13.
+  requirements.services.txt
+    Category: Dependencies; scope: Direct custom service requirements
+    Disposition: REVIEWED
+    Result: Requests websocket client python-binance and pycryptodome are explicitly pinned.
+  deploy/bitcoin-bot-deploy
+    Category: Deployment; scope: Root-owned one-use artifact trust gate and simulation-only runner interface
+    Disposition: REVIEWED; ORACLE RUN BLOCKED
+    Result: Accepts only preflight simulation verify; independently requires a root-approved tar SHA-256; runner has no Docker or env access; consumes approval before transactional install.
+  deploy/install_artifact.sh
+    Category: Deployment; scope: Immutable install identity health rollback retention and live gates
+    Disposition: REVIEWED; ORACLE RUN BLOCKED
+    Result: Encodes verified artifact install current/previous links exact stack/config/release checks and rollback conditions; actual host drills pending.
+  deploy/install_monitoring.sh
+    Category: Deployment; scope: Monitoring unit/environment installation
+    Disposition: REVIEWED; SYSTEMD RUN BLOCKED
+    Result: Separates monitor configuration and installs canonical units; actual permissions/startup pending.
+  deploy/oracle_setup.sh
+    Category: Deployment; scope: Oracle Ubuntu prerequisite host and restricted runner setup
+    Disposition: REVIEWED; ORACLE RUN BLOCKED
+    Result: Creates root trust files runner-only staging root wrapper exact sudoers commands and a separate non-Docker gha-runner; no Oracle instance was available locally.
+  deploy/verify_release.sh
+    Category: Verification; scope: Mode-separated offline gate forbidden components tests syntax pairing manifest and YAML
+    Disposition: REVIEWED
+    Result: Rejects legacy Sharia/universe paths and runs canonical checks including the extensionless root wrapper; Docker fallback is structural only.
+  deploy/verify_stack_identity.py
+    Category: Deployment; scope: Exact Compose project service image config release and health identity
+    Disposition: REVIEWED; RUNTIME BLOCKED
+    Result: Prevents hidden residual/mismatched stack identity; exercised by synthetic tests but not a live daemon.
+  docs/BACKTEST_REVIEW_2026-07-29.md
+    Category: Documentation; scope: Exact-source Freqtrade result repeat and promotion verdict
+    Disposition: CREATED; REVIEWED
+    Result: The 30 July deployment-only rebuild produced the identical canonical 2349-trade list and metrics; raw result integrity and strategy byte identity reconfirm the live prohibition.
+  docs/EXTERNAL_VALIDATION_RUNBOOK.md
+    Category: Documentation; scope: Testnet Oracle Telegram failure drills
+    Disposition: REVIEWED
+    Result: Correctly distinguishes external evidence from offline tests.
+  docs/GITHUB_ORACLE_DEPLOYMENT.md
+    Category: Documentation; scope: Supported root-approved self-hosted Oracle simulation deployment
+    Disposition: REVIEWED
+    Result: Documents two-pass artifact approval separate runner identity exact wrapper commands and simulation-only boundary; no git-pull or GitHub-hosted SSH deployment.
+  docs/GITHUB_RELEASE_AND_ROLLBACK_GUIDE.md
+    Category: Documentation; scope: Release and rollback operator sequence
+    Disposition: REVIEWED
+    Result: Requires exact artifact/checksum and identity checks; external execution pending.
+  docs/LIVE_PROMOTION_CHECKLIST.md
+    Category: Documentation; scope: Backtest bias Testnet soak and signed evidence gates
+    Disposition: REVIEWED
+    Result: All mandatory live assertions remain blocked until retained evidence exists.
+  docs/OFFICIAL_DEPLOYMENT_REFERENCES.md
+    Category: Documentation; scope: Primary Freqtrade Binance Oracle and GitHub references
+    Disposition: REVIEWED
+    Result: Includes official Spot Test Network and hosted/self-hosted runner security references and warns that capabilities can change.
+  docs/SECURITY_AND_SECRETS_GUIDE.md
+    Category: Documentation; scope: Credential scope storage redaction and rotation
+    Disposition: REVIEWED
+    Result: Requires separate minimal-privilege credentials and offline private promotion key.
+  docs/audit/FILE_REVIEW_LEDGER.csv
+    Category: Audit; scope: Per-path semantic review record
+    Disposition: CREATED; SELF-DESCRIBING
+    Result: Hashes belong to the final release manifest; this ledger records scope disposition and notable boundary.
+  docs/audit/ISSUE_LEDGER.csv
+    Category: Audit; scope: Fixed intentional blocked and inherent issues
+    Disposition: CREATED
+    Result: Separates source fixes from external evidence gaps and records root-approved deployment and Telegram self-audit controls.
+  docs/audit/PORT_AND_REMOVAL_MATRIX.md
+    Category: Audit; scope: Parent/request capability decisions
+    Disposition: CREATED
+    Result: Documents Bitcoin-only ports Sharia/top-50 removal and canonical implementation paths.
+  docs/audit/REMAINING_LIMITATIONS.md
+    Category: Audit; scope: External blockers inherent risks and final release boundary
+    Disposition: CREATED; FINALIZED
+    Result: Explicitly blocks real-money certification and distinguishes offline self-hosted/Telegram controls from required external execution evidence.
+  docs/audit/STRATEGY_LINEAGE.md
+    Category: Audit; scope: Formula provenance intentional tail removal and canonical hashes
+    Disposition: CREATED
+    Result: Records requested entry hashes plus all protected signal-method fingerprints.
+  docs/audit/TEST_COMMANDS.md
+    Category: Audit; scope: Reproducible offline runtime external and packaging commands
+    Disposition: CREATED
+    Result: Defines commands including extensionless wrapper syntax without misrepresenting blocked commands as executed.
+  freqtrade/.gitignore
+    Category: Freqtrade; scope: Offline data result and local configuration exclusions
+    Disposition: REVIEWED
+    Result: Generated analysis data/results and local secrets remain outside source tracking.
+  freqtrade/docker-compose.yml
+    Category: Freqtrade; scope: Offline-analysis profile
+    Disposition: REVIEWED; DOCKER RUN BLOCKED
+    Result: Not a production order-owning stack; used only for official Freqtrade analysis helpers.
+  freqtrade/README.md
+    Category: Freqtrade; scope: Order-owner boundary and analysis interpretation
+    Disposition: REVIEWED
+    Result: Explains BACKTEST/HYPEROPT-only Freqtrade trade permission and inconclusive-analysis handling.
+  freqtrade/scripts/backtest.sh
+    Category: Freqtrade; scope: Exact one-pair official backtest and artifact gate
+    Disposition: REVIEWED; CANONICAL RUN FAILED PROFIT GATE
+    Result: Forces BTC/stable Spot one-pair config and retains official artifacts; exact strategy produced 2349 trades -49.10 percent and 49.11 percent maximum drawdown.
+  freqtrade/scripts/download_data.sh
+    Category: Freqtrade; scope: Exact pair seven-timeframe historical download
+    Disposition: REVIEWED; NETWORK/RUN BLOCKED
+    Result: Downloads only requested BTC/stable pair data for 1m 5m 15m 1h 2h 4h and 1d.
+  freqtrade/scripts/lookahead.sh
+    Category: Freqtrade; scope: Official lookahead analysis helper
+    Disposition: REVIEWED; DEFERRED AFTER FAILED PROFIT GATE
+    Result: One-pair no-auth artifact-retaining helper avoids unsafe allow-limit-orders override; rerun only for a redesigned frozen strategy.
+  freqtrade/scripts/recursive.sh
+    Category: Freqtrade; scope: Official recursive analysis helper
+    Disposition: REVIEWED; DEFERRED AFTER FAILED PROFIT GATE
+    Result: One-pair no-auth helper retains complete output; rerun only after a redesigned frozen strategy passes the profitability gate.
+  freqtrade/scripts/start.sh
+    Category: Freqtrade; scope: Offline profile startup
+    Disposition: REVIEWED; DOCKER RUN BLOCKED
+    Result: Starts only the documented offline-analysis profile and is not the Oracle runtime entry point.
+  freqtrade/scripts/stop.sh
+    Category: Freqtrade; scope: Offline profile shutdown
+    Disposition: REVIEWED; DOCKER RUN BLOCKED
+    Result: Stops the offline-analysis profile without controlling the canonical root stack.
+  freqtrade/scripts/verify.sh
+    Category: Freqtrade; scope: Pinned image config and strategy discovery
+    Disposition: REVIEWED; DOCKER RUN BLOCKED
+    Result: Pulls the official image then validates config and IctSmcStrategy discovery.
+  freqtrade/user_data/config.json
+    Category: Freqtrade; scope: Spot dry-run base config and analysis safeguards
+    Disposition: REVIEWED
+    Result: Root runtime adds the authoritative one-pair overlay; credentials Telegram and API exposure are absent/disabled in offline helpers.
+  freqtrade/user_data/strategies/IctSmcStrategy.py
+    Category: Strategy; scope: Indicators entry/exit formula pair gate signal seam and runtime order denial
+    Disposition: REVIEWED; FINGERPRINT-PROTECTED
+    Result: Parent 1m/5m formula retained; Sharia eligibility tail intentionally removed; exact pair enforced at emission; entry source/token hashes recorded in STRATEGY_LINEAGE.md.
+  monitoring/__init__.py
+    Category: Monitoring; scope: Package marker
+    Disposition: REVIEWED
+    Result: No competing API implementation.
+  monitoring/.env.monitor.example
+    Category: Monitoring configuration; scope: Generic monitor-only example
+    Disposition: REVIEWED
+    Result: Contains placeholders and no Binance trading key.
+  monitoring/.env.monitor.live.example
+    Category: Monitoring configuration; scope: Live-mode separate paths port and token
+    Disposition: REVIEWED
+    Result: Monitor credentials remain distinct from bot trading credentials.
+  monitoring/.env.monitor.simulation.example
+    Category: Monitoring configuration; scope: Simulation-mode separate paths port and token
+    Disposition: REVIEWED
+    Result: Mode-specific monitor config keeps simulation data isolated.
+  monitoring/.env.monitor.testnet.example
+    Category: Monitoring configuration; scope: Testnet-mode separate paths port and token
+    Disposition: REVIEWED
+    Result: Mode-specific monitor config keeps Testnet data isolated.
+  monitoring/api/__init__.py
+    Category: Monitoring API; scope: Canonical API package marker
+    Disposition: REVIEWED
+    Result: Canonical HTTP implementation is monitoring/api/app.py.
+  monitoring/api/app.py
+    Category: Monitoring API; scope: Versioned read-only HTTP routes composition errors and redaction
+    Disposition: REVIEWED; RUNTIME BLOCKED
+    Result: Single canonical FastAPI app returns bounded redacted status/report data and no mutation/order route.
+  monitoring/api/authentication.py
+    Category: Monitoring API; scope: Bearer authentication rate limiting audit and request IDs
+    Disposition: REVIEWED
+    Result: Uses constant-time token comparison and records bounded authentication failures.
+  monitoring/api/configuration.py
+    Category: Monitoring API; scope: Monitor-only environment parsing paths and bounds
+    Disposition: REVIEWED
+    Result: Does not load the bot trading env or Binance credentials.
+  monitoring/api/database.py
+    Category: Monitoring API; scope: Read-only SQLite access and failure handling
+    Disposition: REVIEWED
+    Result: Uses read-only database access and degrades safely for missing locked or malformed state.
+  monitoring/api/log_redaction.py
+    Category: Monitoring API; scope: Log and object secret redaction
+    Disposition: REVIEWED
+    Result: Covers quoted JSON and signed-query forms while preserving explicitly named public release hashes.
+  monitoring/api/metrics.py
+    Category: Monitoring API; scope: Latency resource and health calculations
+    Disposition: REVIEWED
+    Result: Bounded metrics include percentile/resource views and tolerate missing providers.
+  monitoring/api/schemas.py
+    Category: Monitoring API; scope: Response models and bounded schema
+    Disposition: REVIEWED
+    Result: Defines read-only response structures; no money-moving input model.
+  monitoring/control.py
+    Category: Monitoring; scope: Mode/path validation and service observation
+    Disposition: REVIEWED
+    Result: Control helpers observe expected units/state without acquiring exchange order capability.
+  monitoring/INSTALL.md
+    Category: Monitoring documentation; scope: Separate monitor installation
+    Disposition: REVIEWED
+    Result: Uses monitor-specific environment files and canonical unit set.
+  monitoring/mcp/monitor_mcp_server.py
+    Category: Monitoring MCP; scope: Read-only MCP tool surface
+    Disposition: REVIEWED; RUNTIME BLOCKED
+    Result: Exposes monitoring queries only and no order mutation tool; real MCP process not run locally.
+  monitoring/MIGRATION_NOTES.md
+    Category: Monitoring documentation; scope: Removal of legacy monitor variants
+    Disposition: REVIEWED
+    Result: Directs migration to the one canonical API and separate config.
+  monitoring/PACKAGE_NOTES.txt
+    Category: Monitoring documentation; scope: Addon identity scope and defaults
+    Disposition: REVIEWED
+    Result: States read-only hardened monitoring boundary.
+  monitoring/README.md
+    Category: Monitoring documentation; scope: API MCP Telegram and modes overview
+    Disposition: REVIEWED
+    Result: Documents canonical interface and safe failure behavior.
+  monitoring/requirements-monitoring-dev.txt
+    Category: Monitoring dependencies; scope: Test dependency roots
+    Disposition: REVIEWED
+    Result: Adds pytest to runtime requirements for development verification.
+  monitoring/requirements-monitoring.lock
+    Category: Monitoring dependencies; scope: Hash-pinned monitoring closure
+    Disposition: REVIEWED; VERIFIED
+    Result: Require-hashes dry-run, pip check and strict vulnerability audit passed on Python 3.13.
+  monitoring/requirements-monitoring.txt
+    Category: Monitoring dependencies; scope: Direct monitoring runtime requirements
+    Disposition: REVIEWED
+    Result: FastAPI Uvicorn HTTPX psutil Pydantic and MCP are explicitly pinned.
+  monitoring/SECURITY.md
+    Category: Monitoring documentation; scope: Threat model auth network secrets and redaction
+    Disposition: REVIEWED
+    Result: Requires network restriction TLS/proxy as appropriate and token separation.
+  monitoring/snapshot.py
+    Category: Monitoring; scope: Bounded sanitized snapshot writer
+    Disposition: REVIEWED
+    Result: Writes redacted monitoring evidence and handles provider failures without order capability.
+  monitoring/systemd/bitcoin-bot-monitor-live.service
+    Category: Monitoring systemd; scope: Live API service
+    Disposition: REVIEWED; SYSTEMD RUN BLOCKED
+    Result: Has matching mode-specific config; static only on audit host.
+  monitoring/systemd/bitcoin-bot-monitor-report-live.service
+    Category: Monitoring systemd; scope: Live Telegram report service
+    Disposition: REVIEWED; SYSTEMD RUN BLOCKED
+    Result: Matching report timer exists.
+  monitoring/systemd/bitcoin-bot-monitor-report-live.timer
+    Category: Monitoring systemd; scope: Live report schedule
+    Disposition: REVIEWED; SYSTEMD RUN BLOCKED
+    Result: Targets existing live report service.
+  monitoring/systemd/bitcoin-bot-monitor-report-simulation.service
+    Category: Monitoring systemd; scope: Simulation Telegram report service
+    Disposition: REVIEWED; SYSTEMD RUN BLOCKED
+    Result: Matching report timer exists.
+  monitoring/systemd/bitcoin-bot-monitor-report-simulation.timer
+    Category: Monitoring systemd; scope: Simulation report schedule
+    Disposition: REVIEWED; SYSTEMD RUN BLOCKED
+    Result: Targets existing simulation report service.
+  monitoring/systemd/bitcoin-bot-monitor-report-testnet.service
+    Category: Monitoring systemd; scope: Testnet Telegram report service
+    Disposition: REVIEWED; SYSTEMD RUN BLOCKED
+    Result: Matching report timer exists.
+  monitoring/systemd/bitcoin-bot-monitor-report-testnet.timer
+    Category: Monitoring systemd; scope: Testnet report schedule
+    Disposition: REVIEWED; SYSTEMD RUN BLOCKED
+    Result: Targets existing testnet report service.
+  monitoring/systemd/bitcoin-bot-monitor-simulation.service
+    Category: Monitoring systemd; scope: Simulation API service
+    Disposition: REVIEWED; SYSTEMD RUN BLOCKED
+    Result: Has separate simulation monitor config.
+  monitoring/systemd/bitcoin-bot-monitor-snapshot.service
+    Category: Monitoring systemd; scope: Snapshot one-shot service
+    Disposition: REVIEWED; SYSTEMD RUN BLOCKED
+    Result: Matching snapshot timer exists.
+  monitoring/systemd/bitcoin-bot-monitor-snapshot.timer
+    Category: Monitoring systemd; scope: Snapshot schedule
+    Disposition: REVIEWED; SYSTEMD RUN BLOCKED
+    Result: Targets existing snapshot service.
+  monitoring/systemd/bitcoin-bot-monitor-testnet.service
+    Category: Monitoring systemd; scope: Testnet API service
+    Disposition: REVIEWED; SYSTEMD RUN BLOCKED
+    Result: Has separate Testnet monitor config.
+  monitoring/telegram/__init__.py
+    Category: Monitoring Telegram; scope: Package marker
+    Disposition: REVIEWED
+    Result: No bot trading credential or order API.
+  monitoring/telegram/telegram_reporter.py
+    Category: Monitoring Telegram; scope: Read-only scheduled report delivery and redaction
+    Disposition: REVIEWED; REAL DELIVERY BLOCKED
+    Result: Reporter token is separately configured and output redacted; network delivery not run.
+  monitoring/tests/__init__.py
+    Category: Tests; scope: Monitoring test package marker
+    Disposition: REVIEWED
+    Result: Enables canonical monitoring suite discovery.
+  monitoring/tests/test_monitoring.py
+    Category: Tests; scope: Auth routes redaction failures systemd and MCP coverage
+    Disposition: REVIEWED; 51/51 PASSED
+    Result: Canonical monitor behavior passed, including quoted JSON secrets and public release hash preservation.
+  scripts/build_manifest.py
+    Category: Release tooling; scope: Deterministic file inventory release hash and strategy fingerprints
+    Disposition: REVIEWED
+    Result: Excludes generated caches/self hashes and fails if package mode or protected strategy methods differ.
+  scripts/build_release_zip.py
+    Category: Release tooling; scope: Deterministic ZIP member safety CRC and external SHA
+    Disposition: REVIEWED; FINAL BUILD VERIFIED
+    Result: Ran after manifest freeze; fresh ZIP member/CRC checks, external SHA and extract/retest passed.
+  scripts/certify_live_evidence.py
+    Category: Promotion tooling; scope: Offline Ed25519 key generation evidence template validation and signing
+    Disposition: REVIEWED; EXTERNAL EVIDENCE BLOCKED
+    Result: Private key is offline-only and exact backtest/pair/risk/release data are bound.
+  scripts/healthcheck.sh
+    Category: Operations; scope: Root service and sidecar status checks
+    Disposition: REVIEWED; RUNTIME BLOCKED
+    Result: Requires deployed Docker stack.
+  scripts/verify_live_evidence.py
+    Category: Promotion tooling; scope: Host-side exact signed evidence verification
+    Disposition: REVIEWED; SIGNED EVIDENCE BLOCKED
+    Result: Fails closed on signature release strategy pair risk artifact metric assertion or validity mismatch.
+  scripts/verify_manifest.py
+    Category: Release tooling; scope: Manifest file set hash size and strategy verification
+    Disposition: REVIEWED
+    Result: Detects additions removals byte changes and protected method drift after final manifest exists.
+  services/__init__.py
+    Category: Services; scope: Package marker
+    Disposition: REVIEWED
+    Result: No runtime logic.
+  services/common/__init__.py
+    Category: Common; scope: Package marker
+    Disposition: REVIEWED
+    Result: No runtime logic.
+  services/common/atomic.py
+    Category: Common; scope: Atomic durable file writes
+    Disposition: REVIEWED
+    Result: Temporary file flush/fsync and replace apply everywhere; parent-directory fsync is POSIX-only to preserve Oracle durability without a Windows blocking call.
+  services/common/audit.py
+    Category: Common; scope: Bounded redacted JSONL audit sink
+    Disposition: REVIEWED
+    Result: Audit failures are contained and records pass through redaction.
+  services/common/binance_public.py
+    Category: Common; scope: Bounded public Binance GET client environment bases reference price and execution rules
+    Disposition: REVIEWED
+    Result: Production and Spot Testnet bases are explicit; exact-symbol executionRules/referencePrice helpers contain no order method.
+  services/common/config_bounds.py
+    Category: Common; scope: Strict bounded environment parsing
+    Disposition: REVIEWED
+    Result: Rejects nonfinite out-of-range and malformed operational configuration.
+  services/common/envelope.py
+    Category: Common; scope: HMAC bus envelope creation verification freshness and replay inputs
+    Disposition: REVIEWED
+    Result: Finite timestamps purpose-specific keys strict TTL/release/signature checks; signal and command keys are separated.
+  services/common/evidence_signature.py
+    Category: Common; scope: Ed25519 canonical document signing/verification
+    Disposition: REVIEWED
+    Result: Promotion signature is asymmetric and runtime requires public key only.
+  services/common/market_policy.py
+    Category: Common; scope: BTC/stable canonicalization and pair-state hash
+    Disposition: REVIEWED
+    Result: Rejects non-BTC base unallowlisted quote malformed symbol and inconsistent state.
+  services/common/models.py
+    Category: Common; scope: Typed flow and timeframe data models
+    Disposition: REVIEWED
+    Result: Structures exact-pair public context without order capability.
+  services/common/paths.py
+    Category: Common; scope: Runtime path policy
+    Disposition: REVIEWED
+    Result: Centralizes shared/runtime paths and supports isolated deployments.
+  services/common/redaction.py
+    Category: Common; scope: Central secret query JSON token and credential redaction
+    Disposition: REVIEWED
+    Result: Used before persistence and final Telegram delivery; public hash handling is explicit in monitoring layer.
+  services/common/retention.py
+    Category: Common; scope: Bounded file/log retention
+    Disposition: REVIEWED
+    Result: Prevents unbounded archives while retaining recent evidence.
+  services/common/strategy_fingerprint.py
+    Category: Common; scope: Interpreter-independent method source/token hashing
+    Disposition: REVIEWED
+    Result: Canonicalizes protected strategy methods for manifest/live evidence.
+  services/execution_sidecar/__init__.py
+    Category: Execution; scope: Package marker
+    Disposition: REVIEWED
+    Result: No runtime logic.
+  services/execution_sidecar/bitcoin_adapter.py
+    Category: Execution; scope: Authenticated lifecycle intents reconciliation entry protection conversion emergency exit
+    Disposition: REVIEWED; TESTNET RUN BLOCKED
+    Result: Sole Spot order adapter implements no-blind-retry crash recovery partial/stale handling exact ownership and bounded replacement; external lifecycle proof pending.
+  services/execution_sidecar/client_ids.py
+    Category: Execution; scope: Collision-resistant deterministic role IDs
+    Disposition: REVIEWED
+    Result: IDs support query-before-retry and fixed-clock concurrency safety.
+  services/execution_sidecar/filters.py
+    Category: Execution; scope: Current symbol order/list/trailing and execution-rule preflight
+    Disposition: REVIEWED; TESTNET PROOF BLOCKED
+    Result: Validates exact environment metadata quantities prices notionals trailing deltas capacities and dynamic PRICE_RANGE before money-moving calls.
+  services/execution_sidecar/live_evidence.py
+    Category: Execution; scope: Live lease exact policy/backtest/assertion verification
+    Disposition: REVIEWED; PROMOTION BLOCKED
+    Result: Fail-closed gate binds release strategy pair risk official result and external assertions with expiry.
+  services/execution_sidecar/main.py
+    Category: Execution; scope: Supervisor command/signal processing disarm health and redacted results
+    Disposition: REVIEWED
+    Result: Entries start off; live policy is evidence-bound; commands/results are durable and redacted.
+  services/execution_sidecar/order_manager.py
+    Category: Execution; scope: Signal claim validation and adapter dispatch
+    Disposition: REVIEWED
+    Result: Claims before side effects and archives bounded processed/rejected inputs.
+  services/execution_sidecar/pair_control.py
+    Category: Execution; scope: Authoritative pair bootstrap validation and switch publication
+    Disposition: REVIEWED
+    Result: Requires exact pairlist/overlay projections and verified flatness before generation change.
+  services/execution_sidecar/protection_modes.py
+    Category: Execution; scope: OTOCO OCO trailing break-even and profit-lock request construction
+    Disposition: REVIEWED; TESTNET RUN BLOCKED
+    Result: Conservative fee/buffer prices and supported modes are preflighted; actual fills pending.
+  services/execution_sidecar/reconciler.py
+    Category: Execution; scope: Durable versus exchange ownership reconciliation
+    Disposition: REVIEWED
+    Result: Fails closed on unowned disappeared or inconsistent order/list/exposure state.
+  services/execution_sidecar/risk_checks.py
+    Category: Execution; scope: Freshness cooldown stopout corruption and fee-aware risk state
+    Disposition: REVIEWED
+    Result: Corrupt/symlink state fails closed and fee-adjusted protective exits drive counters.
+  services/execution_sidecar/simulation_adapter.py
+    Category: Execution; scope: No-network deterministic execution simulation
+    Disposition: REVIEWED
+    Result: Supports safe default demonstrations without authenticated Binance requests.
+  services/execution_sidecar/spot_gateway.py
+    Category: Execution; scope: Minimal authenticated Binance Spot GET/POST/DELETE gateway
+    Disposition: REVIEWED; TESTNET RUN BLOCKED
+    Result: Adds bounded timeout recvWindow server-time offset and limit-header telemetry while preserving ambiguous outcome classification and no automatic POST retry.
+  services/execution_sidecar/state_store.py
+    Category: Execution; scope: SQLite schema intents trades authenticated events replay and atomic parent/child transitions
+    Disposition: REVIEWED
+    Result: Persists before network effects; replays early events; treats EXPIRED_IN_MATCH as terminal; supports crash-safe replacement recovery.
+  services/execution_sidecar/user_data_stream.py
+    Category: Execution; scope: Signed Binance Spot WebSocket API user stream
+    Disposition: REVIEWED; TESTNET RUN BLOCKED
+    Result: Uses current signature subscription and synchronized gateway timestamp; rejected or terminated subscriptions close for reconnect.
+  services/moneyflow/__init__.py
+    Category: Moneyflow; scope: Package marker
+    Disposition: REVIEWED
+    Result: No runtime logic.
+  services/moneyflow/analytics.py
+    Category: Moneyflow; scope: Depth taker pressure closed-candle timeframe and flow classification
+    Disposition: REVIEWED
+    Result: Rejects malformed/crossed/nonfinite/stale data and uses exact quote notional/taker semantics.
+  services/moneyflow/client.py
+    Category: Moneyflow; scope: Public Spot and exact-symbol USD-M GET inventory
+    Disposition: REVIEWED
+    Result: No credentials or order endpoint; futures context is read-only.
+  services/moneyflow/service.py
+    Category: Moneyflow; scope: Exact-pair polling publication health and degradation handling
+    Disposition: REVIEWED; NETWORK RUN BLOCKED
+    Result: Publishes seven timeframes and degrades/fails closed according to explicit policy.
+  services/telegram_broker/__init__.py
+    Category: Telegram; scope: Package marker
+    Disposition: REVIEWED
+    Result: No runtime logic.
+  services/telegram_broker/authorization.py
+    Category: Telegram; scope: Owner user plus private-chat authorization
+    Disposition: REVIEWED
+    Result: Rejects unauthorized updates before response or side effect.
+  services/telegram_broker/bot.py
+    Category: Telegram; scope: Owner commands confirmations read-only self-audit and final redaction
+    Disposition: REVIEWED; REAL DELIVERY BLOCKED
+    Result: Adds /audit for release health freshness pair intent and entries-off consistency using only files and GET ping; it never repairs or resumes; real delivery remains pending.
+  services/telegram_broker/callbacks.py
+    Category: Telegram; scope: One-use callback issuance validation and exact cancellation
+    Disposition: REVIEWED
+    Result: Token-bound TTL prevents replay and cross-action cancellation.
+  shared/audit/.gitkeep
+    Category: Runtime scaffold; scope: Audit directory placeholder
+    Disposition: REVIEWED
+    Result: Contains no evidence or secret; runtime data is generated outside immutable release where configured.
+  shared/pair/active_pair.json
+    Category: Runtime scaffold; scope: Initial authoritative BTC pair state
+    Disposition: REVIEWED
+    Result: Schema pair symbol quote generation and hash form the initial BTC/USDT state.
+  shared/pair/current_pairlist.json
+    Category: Runtime scaffold; scope: Initial RemotePairList projection
+    Disposition: REVIEWED
+    Result: One exact BTC pair projection must match active state before bootstrap.
+  shared/pair/freqtrade-active.json
+    Category: Runtime scaffold; scope: Initial one-pair Freqtrade overlay
+    Disposition: REVIEWED
+    Result: Whitelist and blacklist projection must match active state generation/hash.
+  shared/runtime/.gitkeep
+    Category: Runtime scaffold; scope: Runtime directory placeholder
+    Disposition: REVIEWED
+    Result: Contains no runtime evidence or secret.
+  shared/signals/inbox/.gitkeep
+    Category: Runtime scaffold; scope: Signal inbox placeholder
+    Disposition: REVIEWED
+    Result: Signals are signed at runtime; placeholder is empty.
+  shared/signals/processed/.gitkeep
+    Category: Runtime scaffold; scope: Processed signal archive placeholder
+    Disposition: REVIEWED
+    Result: Archive is bounded at runtime; placeholder is empty.
+  shared/signals/rejected/.gitkeep
+    Category: Runtime scaffold; scope: Rejected signal archive placeholder
+    Disposition: REVIEWED
+    Result: Archive is bounded at runtime; placeholder is empty.
+  tests/secret_scan.py
+    Category: Tests; scope: High-confidence token and sensitive assignment scanner
+    Disposition: REVIEWED
+    Result: Accepts indirect shell variable references and rejects populated literal credentials.
+  tests/test_control_and_flow.py
+    Category: Tests; scope: Envelope moneyflow Telegram strategy compose and deployment controls
+    Disposition: REVIEWED; FINAL CORE GATE PASSED
+    Result: Includes read-only healthy/fail-closed Telegram self-audit and root-approved self-hosted workflow policy alongside prior Bitcoin-only controls.
+  tests/test_deployment_identity.py
+    Category: Tests; scope: Exact synthetic stack identity failure injection
+    Disposition: REVIEWED; FINAL CORE GATE PASSED
+    Result: Covers wrong/unhealthy containers and service drift without claiming live Docker proof.
+  tests/test_execution_safety.py
+    Category: Tests; scope: Pair intent ambiguity reconciliation protection crash platform durability and emergency safety
+    Disposition: REVIEWED; FINAL CORE GATE PASSED
+    Result: Covers current high-risk state-machine and Windows directory-fsync fixes; real exchange races remain external.
+  tests/test_live_evidence.py
+    Category: Tests; scope: Signature expiry tamper policy byte metric and strategy binding
+    Disposition: REVIEWED; FINAL CORE GATE PASSED
+    Result: Proves fail-closed parser behavior with synthetic evidence not operational assertions.
+  tests/test_secret_scan.py
+    Category: Tests; scope: Scanner false-positive and true-positive regression
+    Disposition: REVIEWED; FINAL CORE GATE PASSED
+    Result: Covers shell-variable indirection and literal secret rejection.
+  LAUNCH_GITHUB_AND_ORACLE.txt
+    Category: Documentation; scope: Mode-separated GitHub Oracle launch and live-certification blockers
+    Disposition: CREATED; REVIEWED
+    Result: Section 4 explicitly keeps live not-certified until CI Testnet Oracle soak backtest analysis evidence signing and approval gates are complete.
+  freqtrade/tests/audit_probes.py
+    Category: Strategy tests; scope: Pinned Freqtrade runtime probe entry-gate behavior
+    Disposition: PORTED; CONTAINER RUN PENDING
+    Result: Forces 5m MACD gate behavior and proves the 1m MACD remains non-gating inside the official image when CI runs.
+  services/common/pair_registry.py
+    Category: Pair policy; scope: Current exchangeInfo BTC-base registry capability report and TTL cache
+    Disposition: CREATED; REVIEWED
+    Result: Lists only explicit Spot-allowed TRADING BTC-base rows; records complete per-mode entry-protection capabilities and refreshes before selection.
+  services/execution_sidecar/package_mode.py
+    Category: Execution safety; scope: Immutable live/testnet package interlock
+    Disposition: CREATED; REVIEWED
+    Result: Testnet cannot run live and live cannot run testnet regardless of environment overrides.
+  services/moneyflow/external_clients.py
+    Category: Moneyflow; scope: Fixed-identity Bitcoin-only CoinGecko and CoinMarketCap clients
+    Disposition: CREATED; REVIEWED
+    Result: Uses header-only keys bounded responses exact provider identity and the current CoinMarketCap v3 array schema; output is advisory only.
+  services/moneyflow/external_context.py
+    Category: Moneyflow; scope: Durable provider quota reservation cache backoff and advisory publication
+    Disposition: CREATED; REVIEWED
+    Result: Caps calls at 96 percent of conservative free quotas reserves before dispatch and fails closed if initialized ledger state disappears.
+  tests/test_2026_07_29_completion.py
+    Category: Tests; scope: Dynamic registry referencePrice package mode heartbeat pair-switch and Telegram completion regressions
+    Disposition: CREATED; FINAL CORE GATE PASSED
+    Result: Targets the final cross-cutting conversion and capital-safety seams.
+  tests/test_external_market_context.py
+    Category: Tests; scope: Provider schema quota concurrency state-loss cache and degradation
+    Disposition: CREATED; FINAL CORE GATE PASSED
+    Result: Includes CoinMarketCap v3 response shape and durable quota reset protection.
+  tests/test_strategy_probe.py
+    Category: Strategy tests; scope: Host-side wrapper for protected Freqtrade strategy probe
+    Disposition: PORTED; FINAL CORE GATE PASSED
+    Result: Retains protected signal-method fingerprints and prevents silent entry-gate drift.
+  docs/audit/FUNCTION_PARITY_MATRIX.csv
+    Category: Audit; scope: Deterministic current production-function inventory and source hashes
+    Disposition: GENERATED; SELF-CHECKED
+    Result: Contains every current production function from services monitoring and the Freqtrade strategy; release verification rejects stale rows.
+  scripts/build_audit_ledgers.py
+    Category: Release tooling; scope: File-ledger exact path set and full callable-matrix regeneration/check
+    Disposition: CREATED; REVIEWED
+    Result: Fails on missing/stale file rows and inventories every non-test Python function plus every Bash function declaration; the manifest binds complete shell files.
+  FINAL_AUDIT_RESPONSE_2026-07-29.txt
+    Category: Audit; scope: Independent finding disposition source evidence and external blockers
+    Disposition: CREATED; REVIEWED
+    Result: Records legitimate fixes without claiming Docker Oracle Testnet backtest profitability or live certification.
+  docs/BINANCE_OFFICIAL_SOURCE_REVIEW_2026-07-29.md
+    Category: Documentation; scope: Pinned six-repository Binance review adopted rejected and deferred decisions
+    Disposition: CREATED; REVIEWED
+    Result: Documents four non-strategy hardening changes live plugin evidence and the unchanged failed profitability gate.
+  docs/ORACLE_GITHUB_SOURCE_REVIEW_2026-07-30.md
+    Category: Documentation; scope: Pinned Oracle capacity ARM64 IMDS and GitHub Marketplace review
+    Disposition: CREATED; REVIEWED
+    Result: Adopts only current deployment guidance, rejects the unrelated Oracle Database action and keeps third-party capacity tooling outside the bot release.
+  scripts/verify_binance_public_kline_archive.py
+    Category: Data verification; scope: Official Spot kline ZIP CHECKSUM safety schema and timestamp-unit verification
+    Disposition: CREATED; REVIEWED
+    Result: Read-only verifier passed the official 1440-row BTCUSDT 1m 2025-01-01 microsecond archive and rejects unsafe or corrupt inputs.
+  tests/test_binance_official_sources.py
+    Category: Tests; scope: Price range STP timing signing and public archive regressions
+    Disposition: CREATED; FINAL CORE GATE PASSED
+    Result: Sixteen deterministic tests cover the adopted official-source changes without authenticated orders.
+
+10. FINAL OPERATOR CHECKLIST
+1. Verify the Desktop ZIP against its adjacent SHA256 file.
+2. Freshly extract; run scripts/verify_manifest.py and tests/secret_scan.py.
+3. Upload extracted contents to a private GitHub repository and configure CODEOWNERS/branch protection.
+4. Keep ORACLE_DEPLOY_ENABLED=false except for an approved window.
+5. Bootstrap Oracle and the separate gha-runner exactly as documented.
+6. Keep simulation, live disabled, automation disabled, Binance keys empty and entries off.
+7. Approve one CI tarball digest out of band; dispatch the same commit with SIMULATION_ONLY.
+8. Run the root wrapper verify command and Telegram /audit; preserve redacted evidence.
+9. Set ORACLE_DEPLOY_ENABLED=false and stop the runner service when not needed if practical.
+10. Do not use live capital. The current exact-strategy backtest failed.
+
+END OF GUIDE

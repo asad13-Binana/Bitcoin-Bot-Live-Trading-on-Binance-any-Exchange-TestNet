@@ -1,0 +1,23 @@
+# Strategy, execution, pair-policy, promotion-evidence and integrity baselines
+# require code-owner review. A protected strategy or live-gate change must not
+# be silently re-baselined in the same commit.
+# Copy this file to .github/CODEOWNERS, replace @YOUR_GITHUB_USERNAME with the
+# real repository owner, and enable branch protection
+# (require review from Code Owners) on the default branch before any live use.
+/freqtrade/user_data/strategies/IctSmcStrategy.py   @YOUR_GITHUB_USERNAME
+/services/common/strategy_fingerprint.py            @YOUR_GITHUB_USERNAME
+/services/common/market_policy.py                   @YOUR_GITHUB_USERNAME
+/services/common/pair_registry.py                   @YOUR_GITHUB_USERNAME
+/services/execution_sidecar/live_evidence.py        @YOUR_GITHUB_USERNAME
+/services/execution_sidecar/pair_control.py          @YOUR_GITHUB_USERNAME
+/scripts/build_manifest.py                          @YOUR_GITHUB_USERNAME
+/scripts/verify_manifest.py                         @YOUR_GITHUB_USERNAME
+/deploy/install_artifact.sh                         @YOUR_GITHUB_USERNAME
+/deploy/bitcoin-bot-deploy                          @YOUR_GITHUB_USERNAME
+/deploy/oracle_setup.sh                             @YOUR_GITHUB_USERNAME
+/deploy/verify_stack_identity.py                    @YOUR_GITHUB_USERNAME
+/.github/workflows/ci.yml                           @YOUR_GITHUB_USERNAME
+/tests/test_control_and_flow.py                     @YOUR_GITHUB_USERNAME
+/tests/test_execution_safety.py                     @YOUR_GITHUB_USERNAME
+/tests/test_live_evidence.py                        @YOUR_GITHUB_USERNAME
+/tests/test_deployment_identity.py                  @YOUR_GITHUB_USERNAME

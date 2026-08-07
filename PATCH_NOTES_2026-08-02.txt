@@ -1,0 +1,314 @@
+================================================================================
+BITCOIN BOT - PATCH NOTES, 2 AUGUST 2026  (revision 2026-08-02A)
+Git round-trip integrity, systemd verification contexts, licensing
+================================================================================
+
+BASE            BITCOIN-BOT-1.1, packages dated 2026-08-01
+SUPERSEDES      BITCOIN_BOT_{LIVE,TESTNET}_GITHUB_ORACLE_2026-08-01.zip
+                (retained as superseded audit evidence; do not delete)
+SCOPE           Repository-integrity and deployment-verification defects only
+PROTECTED CODE  Unchanged. Strategy, all four signal methods, execution, risk,
+                pair policy, live-evidence gate and every service module are
+                byte-identical to the 08-01 release.
+
+--------------------------------------------------------------------------------
+1. WHY THIS PATCH EXISTS
+--------------------------------------------------------------------------------
+
+The 08-01 packages were audited by extracting them, committing them to a fresh
+Git repository with core.autocrlf=true (the Git for Windows default), and
+cloning the result. The clone did not survive:
+
+    157 of 167 files were rewritten with CRLF line endings
+    scripts/verify_manifest.py                 -> exit 1, release hash mismatch
+    every shell script, including
+      deploy/verify_release.sh
+      deploy/oracle_setup.sh
+      deploy/install_artifact.sh               -> CRLF shebang, unrunnable on Linux
+    executable bits recorded in the Git index  -> 0 of 18
+
+The 08-01 notes worked around this by instructing the operator to run
+`git config core.autocrlf false` before `git add`. That is a per-machine,
+per-clone manual step. It does not travel with the repository, so anyone else
+who clones it - including the Oracle host - receives the broken tree.
+
+--------------------------------------------------------------------------------
+2. FIX ONE - .gitattributes  (was absent; CRITICAL)
+--------------------------------------------------------------------------------
+
+WHAT WAS WRONG
+
+  There was no .gitattributes. RELEASE_MANIFEST.json pins an exact SHA-256 and
+  size for every file, so any line-ending translation by Git invalidates the
+  authenticated bytes. Nothing in the repository prevented that translation.
+
+WHAT WAS CHANGED
+
+  Added .gitattributes with a global `* text=auto eol=lf` rule plus explicit
+  `eol=lf` entries for every release-critical file type, and `-merge` on the
+  generated integrity evidence. The protection is now checked in, so it applies
+  to every clone on every platform without configuration.
+
+EVIDENCE - identical hostile round trip, before and after
+
+                                        08-01           08-02A
+  "LF will be replaced by CRLF" warnings   157               0
+  files with CRLF in the clone             157               0
+  scripts/verify_manifest.py            exit 1          exit 0
+  scripts/build_audit_ledgers.py --check exit 0          exit 0
+  core test suite in the clone          not reached   251 passed, 2 skipped
+
+--------------------------------------------------------------------------------
+3. FIX TWO - executable bits lost in the Git index  (HIGH)
+--------------------------------------------------------------------------------
+
+WHAT WAS WRONG
+
+  Git for Windows sets core.filemode=false, so `git add -A` records every file
+  as mode 100644. All 18 release executables lost the executable bit. A clone
+  onto the Oracle host produces `./deploy/oracle_setup.sh: Permission denied`.
+
+  RELEASE_MANIFEST.json records content hashes and sizes only - it does not
+  record permission modes - so no existing check detected this.
+
+WHAT WAS CHANGED
+
+  Added scripts/set_git_exec_bits.py. It applies `git update-index --chmod=+x`
+  to exactly the paths that scripts/build_release_zip.py stores with mode 0755,
+  deriving the set from the same rule so the two cannot drift apart.
+  Idempotent; `--check` reports drift without modifying the index.
+
+  Run it once after the first `git add -A`:
+
+      python scripts/set_git_exec_bits.py
+
+EVIDENCE
+
+      before   0 of 18 paths at mode 100755 in the index
+      after   18 of 18 paths at mode 100755, preserved through clone
+
+--------------------------------------------------------------------------------
+4. FIX THREE - the systemd exception was too broad  (HIGH)
+--------------------------------------------------------------------------------
+
+WHAT WAS WRONG
+
+  The 08-01 patch replaced a hard systemd-analyze failure with:
+
+      systemd-analyze verify ... \
+        || echo 'systemd-analyze reported unresolved install paths ...'
+
+  That suppresses EVERY non-zero exit. It does excuse the expected
+  pre-installation absence of /opt/bitcoin-bot/... - but it equally hides
+  invalid unit syntax, malformed directives, unknown directive names, broken
+  service/timer relationships, invalid dependency relationships, and the
+  removal of a hardening directive. It would also have hidden a genuinely
+  missing executable on the Oracle host itself.
+
+WHAT WAS CHANGED
+
+  Added scripts/verify_systemd_units.py and an explicit context selector in
+  deploy/verify_release.sh:
+
+      SYSTEMD_VERIFY_CONTEXT=source     only the enumerated project-owned
+                                        install prefixes (/opt/bitcoin-bot/,
+                                        /usr/local/libexec/bitcoin-bot-,
+                                        /etc/bitcoin-bot/, /var/lib/bitcoin-bot/,
+                                        /var/log/bitcoin-bot/) may be reported
+                                        missing, plus the documented external
+                                        docker.service / docker.socket
+                                        dependency. Every other diagnostic line
+                                        fails the gate.
+
+      SYSTEMD_VERIFY_CONTEXT=installed  nothing is excused. systemd-analyze must
+                                        exit 0, and every project-owned
+                                        ExecStart / ExecStartPre / ExecStop
+                                        target must exist and be executable, and
+                                        every non-optional EnvironmentFile must
+                                        exist.
+
+      SYSTEMD_VERIFY_CONTEXT=auto       (default) resolves to installed when
+                                        /opt/bitcoin-bot/monitoring-current/bin/python
+                                        is executable, otherwise source.
+
+  Required hardening directives (NoNewPrivileges, PrivateTmp, ProtectSystem) are
+  checked structurally in BOTH contexts, so a security regression cannot pass by
+  running the gate off-host.
+
+  On the Oracle host after installation, run the strict form explicitly:
+
+      SYSTEMD_VERIFY_CONTEXT=installed bash deploy/verify_release.sh
+
+--------------------------------------------------------------------------------
+5. FIX FOUR - CODEOWNERS activation defects  (MEDIUM)
+--------------------------------------------------------------------------------
+
+  a) The generated .github/CODEOWNERS contained a self-referential instruction.
+     scripts/activate_codeowners.py substituted the owner FIRST and only then
+     tried to rewrite the instructional header, so the header no longer matched
+     and the rewrite was a silent no-op. The generated policy file said:
+
+         # Copy this file to .github/CODEOWNERS, replace @your-real-name with
+         # the real repository owner
+
+     Fixed by rewriting the header before substitution, and asserting that no
+     placeholder survives.
+
+  b) The script reported "18 owner entries". CODEOWNERS.example contains 17
+     ownership rules; the eighteenth match was the placeholder inside that
+     comment. It now counts real ownership rules and reports 17.
+
+  c) The script rebuilt the manifest without first rebuilding the audit
+     ledgers, contradicting the package's own maintenance rule. The
+     function-parity matrix is itself a manifested file, so it must be
+     regenerated first. Order is now:
+     build_audit_ledgers -> build_manifest -> verify_manifest -> ledgers --check
+
+  d) csv.DictWriter defaults to CRLF terminators. With the ledger now
+     normalised to LF, activation would have rewritten all 172 lines and failed
+     verify_manifest.py. The terminator is now pinned to "\n".
+
+  e) Writes are now atomic (temp file in the same directory, then replace).
+
+--------------------------------------------------------------------------------
+6. FIX FIVE - licensing  (MEDIUM)
+--------------------------------------------------------------------------------
+
+  Neither 08-01 package contained a LICENSE file of any kind.
+
+  Added LICENSE.example: a proprietary, all-rights-reserved notice with warranty
+  and liability disclaimers and an explicit trading-risk notice stating that the
+  package is NOT certified for real-money trading.
+
+  It is a template carrying a <LICENSE_OWNER> placeholder and is NOT the
+  effective licence until you generate it:
+
+      python scripts/activate_codeowners.py \
+          --owner @your-github-username \
+          --license-owner "Your Full Legal Name Or Company Ltd"
+
+  Placeholder and empty owners are rejected. A permissive licence such as MIT
+  was deliberately NOT chosen: MIT is a genuine grant allowing anyone to use,
+  copy, modify, distribute, sublicense and sell this trading system. If you want
+  that, replace LICENSE.example before activating.
+
+  This wording is a baseline for a private repository. It is not legal advice
+  and does not guarantee protection from liability. Have a lawyer review it.
+
+--------------------------------------------------------------------------------
+7. FIX SIX - line-ending normalisation of the file-review ledger
+--------------------------------------------------------------------------------
+
+  docs/audit/FILE_REVIEW_LEDGER.csv was the only manifested file shipped with
+  CRLF terminators (168 lines). Under the new `* text=auto eol=lf` rule Git
+  would normalise it on commit and change its manifested bytes.
+
+  It has been converted to LF and the manifest rebuilt. The entire release is
+  now LF-only, so the working tree, the index and the ZIP all agree byte for
+  byte. Content and review dispositions are unchanged apart from the five rows
+  added for the new files.
+
+--------------------------------------------------------------------------------
+8. FILES CHANGED
+--------------------------------------------------------------------------------
+
+  added        .gitattributes
+  added        LICENSE.example
+  added        scripts/verify_systemd_units.py
+  added        scripts/set_git_exec_bits.py
+  added        tests/test_repository_hygiene.py          (31 new tests)
+  added        PATCH_NOTES_2026-08-02.txt                (this file)
+  modified     deploy/verify_release.sh                  (systemd context block)
+  modified     scripts/activate_codeowners.py            (five defects above)
+  regenerated  docs/audit/FILE_REVIEW_LEDGER.csv         167 -> 172 rows, LF
+  regenerated  docs/audit/FUNCTION_PARITY_MATRIX.csv     574 -> 594 functions
+  regenerated  RELEASE_MANIFEST.json                     165 -> 170 files
+  regenerated  RELEASE_SHA256.txt
+
+  Not touched: the protected strategy and all four protected signal methods,
+  every service module, live_evidence.py, risk_checks.py, market_policy.py,
+  pair_registry.py, pair_control.py, the CI workflow, every deployment script
+  other than verify_release.sh, and every pre-existing test.
+
+  Protected strategy SHA-256, unchanged in both packages:
+      023d5f9a09c3a9057986ec1a79fe74cc987b79dd52c3453683d09d023f08e340
+
+  The two packages still differ in exactly four files, as designed:
+      RELEASE_MODE, RELEASE_MANIFEST.json, RELEASE_SHA256.txt,
+      VALIDATION_STATUS.json
+
+--------------------------------------------------------------------------------
+9. VERIFICATION PERFORMED
+--------------------------------------------------------------------------------
+
+  Windows 11, Python 3.13.14, requirements-dev.txt installed from the pinned
+  set, `python -m pip check` clean. Both packages, and again from a Git clone
+  made with core.autocrlf=true:
+
+      external ZIP checksum vs .sha256.txt ........ OK (both, 08-01 inputs)
+      archive safety: traversal, symlink,
+        absolute path, duplicate, CRC, single root . passed (both)
+      core test suite ............................. 251 passed, 2 skipped
+      monitoring test suite ....................... 51 passed
+      tests/secret_scan.py ........................ clean
+      scripts/build_audit_ledgers.py --check ...... 172 files, 594 functions
+      scripts/verify_manifest.py .................. 170 files, exact set matched
+      shell syntax, all .sh plus root wrapper ..... passed
+      systemd service/timer pairing ............... 7 services
+      systemd source-context verifier ............. exit 0
+      hostile Git round trip (autocrlf=true) ...... 0 CRLF, 18/18 exec bits,
+                                                    manifest and ledgers verify,
+                                                    full suite passes in clone
+      CODEOWNERS activation, reject placeholder ... exit 1
+      CODEOWNERS activation, reject malformed ..... exit 1
+      CODEOWNERS activation, reject placeholder
+        licence owner ............................. exit 1
+      CODEOWNERS activation, real owner ........... 17 rules, LICENSE written,
+                                                    ledger rows added,
+                                                    manifest 172 files
+      re-run activation, same owner ............... identical release hash
+
+  The two skipped tests, both platform-caused and both covered in CI:
+      symlink creation is unavailable on this Windows host
+      optional strategy stack missing (numpy); the pinned Freqtrade container
+        runs this probe
+
+--------------------------------------------------------------------------------
+10. WHAT IS STILL NOT PROVEN
+--------------------------------------------------------------------------------
+
+  There is no Docker engine, no WSL and no systemd on the audit host. These have
+  never executed anywhere and your first CI run is their first genuine test:
+
+      the Docker image build
+      the Docker Compose branch of deploy/verify_release.sh
+      the pinned Freqtrade image probe
+      the Python 3.10, 3.11 and 3.13 legs
+      the real `systemd-analyze verify` invocation
+
+  Specific first-run risk: scripts/verify_systemd_units.py now FAILS on any
+  systemd-analyze output line it cannot classify. That is deliberate - it is the
+  whole point of the fix - but the classifier was written against the fourteen
+  diagnostics recorded in the 08-01 notes and could not be exercised against a
+  live systemd here. If the CI "Full offline verification" step fails with
+  "unexplained systemd-analyze output", read the quoted lines: if they refer to
+  a project-owned install path, add its prefix to INSTALL_CREATED_PREFIXES; if
+  they refer to an external unit, add it to EXTERNAL_UNITS; if they refer to
+  anything else, it is a real unit defect and must be fixed, not excused.
+
+  Oracle deployment still requires a host that does not exist yet, a registered
+  runner, a private /etc/bitcoin-bot/.env and the root-approved artifact digest
+  flow. None of that can be prepared from a source package.
+
+  The strategy still FAILS its mandatory profitability gate: profit factor
+  0.3019 against a required 1.15, and 49.11 percent maximum account drawdown
+  against a permitted 20 percent, over 2,349 trades. Roughly 470 of the 490.96
+  USDT lost is round-trip fees. services/execution_sidecar/live_evidence.py will
+  reject any evidence document built from this result. Real-money promotion
+  remains prohibited. This patch closes none of the ten mandatory blockers in
+  LAUNCH_GITHUB_AND_ORACLE.txt section 4.
+
+  This package is ready to upload to a private GitHub repository. It is not
+  certified for Oracle production and not certified for real money.
+
+================================================================================

@@ -1,0 +1,8 @@
+{
+  "pair_config_hash": "1ff51007dfe54dc3e39cbd2a42805d32eca95809a78756cca77037305512e449",
+  "pair_state_hash": "20fbd5f92743d768b76cd131c7ea0172c4097458aaef672978d16b934dce501b",
+  "pairs": [
+    "BTC/USDT"
+  ],
+  "refresh_period": 10
+}

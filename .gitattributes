@@ -1,0 +1,51 @@
+# Authenticated bytes. RELEASE_MANIFEST.json pins an exact SHA-256 and size for
+# every file in this tree, and RELEASE_SHA256.txt pins the manifest itself. Any
+# line-ending translation performed by Git changes those bytes, so a clone made
+# with core.autocrlf=true (the Git for Windows default) would fail
+# scripts/verify_manifest.py and deploy/verify_release.sh, and every shell
+# script would arrive on the Oracle host with CRLF terminators and a broken
+# `#!/usr/bin/env bash` shebang.
+#
+# These rules are checked into the repository so the protection travels with the
+# clone and does not depend on any per-machine `git config` step.
+# tests/test_repository_hygiene.py enforces that this file keeps doing its job.
+
+# Normalise everything to LF in the index and in the working tree, on every
+# platform, regardless of core.autocrlf / core.eol.
+* text=auto eol=lf
+
+# Explicit rules for the release-critical types, so a future `text=auto`
+# heuristic change cannot quietly reintroduce CRLF.
+*.sh        text eol=lf
+*.py        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.json      text eol=lf
+*.csv       text eol=lf
+*.md        text eol=lf
+*.txt       text eol=lf
+*.lock      text eol=lf
+*.example   text eol=lf
+*.service   text eol=lf
+*.timer     text eol=lf
+*.services  text eol=lf
+Makefile    text eol=lf
+Dockerfile* text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+.dockerignore   text eol=lf
+.env.example    text eol=lf
+.git-commit     text eol=lf
+RELEASE_MODE            text eol=lf
+RELEASE_SHA256.txt      text eol=lf
+RELEASE_MANIFEST.json   text eol=lf
+deploy/bitcoin-bot-deploy   text eol=lf
+
+# Generated integrity evidence: never merge, never diff-mangle.
+RELEASE_MANIFEST.json           -merge
+RELEASE_SHA256.txt              -merge
+docs/audit/FUNCTION_PARITY_MATRIX.csv   -merge
+
+# Keep audit and deployment evidence out of GitHub language statistics without
+# excluding it from the release file set.
+docs/**     linguist-documentation

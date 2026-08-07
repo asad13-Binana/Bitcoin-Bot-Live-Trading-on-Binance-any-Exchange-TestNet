@@ -1,0 +1,12 @@
+{
+  "base": "BTC",
+  "generation": 1,
+  "pair": "BTC/USDT",
+  "pair_config_hash": "1ff51007dfe54dc3e39cbd2a42805d32eca95809a78756cca77037305512e449",
+  "quote": "USDT",
+  "schema_version": 1,
+  "source": "release-default",
+  "state_hash": "20fbd5f92743d768b76cd131c7ea0172c4097458aaef672978d16b934dce501b",
+  "symbol": "BTCUSDT",
+  "updated_at": "2026-07-22T00:00:00+00:00"
+}

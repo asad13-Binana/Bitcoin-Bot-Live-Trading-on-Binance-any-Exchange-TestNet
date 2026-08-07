@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh the Bitcoin bot sanitized Docker status snapshot
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=30s
+AccuracySec=5s
+Unit=bitcoin-bot-monitor-snapshot.service
+
+[Install]
+WantedBy=timers.target

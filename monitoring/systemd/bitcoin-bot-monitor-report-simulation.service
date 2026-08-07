@@ -1,0 +1,37 @@
+[Unit]
+Description=Bitcoin bot Telegram monitor report (Simulation)
+After=network-online.target bitcoin-bot-monitor-simulation.service
+Wants=network-online.target
+Requires=bitcoin-bot-monitor-simulation.service
+ConditionPathExists=/etc/bitcoin-bot/simulation-monitor.env
+
+[Service]
+Type=oneshot
+User=botmon
+Group=botmon
+EnvironmentFile=/etc/bitcoin-bot/simulation-monitor.env
+WorkingDirectory=/opt/bitcoin-bot/current
+ExecCondition=/opt/bitcoin-bot/monitoring-current/bin/python -m monitoring.control telegram
+ExecStart=/opt/bitcoin-bot/monitoring-current/bin/python -m monitoring.telegram.telegram_reporter --days 1
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+ReadOnlyPaths=/var/lib/bitcoin-bot/shared /opt/bitcoin-bot/current

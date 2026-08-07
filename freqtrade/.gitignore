@@ -1,0 +1,13 @@
+.env
+user_data/logs/
+user_data/data/
+user_data/backtest_results/
+user_data/plot/
+user_data/hyperopt_results/
+*.sqlite
+*.sqlite-*
+__pycache__/
+*.pyc
+.DS_Store
+user_data/LIVE_OK
+user_data/PAUSE

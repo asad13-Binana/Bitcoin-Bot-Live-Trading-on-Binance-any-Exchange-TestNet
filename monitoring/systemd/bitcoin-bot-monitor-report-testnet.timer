@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Bitcoin bot Telegram monitor report (Binance Spot Testnet)
+
+[Timer]
+OnCalendar=*-*-* 00:05:00 UTC
+RandomizedDelaySec=5m
+Persistent=true
+Unit=bitcoin-bot-monitor-report-testnet.service
+
+[Install]
+WantedBy=timers.target

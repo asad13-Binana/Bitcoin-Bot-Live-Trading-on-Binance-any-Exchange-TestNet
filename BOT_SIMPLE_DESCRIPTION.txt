@@ -1,0 +1,25 @@
+BITCOIN SPOT BOT — PLAIN DESCRIPTION
+
+This bot watches and trades one Bitcoin Spot pair at a time, such as BTC/USDT or
+BTC/USDC. You choose the permitted stable quote. It never searches for other coins.
+
+Freqtrade calculates the supplied 1-minute entry signal and its 5-minute trend filter.
+A separate read-only service watches Spot order-book pressure, recent aggressive buys
+and sells, and the same-symbol USD-M market when it exists. It also reports 15-minute,
+1-hour, 2-hour, 4-hour, and 1-day context. Those extra charts do not secretly change
+the inherited signal formula.
+
+Only the execution sidecar holds Binance keys. It records what it intends to do before
+calling Binance, checks current exchange rules, and refuses to guess after a timeout.
+Entries start OFF. Telegram lets only the configured owner resume/pause, inspect status,
+switch a verified-flat BTC pair, choose OCO/trailing protection, request break-even or
+profit-lock protection, reconcile, and perform a confirmed emergency exit.
+
+Simulation is the default. Testnet is the required next step. Live mode cannot start
+until the exact build, exact active pair, exact risk settings, and an actual passing
+Freqtrade ZIP have been signed with a private key that remains off the server.
+
+This is not a promise of profit. A passing automated audit proves specific software
+properties; it does not prove that the strategy has an edge or that an order will fill
+during an exchange outage, network failure, or violent gap.
+

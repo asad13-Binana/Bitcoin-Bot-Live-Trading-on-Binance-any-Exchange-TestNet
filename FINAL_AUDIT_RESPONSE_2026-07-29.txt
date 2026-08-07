@@ -1,0 +1,172 @@
+BITCOIN SPOT BOT — FINAL SOURCE AUDIT RESPONSE
+Date: 29 July 2026; deployment-only addendum verified 30 July 2026
+
+VERDICT
+
+The source is a mode-separated, simulation-default Bitcoin-only Binance Spot
+release candidate. It is suitable for GitHub CI and controlled Oracle
+simulation/Testnet validation. It is not certified for real-money trading,
+and no live order was submitted during this work.
+
+The word “final” identifies the packaged source revision. It does not mean
+bug-free, risk-free, profitable or live-certified.
+
+AUDIT FINDINGS REVIEWED AND DISPOSITION
+
+1. CoinMarketCap v3 response parsing — LEGITIMATE, FIXED.
+   The v3 quotes endpoint returns a bare array and its quote field is an array.
+   The client now requires exactly one Bitcoin ID 1 row and exactly one USD
+   quote. The older v2 object envelope is rejected instead of appearing healthy.
+
+2. CoinGecko/CoinMarketCap free-plan abuse risk — LEGITIMATE, FIXED AT SOURCE.
+   Both clients are disabled by default, fixed to Bitcoin identity, use
+   pre-request cross-process SQLite reservations, bounded response sizes,
+   Retry-After/backoff, cache fallback and fail-closed initialized-state-loss
+   handling. Caps are 96/minute and 9,600/month for CoinGecko, and the more
+   conservative 28/minute and 9,600/month for CoinMarketCap. Refresh cannot be
+   configured below 300 seconds. Provider data is advisory and cannot alter the
+   protected signal formula, pair selection, position size, filters, protection
+   or order submission.
+
+3. Binance referencePrice filter semantics — LEGITIMATE, FIXED.
+   PERCENT_PRICE, PERCENT_PRICE_BY_SIDE, MIN_NOTIONAL and NOTIONAL preflight uses
+   current /api/v3/referencePrice. Only a null value or Binance -2043 permits
+   the documented avgPrice/ticker fallback. Other uncertainty fails closed.
+   Cancel-and-replace performs a fresh second preflight after cancellation and
+   immediately before the only replacement POST.
+
+4. Fixed-width quote parsing and USDT-only assumptions — LEGITIMATE, FIXED.
+   Pair identity is BTC/QUOTE and money-moving validation binds current
+   exchangeInfo baseAsset/quoteAsset. Three-, four-, five- and longer quote
+   assets are not inferred through suffix slicing.
+
+5. “All BTC pairs” versus protection capability — LEGITIMATE, FIXED.
+   The registry reports every current BTC-base TRADING Spot-allowed row permitted
+   by the optional quote cap. It separately reports OTO, OCO and trailing
+   capabilities. Selection and preflight require only the capabilities needed
+   by the exact configured protection mode and fail closed before a request.
+
+6. Pair switching and balance inference — LEGITIMATE, FIXED.
+   BTC/quote balances never identify or auto-adopt a pair. Pair selection is
+   staged:
+     select -> disarm -> reconcile -> WAITING_MANUAL_SWAP -> /swapdone ->
+     funding/filter/capability preflight -> publish -> Freqtrade heartbeat proof
+     -> PAUSED_READY -> separate /start confirmation.
+   Active-pair generation and pair_config_hash are bound into the signal,
+   strategy heartbeat, sidecar and one-pair Freqtrade projection.
+
+7. Testnet/live package separation — LEGITIMATE, FIXED AT SOURCE.
+   RELEASE_MODE is immutable in the service image. The testnet package rejects
+   live execution, and the live package rejects testnet execution. Both permit
+   simulation and both start with entries off.
+
+8. Strategy drift risk — LEGITIMATE, CONTROLLED.
+   The four protected IctSmcStrategy signal methods retain their canonical
+   source/token fingerprints. A host regression and pinned-Freqtrade-image probe
+   enforce the 5m MACD hard gate and non-gating 1m MACD behavior. The pinned
+   image probe still requires GitHub CI or a working Docker Linux engine.
+
+9. Stale/missing audit ledgers — LEGITIMATE, FIXED.
+   FILE_REVIEW_LEDGER.csv has an exact path set. The generated current
+   FUNCTION_PARITY_MATRIX.csv contains source hashes for every production
+   function. The release gate fails if either ledger becomes stale.
+
+10. Active @OWNER CODEOWNERS placeholder — LEGITIMATE, FIXED.
+    No active .github/CODEOWNERS file ships. CODEOWNERS.example is inert and
+    instructs the repository owner to copy it and replace the placeholder.
+
+11. Sharia/universe/altcoin runtime scope — INTENTIONALLY ABSENT.
+    No Sharia compliance JSON, Sharia service, universe/top-50 service, altcoin
+    ranking or non-BTC order path ships. Negative guard text in tests/audit files
+    proves absence and is not runtime Sharia functionality.
+
+12. Binance PRICE_RANGE execution rule — LEGITIMATE, FIXED.
+    Current /api/v3/executionRules and /api/v3/referencePrice are queried for the
+    exact BTC Spot symbol before replacement. BUY uses bid multipliers and SELL
+    uses ask multipliers. Missing multipliers and null/-2043 reference follow the
+    official no-enforcement semantics. The existing post-cancel second preflight
+    repeats this check immediately before replacement POST.
+
+13. EXPIRED_IN_MATCH state handling — LEGITIMATE, FIXED.
+    Authenticated STP-expired BUY and SELL events now take terminal/reconciliation
+    paths in the durable state store instead of retaining stale active state.
+
+14. Signed request timing — LEGITIMATE, FIXED.
+    The gateway now bounds request timeout and recvWindow, synchronizes the
+    signing clock with an RTT midpoint server-time sample, reuses it for the
+    signed user-data subscription and records credential-free rate/order headers.
+    Order POSTs remain no-auto-retry on ambiguous outcomes.
+
+15. Official public kline archives — LEGITIMATE, VERIFIER ADDED.
+    The read-only verifier requires the adjacent Binance CHECKSUM, safe one-CSV
+    ZIP structure, 12-field kline schema and consistent millisecond/microsecond
+    timestamps. The official BTCUSDT 1m 2025-01-01 archive passed all 1,440 rows.
+
+16. Windows parent-directory fsync — LEGITIMATE, FIXED WITHOUT LINUX REGRESSION.
+    Python faulthandler proved the all-files test hang was a Windows directory
+    fsync. File flush/fsync and atomic replace remain cross-platform; parent
+    directory fsync remains enabled on POSIX for the Oracle/Linux runtime.
+
+17. GitHub-hosted SSH deployment path — LEGITIMATE, REPLACED SAFELY.
+    Verification and packaging remain on pinned GitHub-hosted jobs. Only a
+    manual, main-branch, exact-confirmation simulation job can reach a dedicated
+    non-Docker Oracle runner. A root-owned wrapper accepts only preflight,
+    simulation and verify; it requires a one-use, independently approved full
+    artifact SHA-256 and invokes the existing transactional installer through a
+    clean environment. No Testnet/live choice or SSH secret is present.
+
+18. Telegram self-audit — LEGITIMATE, ADDED AS READ-ONLY CONTROL.
+    Owner-only /audit checks all release-hash, release-path and execution-mode
+    records, service freshness, Freqtrade ping, idle pair-switch state, one
+    consistent BTC pair, entries off and zero unresolved intents. It sends no
+    execution-sidecar command and cannot repair, start or resume the bot.
+
+19. CI .git-commit ledger drift — LEGITIMATE, FIXED.
+    A tracked source placeholder preserves the exact 165-path ledger before and
+    after GitHub writes the real commit SHA in its artifact workspace. A
+    simulated overwrite passed ledger, manifest and exact-path verification.
+
+SOURCE-LEVEL EVIDENCE
+
+- Core tests: 220 passed, 2 intentionally skipped, 0 failed.
+- Monitoring tests: 51 passed, 0 failed; one third-party TestClient deprecation
+  warning.
+- Focused staged-pair/capability tests: 37 passed.
+- Focused official Binance-source tests: 16 passed, plus one platform fsync
+  regression.
+- Current production Python/Bash callable matrix: 569 declarations.
+- Exact file-review ledger: 165 package files.
+- Exact service lock: requests 2.34.2 installed; pip check clean.
+- Hash-lock dry runs: service and monitoring locks passed --require-hashes.
+- Strict dependency audits: no known vulnerabilities reported at run time.
+- Docker Compose: parsed; exact services are moneyflow, freqtrade,
+  execution-sidecar and telegram-broker.
+- Docker image/container runtime: not tested because the Docker Desktop Linux
+  engine was unavailable.
+- Secrets: no credentials are included; the release secret scanner is part of
+  the final gate.
+- Protected strategy source SHA-256 remains
+  023d5f9a09c3a9057986ec1a79fe74cc987b79dd52c3453683d09d023f08e340.
+- Canonical Freqtrade result: 2,349 trades, -49.10 percent total profit,
+  0.3019 profit factor and 49.11 percent maximum drawdown. This is a failed
+  live-promotion gate. The 30 July repeat produced the identical canonical
+  trade-list SHA-256
+  1b57fda8be10717cfddeaf87d2ceeff188bd34bc4e6ad6f5d21d19e03d92d415.
+
+EXTERNAL BLOCKERS
+
+GitHub Actions, the pinned Freqtrade container probe, Binance Spot Testnet
+lifecycle drills, real Telegram delivery, Oracle deployment/fault drills,
+14-day soak, evidence signing and production approval remain external.
+Lookahead/recursive and new out-of-sample analysis are deferred until a
+redesigned frozen strategy first passes profitability/drawdown gates. See
+LAUNCH_GITHUB_AND_ORACLE.txt section 4.
+
+FINAL SAFETY STATEMENT
+
+The exact strategy failed its canonical backtest, so real-money promotion is
+prohibited even if all deployment checks pass. The live package stays
+not-certified until a redesigned frozen strategy and every section 4 gate are
+complete for the exact final manifest/release hash. Unit tests and source
+hashes do not prove profitability or eliminate exchange, strategy, network,
+slippage, stop-limit, operational or software risk.

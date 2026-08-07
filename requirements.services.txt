@@ -1,0 +1,7 @@
+# Direct dependencies for the three custom Python services.
+# Freqtrade runs in its separately pinned official image.
+requests==2.34.2
+websocket-client==1.8.0
+python-binance==1.0.28
+# Explicit: used for offline Ed25519 signing and runtime public-key verification.
+pycryptodome==3.23.0

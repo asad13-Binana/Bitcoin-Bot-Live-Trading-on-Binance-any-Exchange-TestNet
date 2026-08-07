@@ -1,0 +1,9 @@
+{
+  "exchange": {
+    "pair_blacklist": [],
+    "pair_whitelist": [
+      "BTC/USDT"
+    ]
+  },
+  "stake_currency": "USDT"
+}
