@@ -100,8 +100,10 @@ def test_setup_python_cache_tracks_the_actual_requirement_files():
     expected = {
         "requirements-dev.txt",
         "requirements.services.txt",
+        "requirements.services.lock",
         "monitoring/requirements-monitoring-dev.txt",
         "monitoring/requirements-monitoring.txt",
+        "monitoring/requirements-monitoring.lock",
     }
     blocks = re.findall(
         r"cache-dependency-path: \|\n((?:\s{12}[^\n]+\n)+)", text
@@ -112,6 +114,19 @@ def test_setup_python_cache_tracks_the_actual_requirement_files():
         assert declared == expected
     for relative in expected:
         assert (ROOT / relative).is_file(), f"cache input does not exist: {relative}"
+
+
+def test_dependency_compatibility_and_security_pins_are_explicit():
+    """Prevent the two dependency defects found by the real GitHub gate."""
+    services = (ROOT / "requirements.services.txt").read_text(encoding="utf-8")
+    monitoring = (
+        ROOT / "monitoring/requirements-monitoring.txt"
+    ).read_text(encoding="utf-8")
+    assert re.search(r"^aiohttp==3\.14\.3$", services, re.MULTILINE)
+    assert re.search(r"^typing-extensions==4\.16\.0$", services, re.MULTILINE)
+    assert re.search(r"^rpds-py==0\.30\.0$", monitoring, re.MULTILINE)
+    assert re.search(r"^exceptiongroup==1\.3\.1$", monitoring, re.MULTILINE)
+    assert re.search(r"^cryptography==50\.0\.0$", monitoring, re.MULTILINE)
 
 
 # --------------------------------------------------------------------------

@@ -5,3 +5,12 @@ httpx==0.28.1
 psutil==7.2.2
 pydantic==2.12.5
 mcp==1.28.1
+# Preserve the documented Python 3.10-3.13 support range. Newer rpds-py
+# releases require Python 3.11, while 0.30.0 is available to Python 3.10.
+rpds-py==0.30.0
+# anyio needs the backport on Python 3.10. Keeping it explicit makes one hashed
+# lock portable across the documented Python matrix.
+exceptiongroup==1.3.1
+# Security floor for mcp/PyJWT's cryptographic backend. The strict audit
+# rejected 49.0.0 under PYSEC-2026-3552 and identified 50.0.0 as fixed.
+cryptography==50.0.0

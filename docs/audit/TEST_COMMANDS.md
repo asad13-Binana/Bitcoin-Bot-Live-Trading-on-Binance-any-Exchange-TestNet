@@ -155,10 +155,11 @@ the extraction, and separately verify archive member uniqueness, traversal rejec
 symlink/device absence and CRC. Never update validation evidence after the final manifest
 without rebuilding the manifest and ZIP again.
 
-## Current host blockers to report, not convert into passes
+## Original 2026-07-30 host blockers and current evidence boundaries
 
-- The source path is not a Git repository, so branch/status/diff and GitHub workflow proof
-  do not exist.
+- The original 2026-07-30 source path was not a Git repository. The current private
+  repositories and Git history exist, but workflow and artifact proof remains bound to
+  the exact commit shown by GitHub Actions; repository creation alone is not a pass.
 - Docker Compose parsing passed, but the Docker Desktop Linux engine and systemd runtime
   were not available on the Windows audit host.
 - Authenticated Binance Testnet orders, real Telegram delivery, Oracle deployment and

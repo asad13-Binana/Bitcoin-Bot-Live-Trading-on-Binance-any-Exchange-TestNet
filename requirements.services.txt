@@ -3,5 +3,11 @@
 requests==2.34.2
 websocket-client==1.8.0
 python-binance==1.0.28
+# Security floor for python-binance's transitive HTTP client. GitHub's strict
+# dependency audit rejected aiohttp 3.14.1; 3.14.3 contains the cited fixes.
+aiohttp==3.14.3
+# Included unconditionally so the hash lock remains installable on Python 3.10-
+# 3.12 where aiohttp/aiosignal require the compatibility package.
+typing-extensions==4.16.0
 # Explicit: used for offline Ed25519 signing and runtime public-key verification.
 pycryptodome==3.23.0
