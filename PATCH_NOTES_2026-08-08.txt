@@ -1,0 +1,38 @@
+BITCOIN BOT 1.1 - GITHUB CI CORRECTION - 2026-08-08A
+
+Confirmed defect
+----------------
+The first real GitHub Actions run stopped in every Python matrix job during
+actions/setup-python. Pip caching was enabled without cache-dependency-path, so
+the action searched only for requirements.txt or pyproject.toml. This release
+uses requirements-dev.txt and nested requirement files instead, and neither of
+the action's default filenames exists.
+
+Correction
+----------
+Both setup-python steps in .github/workflows/ci.yml now declare the four actual
+dependency input files:
+
+  requirements-dev.txt
+  requirements.services.txt
+  monitoring/requirements-monitoring-dev.txt
+  monitoring/requirements-monitoring.txt
+
+tests/test_repository_hygiene.py now rejects removal, misspelling or partial
+configuration of either cache-dependency-path block.
+
+Scope and safety
+----------------
+No strategy, signal, execution, risk, order, pair, Telegram, Docker, systemd or
+Oracle deployment logic was changed. The protected strategy and live-evidence
+hashes remain unchanged. Audit ledgers and the release manifest were rebuilt in
+the required order after this correction.
+
+The existing GitHub warning that the pinned checkout/setup-python revisions
+target the deprecated Node.js 20 runtime remains disclosed. GitHub currently
+forces those revisions to Node.js 24, so this warning did not cause the failed
+run. Action revision pins must be changed only after the exact official
+replacement commits are source-verified.
+
+Real GitHub Actions, Docker, Freqtrade and artifact results remain external
+evidence and must be recorded from the corrected commit's workflow run.

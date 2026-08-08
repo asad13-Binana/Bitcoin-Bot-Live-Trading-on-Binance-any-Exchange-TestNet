@@ -25,8 +25,8 @@
       "size": 1676
     },
     ".github/workflows/ci.yml": {
-      "sha256": "575d80bb2c3ca33bedee2ec08527ed52abb36495ffac6f5a5137f898dbf15163",
-      "size": 8526
+      "sha256": "007963bc8956cb9186d787ba9d49f994c7764ba9f6e26506d6504e3d537d434f",
+      "size": 8950
     },
     ".gitignore": {
       "sha256": "25c70bd7f6a6d7a75a89f3abcf8e59fe51c22789af22dd598ba7e8fc1ee448b8",
@@ -83,6 +83,10 @@
     "PATCH_NOTES_2026-08-02.txt": {
       "sha256": "2105c66a295c411f0edde50fff4b6cc4b18f05b0af43070c26f9be6298638b64",
       "size": 16141
+    },
+    "PATCH_NOTES_2026-08-08.txt": {
+      "sha256": "d1c333dd2bb76ff04111a99433de02e94135fad3fadc0584d2036b68766ab3c9",
+      "size": 1646
     },
     "README.md": {
       "sha256": "d747a26519b5c77c97a6876ebbd285a8ca2f5ee77c29c6e33f338702550a6124",
@@ -161,8 +165,8 @@
       "size": 2483
     },
     "docs/audit/FILE_REVIEW_LEDGER.csv": {
-      "sha256": "f7d60aacc266ad925504d88797ad7a6a45461e58246a86f07a12137577e37bdc",
-      "size": 38221
+      "sha256": "fdf6373131bd0c1e81f62cfea9fb69dfb63c5b4ccf8abc8167da6efe7f99dff6",
+      "size": 38487
     },
     "docs/audit/FUNCTION_PARITY_MATRIX.csv": {
       "sha256": "8434f2658aff674c750c4ad7b864aa534c04643934389706e011b417a54fa83a",
@@ -681,8 +685,8 @@
       "size": 10109
     },
     "tests/test_repository_hygiene.py": {
-      "sha256": "3dda57db4a22f67ea0e7a9ccfe3a0a2c1ff56b2f89dbaac3f80e2391940d8498",
-      "size": 10862
+      "sha256": "8908424214a052daa32d90e3991a13b27f27573c6dbc4a3c6c44829dd70a888a",
+      "size": 11737
     },
     "tests/test_secret_scan.py": {
       "sha256": "f7daa848c775f818396037cc62890f9223ab592cae5087e552ed6f24a0c1f174",

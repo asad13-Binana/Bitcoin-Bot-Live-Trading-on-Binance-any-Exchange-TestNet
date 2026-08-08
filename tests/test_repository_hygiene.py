@@ -25,6 +25,7 @@ GITATTRIBUTES = ROOT / ".gitattributes"
 VERIFY_RELEASE = ROOT / "deploy/verify_release.sh"
 UNIT_VERIFIER = ROOT / "scripts/verify_systemd_units.py"
 UNIT_DIR = ROOT / "monitoring/systemd"
+WORKFLOW = ROOT / ".github/workflows/ci.yml"
 
 EXCLUDED_PARTS = {".git", "__pycache__", ".pytest_cache", ".ruff_cache"}
 
@@ -91,6 +92,26 @@ def test_gitattributes_is_manifested():
     assert ".gitattributes" in manifest["files"], (
         ".gitattributes must be a manifested release file so it travels with a clone"
     )
+
+
+def test_setup_python_cache_tracks_the_actual_requirement_files():
+    """The setup-python cache must not assume a nonexistent requirements.txt."""
+    text = WORKFLOW.read_text(encoding="utf-8")
+    expected = {
+        "requirements-dev.txt",
+        "requirements.services.txt",
+        "monitoring/requirements-monitoring-dev.txt",
+        "monitoring/requirements-monitoring.txt",
+    }
+    blocks = re.findall(
+        r"cache-dependency-path: \|\n((?:\s{12}[^\n]+\n)+)", text
+    )
+    assert len(blocks) == 2, "both setup-python steps must declare cache inputs"
+    for block in blocks:
+        declared = {line.strip() for line in block.splitlines() if line.strip()}
+        assert declared == expected
+    for relative in expected:
+        assert (ROOT / relative).is_file(), f"cache input does not exist: {relative}"
 
 
 # --------------------------------------------------------------------------
