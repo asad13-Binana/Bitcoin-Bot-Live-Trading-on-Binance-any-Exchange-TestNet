@@ -9,5 +9,8 @@ aiohttp==3.14.3
 # Included unconditionally so the hash lock remains installable on Python 3.10-
 # 3.12 where aiohttp/aiosignal require the compatibility package.
 typing-extensions==4.16.0
+# aiohttp needs this compatibility package on Python 3.10. Keeping it explicit
+# makes one hash lock complete across the documented Python matrix.
+async-timeout==5.0.1
 # Explicit: used for offline Ed25519 signing and runtime public-key verification.
 pycryptodome==3.23.0

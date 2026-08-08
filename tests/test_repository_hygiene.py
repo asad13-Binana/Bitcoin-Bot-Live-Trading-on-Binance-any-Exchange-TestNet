@@ -127,6 +127,7 @@ def test_dependency_compatibility_and_security_pins_are_explicit():
     ).read_text(encoding="utf-8")
     assert re.search(r"^aiohttp==3\.14\.3$", services, re.MULTILINE)
     assert re.search(r"^typing-extensions==4\.16\.0$", services, re.MULTILINE)
+    assert re.search(r"^async-timeout==5\.0\.1$", services, re.MULTILINE)
     assert re.search(r"^rpds-py==0\.30\.0$", monitoring, re.MULTILINE)
     assert re.search(r"^exceptiongroup==1\.3\.1$", monitoring, re.MULTILINE)
     assert re.search(r"^cryptography==50\.0\.0$", monitoring, re.MULTILINE)

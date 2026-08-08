@@ -85,8 +85,8 @@
       "size": 16141
     },
     "PATCH_NOTES_2026-08-08.txt": {
-      "sha256": "24a479f08d86c48a26e3aa36f37abcb707125e29d4553940d8978344f1ac883d",
-      "size": 4004
+      "sha256": "0fa4a8c24aac419917ed861600030e1a47e97771b99b7abf20cca3c3c6570f81",
+      "size": 4385
     },
     "README.md": {
       "sha256": "d747a26519b5c77c97a6876ebbd285a8ca2f5ee77c29c6e33f338702550a6124",
@@ -405,12 +405,12 @@
       "size": 106
     },
     "requirements.services.lock": {
-      "sha256": "4742982de19a98ee4b0af9cece94c1647fecf050bb041ea89e5cc9f834cae178",
-      "size": 87258
+      "sha256": "7bb7301ed48c65bb50ed2efdb6bbe6d3148618368f1a9a74e45b422cb17af7e2",
+      "size": 87488
     },
     "requirements.services.txt": {
-      "sha256": "442f12ad965da6ba75e97290d6e2dceb71575835c306e430855f020c1e9a09bc",
-      "size": 628
+      "sha256": "b12ec6bb89cdc30836e2f39da070994d554df7fbf3aac57e814ee2d884662e6c",
+      "size": 796
     },
     "scripts/activate_codeowners.py": {
       "sha256": "6988d7ea012cebd563617e5749eb5478a8c6125eb46ab6e524588064f1b4a04c",
@@ -685,8 +685,8 @@
       "size": 10109
     },
     "tests/test_repository_hygiene.py": {
-      "sha256": "72a8fdb66a996d471ccdf0797304b6f46d6e4ec8d206c26fc437cdceacb2aff7",
-      "size": 12722
+      "sha256": "e75659e7d56d9244c7c973a23ee62e4c13462eca3bfa30c685a1c0eb64afbdb4",
+      "size": 12796
     },
     "tests/test_secret_scan.py": {
       "sha256": "f7daa848c775f818396037cc62890f9223ab592cae5087e552ed6f24a0c1f174",
