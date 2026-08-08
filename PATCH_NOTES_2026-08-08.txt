@@ -43,7 +43,7 @@ BITCOIN BOT 1.1 - DEPENDENCY GATE CORRECTION - 2026-08-08B
 Confirmed defects
 -----------------
 The second real GitHub Actions run completed the core and monitoring test suites
-and the offline release verification, but the dependency gates found three
+and the offline release verification, but the dependency gates found four
 release-blocking defects:
 
 * requirements.services.lock pinned aiohttp 3.14.1. The strict audit reported
@@ -53,6 +53,9 @@ release-blocking defects:
   Python 3.10-3.13 support range and stopped the Python 3.10 matrix job.
 * monitoring/requirements-monitoring.lock pinned cryptography 49.0.0. The
   strict audit reported PYSEC-2026-3552 and identified 50.0.0 as fixed.
+* Regenerating the monitoring lock with pip-tools 7.6.0 on Windows removed the
+  `sys_platform == "win32"` marker from pywin32. The third GitHub run therefore
+  tried to install the Windows-only package in all four Linux matrix jobs.
 
 Correction
 ----------
@@ -63,11 +66,12 @@ security floor. Both hash-locked dependency closures were regenerated from
 those direct requirements. The Python-version
 compatibility packages typing-extensions and exceptiongroup are explicit so one
 hash lock remains portable across the complete matrix. The setup-python cache
-key now also tracks both lock files.
+key now also tracks both lock files. The pywin32 platform marker is preserved
+explicitly so Linux ignores that Windows-only dependency.
 
 tests/test_repository_hygiene.py now rejects removal or drift of the three
 compatibility/security pins and verifies that both lock files participate in
-both dependency-cache keys.
+both dependency-cache keys. It also rejects loss of the pywin32 platform marker.
 
 Scope and safety
 ----------------

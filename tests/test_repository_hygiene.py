@@ -122,11 +122,15 @@ def test_dependency_compatibility_and_security_pins_are_explicit():
     monitoring = (
         ROOT / "monitoring/requirements-monitoring.txt"
     ).read_text(encoding="utf-8")
+    monitoring_lock = (
+        ROOT / "monitoring/requirements-monitoring.lock"
+    ).read_text(encoding="utf-8")
     assert re.search(r"^aiohttp==3\.14\.3$", services, re.MULTILINE)
     assert re.search(r"^typing-extensions==4\.16\.0$", services, re.MULTILINE)
     assert re.search(r"^rpds-py==0\.30\.0$", monitoring, re.MULTILINE)
     assert re.search(r"^exceptiongroup==1\.3\.1$", monitoring, re.MULTILINE)
     assert re.search(r"^cryptography==50\.0\.0$", monitoring, re.MULTILINE)
+    assert 'pywin32==312 ; sys_platform == "win32" \\' in monitoring_lock
 
 
 # --------------------------------------------------------------------------
