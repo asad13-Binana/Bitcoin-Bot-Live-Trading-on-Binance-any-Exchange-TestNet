@@ -43,7 +43,7 @@ BITCOIN BOT 1.1 - DEPENDENCY GATE CORRECTION - 2026-08-08B
 Confirmed defects
 -----------------
 The second real GitHub Actions run completed the core and monitoring test suites
-and the offline release verification, but the dependency gates found five
+and the offline release verification, but the release gates found six
 release-blocking defects:
 
 * requirements.services.lock pinned aiohttp 3.14.1. The strict audit reported
@@ -60,6 +60,10 @@ release-blocking defects:
   passed its lock install and complete offline suite. Its service audit then
   showed that aiohttp 3.14.3 needs async-timeout on Python 3.10, but a lock
   generated under Python 3.13 had omitted that conditional dependency.
+* After all four Python matrix jobs passed, the extracted-artifact job passed
+  its manifest and offline verification but the Docker build failed because
+  `.dockerignore` omitted the extensionless RELEASE_MODE file that
+  Dockerfile.services copies into the image.
 
 Correction
 ----------
@@ -72,11 +76,13 @@ compatibility packages typing-extensions and exceptiongroup are explicit so one
 hash lock remains portable across the complete matrix. async-timeout is also
 explicit so the service lock is complete on Python 3.10. The setup-python cache
 key now also tracks both lock files. The pywin32 platform marker is preserved
-explicitly so Linux ignores that Windows-only dependency.
+explicitly so Linux ignores that Windows-only dependency. `.dockerignore` now
+includes RELEASE_MODE in the minimal image context.
 
 tests/test_repository_hygiene.py now rejects removal or drift of the three
 compatibility/security pins and verifies that both lock files participate in
 both dependency-cache keys. It also rejects loss of the pywin32 platform marker.
+The Docker-context regression rejects future omission of RELEASE_MODE.
 
 Scope and safety
 ----------------

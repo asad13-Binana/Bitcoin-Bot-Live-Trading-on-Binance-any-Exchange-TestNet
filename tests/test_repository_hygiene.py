@@ -26,6 +26,8 @@ VERIFY_RELEASE = ROOT / "deploy/verify_release.sh"
 UNIT_VERIFIER = ROOT / "scripts/verify_systemd_units.py"
 UNIT_DIR = ROOT / "monitoring/systemd"
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
+DOCKERIGNORE = ROOT / ".dockerignore"
+SERVICES_DOCKERFILE = ROOT / "Dockerfile.services"
 
 EXCLUDED_PARTS = {".git", "__pycache__", ".pytest_cache", ".ruff_cache"}
 
@@ -132,6 +134,14 @@ def test_dependency_compatibility_and_security_pins_are_explicit():
     assert re.search(r"^exceptiongroup==1\.3\.1$", monitoring, re.MULTILINE)
     assert re.search(r"^cryptography==50\.0\.0$", monitoring, re.MULTILINE)
     assert 'pywin32==312 ; sys_platform == "win32" \\' in monitoring_lock
+
+
+def test_release_mode_is_present_in_the_services_image_context():
+    """The service image copies RELEASE_MODE, so .dockerignore must include it."""
+    ignored = DOCKERIGNORE.read_text(encoding="utf-8").splitlines()
+    dockerfile = SERVICES_DOCKERFILE.read_text(encoding="utf-8")
+    assert "COPY RELEASE_MODE /app/RELEASE_MODE" in dockerfile
+    assert "!RELEASE_MODE" in ignored
 
 
 # --------------------------------------------------------------------------

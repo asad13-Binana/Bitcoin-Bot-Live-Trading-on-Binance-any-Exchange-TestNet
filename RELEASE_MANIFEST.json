@@ -1,8 +1,8 @@
 {
   "files": {
     ".dockerignore": {
-      "sha256": "d4f65e19537f2670551b1e3996009cf23a4054de19a05397d6314241d001c495",
-      "size": 259
+      "sha256": "70d66b24b31bd306797b2f2915948ed8b26675ae3beedab8b324c104a41301ad",
+      "size": 273
     },
     ".env.example": {
       "sha256": "9df04ffd3fa495ceadfe7e07e3a3f4fe49b5f715452573fb463764ceaeaad02f",
@@ -85,8 +85,8 @@
       "size": 16141
     },
     "PATCH_NOTES_2026-08-08.txt": {
-      "sha256": "0fa4a8c24aac419917ed861600030e1a47e97771b99b7abf20cca3c3c6570f81",
-      "size": 4385
+      "sha256": "09a055583f0de50d8c32261bdb899c290aa2b1c5ab142959964bdf8222bfc589",
+      "size": 4790
     },
     "README.md": {
       "sha256": "d747a26519b5c77c97a6876ebbd285a8ca2f5ee77c29c6e33f338702550a6124",
@@ -165,8 +165,8 @@
       "size": 2483
     },
     "docs/audit/FILE_REVIEW_LEDGER.csv": {
-      "sha256": "2308b21847c7afa01d9480886bb164160383ef36417be00406c56fbe7eceb8e0",
-      "size": 38583
+      "sha256": "8e692f9f909557d4daaaaa8ca22fb9afd22bbee42d5277f814bf623e36424c44",
+      "size": 38754
     },
     "docs/audit/FUNCTION_PARITY_MATRIX.csv": {
       "sha256": "8434f2658aff674c750c4ad7b864aa534c04643934389706e011b417a54fa83a",
@@ -685,8 +685,8 @@
       "size": 10109
     },
     "tests/test_repository_hygiene.py": {
-      "sha256": "e75659e7d56d9244c7c973a23ee62e4c13462eca3bfa30c685a1c0eb64afbdb4",
-      "size": 12796
+      "sha256": "e1576655f7379787073b876fe24272172ab3fd5519fe2741cd25ed0325d89339",
+      "size": 13270
     },
     "tests/test_secret_scan.py": {
       "sha256": "f7daa848c775f818396037cc62890f9223ab592cae5087e552ed6f24a0c1f174",
