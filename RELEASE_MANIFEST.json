@@ -329,7 +329,7 @@
       "size": 4227
     },
     "monitoring/requirements-monitoring-dev.txt": {
-      "sha256": "31ddf714894c21ca97ad61acecc89778ab0ed3a081ca68ffc008aba7b1599897",
+      "sha256": "4e5d97efbc8c36f18800a5d6fbd77597cca2a2fc3f778684e1e0c2de888b8d24",
       "size": 45
     },
     "monitoring/requirements-monitoring.lock": {
