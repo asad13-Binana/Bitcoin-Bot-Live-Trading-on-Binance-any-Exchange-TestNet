@@ -214,10 +214,10 @@ as_root chown botmon:botmon "$MONITOR_LOG_DIR"
 as_root chmod 0750 "$MONITOR_LOG_DIR"
 
 if [[ ! -f "$PRIVATE/.env" ]]; then
-  as_root install -m 0600 -o "$DEPLOY_USER" -g "$DEPLOY_GROUP" /dev/null "$PRIVATE/.env"
-  echo "Created $PRIVATE/.env. Populate it from the release .env.example before deployment."
+  as_root install -m 0600 -o root -g root /dev/null "$PRIVATE/.env"
+  echo "Created $PRIVATE/.env. Populate it with sudoedit from the release .env.example before deployment."
 fi
-as_root chown "$DEPLOY_USER:$DEPLOY_GROUP" "$PRIVATE/.env"
+as_root chown root:root "$PRIVATE/.env"
 as_root chmod 0600 "$PRIVATE/.env"
 
 if [[ ! -e "$APPROVED_DIGEST" ]]; then

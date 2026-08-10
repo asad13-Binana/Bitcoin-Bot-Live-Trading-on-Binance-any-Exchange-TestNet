@@ -70,7 +70,7 @@ DEPLOY_USER="$(id -un)" bash deploy/oracle_setup.sh
 The setup configures the already selected deployment user and creates:
 
 - the trusted deployment user and existing Docker-based release directories;
-- `/etc/bitcoin-bot/.env`, mode `0600`, owned by the deployment user;
+- `/etc/bitcoin-bot/.env`, mode `0600`, owned by `root:root`;
 - dedicated `gha-runner`, separate from the deployment user;
 - `/var/lib/bitcoin-bot/incoming`, mode `0700`, owned by `gha-runner`;
 - root-only staging and `/etc/bitcoin-bot/approved-artifact.sha256`;
@@ -83,13 +83,15 @@ cannot read `/etc/bitcoin-bot/.env`.
 
 ## 3. Create the private simulation configuration
 
-Populate `/etc/bitcoin-bot/.env` from `.env.example` as the deployment user. Do
-not commit, upload, print or place this file in GitHub secrets:
+Populate `/etc/bitcoin-bot/.env` from `.env.example` through `sudo`; it must
+remain `root:root` mode `0600`. Do not commit, upload, print or place this file
+in GitHub secrets:
 
 ```bash
-sudo install -m 0600 -o "$(id -un)" -g "$(id -gn)" \
-  .env.example /etc/bitcoin-bot/.env
-nano /etc/bitcoin-bot/.env
+sudo install -m 0600 -o root -g root .env.example /etc/bitcoin-bot/.env
+sudoedit /etc/bitcoin-bot/.env
+sudo chown root:root /etc/bitcoin-bot/.env
+sudo chmod 0600 /etc/bitcoin-bot/.env
 ```
 
 Generate every HMAC/API secret independently. For the self-hosted simulation

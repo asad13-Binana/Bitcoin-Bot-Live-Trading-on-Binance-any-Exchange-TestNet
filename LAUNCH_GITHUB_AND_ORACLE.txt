@@ -48,7 +48,7 @@ Do not tag a production release while any required check is absent or skipped.
 
 Follow docs/GITHUB_ORACLE_DEPLOYMENT.md. Prepare a supported Oracle Ubuntu host,
 restrict SSH at the VCN and host firewall, install Docker/chrony, and create the
-private mode-0600 file /etc/bitcoin-bot/.env.
+private root-owned mode-0600 file /etc/bitcoin-bot/.env.
 
 Use one Always Free VM.Standard.A1.Flex allocation of 2 OCPU and 12 GB RAM. The
 1 GB E2.1.Micro shape is not supported for the full four-service stack. The
