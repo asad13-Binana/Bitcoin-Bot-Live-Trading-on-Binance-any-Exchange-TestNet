@@ -29,6 +29,8 @@ ROOT = Path(__file__).resolve().parents[1]
 LIB = ROOT / "deploy/lib/envfile.sh"
 INSTALL_ARTIFACT = ROOT / "deploy/install_artifact.sh"
 INSTALL_MONITORING = ROOT / "deploy/install_monitoring.sh"
+ORACLE_SETUP = ROOT / "deploy/oracle_setup.sh"
+ROOT_WRAPPER = ROOT / "deploy/bitcoin-bot-deploy"
 
 BASH = shutil.which("bash")
 requires_bash = pytest.mark.skipif(BASH is None, reason="bash is unavailable on this host")
@@ -94,9 +96,12 @@ def test_source_would_have_executed_the_same_payload(tmp_path):
 @requires_bash
 def test_env_file_get_does_not_execute(tmp_path):
     env = tmp_path / "g.env"
-    env.write_text("A=$(touch pwned)\nB=plain\n", encoding="utf-8", newline="\n")
+    env.write_text(
+        "SIGNAL_HMAC_KEY=$(touch pwned)\nCOMMAND_HMAC_KEY=plain\n",
+        encoding="utf-8", newline="\n",
+    )
     result = run_bash(
-        f'source "{LIB.as_posix()}"; env_file_get "{env.as_posix()}" A',
+        f'source "{LIB.as_posix()}"; env_file_get "{env.as_posix()}" SIGNAL_HMAC_KEY',
         tmp_path,
     )
     assert result.returncode == 0
@@ -107,14 +112,14 @@ def test_env_file_get_does_not_execute(tmp_path):
 @requires_bash
 def test_env_file_pairs_does_not_execute(tmp_path):
     env = tmp_path / "p.env"
-    env.write_text("A=$(touch pwned)\n", encoding="utf-8", newline="\n")
+    env.write_text("SIGNAL_HMAC_KEY=$(touch pwned)\n", encoding="utf-8", newline="\n")
     result = run_bash(
         f'source "{LIB.as_posix()}"; env_file_pairs "{env.as_posix()}" | tr "\\0" "\\n"',
         tmp_path,
     )
     assert result.returncode == 0
     assert not (tmp_path / "pwned").exists()
-    assert result.stdout.strip() == "A=$(touch pwned)"
+    assert result.stdout.strip() == "SIGNAL_HMAC_KEY=$(touch pwned)"
 
 
 # --------------------------------------------------------------------------
@@ -126,14 +131,13 @@ def test_env_file_pairs_does_not_execute(tmp_path):
 @pytest.mark.parametrize(
     "line,key,expected",
     [
-        ('X=plain', 'X', 'plain'),
-        ('X="double quoted"', 'X', 'double quoted'),
-        ("X='single quoted'", 'X', 'single quoted'),
-        ('X=', 'X', ''),
-        ('X=a=b=c', 'X', 'a=b=c'),
-        ('X=  leading spaces kept', 'X', '  leading spaces kept'),
-        ('X="unbalanced', 'X', '"unbalanced'),
-        ('  X=indented key', 'X', 'indented key'),
+        ('SIGNAL_HMAC_KEY=plain', 'SIGNAL_HMAC_KEY', 'plain'),
+        ('SIGNAL_HMAC_KEY="double quoted"', 'SIGNAL_HMAC_KEY', 'double quoted'),
+        ("SIGNAL_HMAC_KEY='single quoted'", 'SIGNAL_HMAC_KEY', 'single quoted'),
+        ('SIGNAL_HMAC_KEY=', 'SIGNAL_HMAC_KEY', ''),
+        ('SIGNAL_HMAC_KEY=a=b=c', 'SIGNAL_HMAC_KEY', 'a=b=c'),
+        ('SIGNAL_HMAC_KEY=  leading spaces kept', 'SIGNAL_HMAC_KEY', '  leading spaces kept'),
+        ('  SIGNAL_HMAC_KEY=indented key', 'SIGNAL_HMAC_KEY', 'indented key'),
     ],
 )
 def test_value_parsing(tmp_path, line, key, expected):
@@ -147,21 +151,39 @@ def test_value_parsing(tmp_path, line, key, expected):
 
 
 @requires_bash
-def test_last_duplicate_key_wins_like_source(tmp_path):
+def test_duplicate_key_fails_closed(tmp_path):
     env = tmp_path / "d.env"
-    env.write_text("K=first\nK=second\n", encoding="utf-8", newline="\n")
-    result = run_bash(
-        f'source "{LIB.as_posix()}"; env_file_get "{env.as_posix()}" K', tmp_path
+    env.write_text(
+        "SIGNAL_HMAC_KEY=first\nSIGNAL_HMAC_KEY=second\n",
+        encoding="utf-8", newline="\n",
     )
-    assert result.stdout == "second"
+    result = run_bash(
+        f'source "{LIB.as_posix()}"; '
+        f'env_file_get "{env.as_posix()}" SIGNAL_HMAC_KEY', tmp_path
+    )
+    assert result.returncode != 0
+
+
+@requires_bash
+@pytest.mark.parametrize("value", ['"unbalanced', "'unbalanced", 'unbalanced"', "unbalanced'"])
+def test_unmatched_quotes_fail_closed(tmp_path, value):
+    env = tmp_path / "quotes.env"
+    env.write_text(f"SIGNAL_HMAC_KEY={value}\n", encoding="utf-8", newline="\n")
+    result = run_bash(
+        f'source "{LIB.as_posix()}"; env_file_load "{env.as_posix()}"', tmp_path
+    )
+    assert result.returncode != 0
 
 
 @requires_bash
 def test_comments_and_blank_lines_ignored(tmp_path):
     env = tmp_path / "c.env"
-    env.write_text("# comment\n\n   \nK=v\n", encoding="utf-8", newline="\n")
+    env.write_text(
+        "# comment\n\n   \nSIGNAL_HMAC_KEY=v\n", encoding="utf-8", newline="\n"
+    )
     result = run_bash(
-        f'source "{LIB.as_posix()}"; env_file_load "{env.as_posix()}"; printf "%s" "$K"',
+        f'source "{LIB.as_posix()}"; env_file_load "{env.as_posix()}"; '
+        'printf "%s" "$SIGNAL_HMAC_KEY"',
         tmp_path,
     )
     assert result.returncode == 0, result.stderr
@@ -171,9 +193,10 @@ def test_comments_and_blank_lines_ignored(tmp_path):
 @requires_bash
 def test_crlf_file_is_parsed_without_trailing_carriage_return(tmp_path):
     env = tmp_path / "crlf.env"
-    env.write_bytes(b"K=value\r\n")
+    env.write_bytes(b"SIGNAL_HMAC_KEY=value\r\n")
     result = run_bash(
-        f'source "{LIB.as_posix()}"; env_file_get "{env.as_posix()}" K', tmp_path
+        f'source "{LIB.as_posix()}"; '
+        f'env_file_get "{env.as_posix()}" SIGNAL_HMAC_KEY', tmp_path
     )
     assert result.stdout == "value"
 
@@ -181,9 +204,10 @@ def test_crlf_file_is_parsed_without_trailing_carriage_return(tmp_path):
 @requires_bash
 def test_missing_key_returns_failure(tmp_path):
     env = tmp_path / "m.env"
-    env.write_text("A=1\n", encoding="utf-8", newline="\n")
+    env.write_text("SIGNAL_HMAC_KEY=1\n", encoding="utf-8", newline="\n")
     result = run_bash(
-        f'source "{LIB.as_posix()}"; env_file_get "{env.as_posix()}" MISSING', tmp_path
+        f'source "{LIB.as_posix()}"; '
+        f'env_file_get "{env.as_posix()}" COMMAND_HMAC_KEY', tmp_path
     )
     assert result.returncode == 1
 
@@ -193,7 +217,7 @@ def test_missing_key_returns_failure(tmp_path):
 def test_malformed_keys_fail_closed_on_load(tmp_path, bad):
     """A tampered or corrupt file must abort, not load a partial configuration."""
     env = tmp_path / "bad.env"
-    env.write_text(f"GOOD=1\n{bad}\n", encoding="utf-8", newline="\n")
+    env.write_text(f"SIGNAL_HMAC_KEY=1\n{bad}\n", encoding="utf-8", newline="\n")
     result = run_bash(
         f'source "{LIB.as_posix()}"; env_file_load "{env.as_posix()}"', tmp_path
     )
@@ -203,7 +227,10 @@ def test_malformed_keys_fail_closed_on_load(tmp_path, bad):
 @requires_bash
 def test_line_without_equals_fails_closed(tmp_path):
     env = tmp_path / "noeq.env"
-    env.write_text("GOOD=1\nthis is not an assignment\n", encoding="utf-8", newline="\n")
+    env.write_text(
+        "SIGNAL_HMAC_KEY=1\nthis is not an assignment\n",
+        encoding="utf-8", newline="\n",
+    )
     result = run_bash(
         f'source "{LIB.as_posix()}"; env_file_load "{env.as_posix()}"', tmp_path
     )
@@ -219,7 +246,7 @@ def test_requested_key_name_is_validated(tmp_path):
     would prove nothing.
     """
     env = tmp_path / "k.env"
-    env.write_text("A=1\n", encoding="utf-8", newline="\n")
+    env.write_text("SIGNAL_HMAC_KEY=1\n", encoding="utf-8", newline="\n")
     result = run_bash(
         f"""source '{LIB.as_posix()}'; env_file_get '{env.as_posix()}' 'A[0]$(touch pwned)'""",
         tmp_path,
@@ -252,6 +279,32 @@ def test_require_trusted_rejects_a_world_writable_file(tmp_path):
         tmp_path,
     )
     assert result.returncode != 0, "a group/world-writable env file must be rejected"
+
+
+@requires_bash
+@pytest.mark.parametrize(
+    "key",
+    ["PATH", "LD_PRELOAD", "LD_LIBRARY_PATH", "BASH_ENV", "ENV", "IFS", "PYTHONHOME", "PYTHONPATH"],
+)
+def test_process_control_variables_are_rejected(tmp_path, key):
+    env = tmp_path / "process-control.env"
+    env.write_text(f"{key}=/tmp/attacker\n", encoding="utf-8", newline="\n")
+    result = run_bash(
+        f'source "{LIB.as_posix()}"; env_file_pairs "{env.as_posix()}" >/dev/null',
+        tmp_path,
+    )
+    assert result.returncode != 0, f"{key} must never enter a privileged child environment"
+
+
+@requires_bash
+def test_every_shipped_environment_template_matches_the_allowlist(tmp_path):
+    templates = [ROOT / ".env.example", *sorted((ROOT / "monitoring").glob(".env.monitor.*.example"))]
+    for template in templates:
+        result = run_bash(
+            f'source "{LIB.as_posix()}"; env_file_pairs "{template.as_posix()}" >/dev/null',
+            tmp_path,
+        )
+        assert result.returncode == 0, f"{template}: {result.stderr}"
 
 
 # --------------------------------------------------------------------------
@@ -296,6 +349,26 @@ def test_privileged_scripts_check_env_ownership(script):
         f"{script.name} must verify ownership and permissions before reading "
         "an environment file with elevated privileges"
     )
+
+
+def test_oracle_env_ownership_contract_is_root_only_end_to_end():
+    setup = ORACLE_SETUP.read_text(encoding="utf-8")
+    wrapper = ROOT_WRAPPER.read_text(encoding="utf-8")
+    installer = INSTALL_ARTIFACT.read_text(encoding="utf-8")
+    deployment = (ROOT / "docs/GITHUB_ORACLE_DEPLOYMENT.md").read_text(encoding="utf-8")
+    security = (ROOT / "docs/SECURITY_AND_SECRETS_GUIDE.md").read_text(encoding="utf-8")
+
+    assert 'install -m 0600 -o root -g root /dev/null "$PRIVATE/.env"' in setup
+    assert 'chown root:root "$PRIVATE/.env"' in setup
+    assert 'require_canonical_file "$ENV_FILE" 0 0 600' in wrapper
+    assert "private env must be owned by root:root" in wrapper
+    assert "persistent runtime ownership does not match BOT_UID/BOT_GID" in wrapper
+    assert '$(stat -c \'%u\' "$ENV_FILE") == 0' in installer
+    assert '$(stat -c \'%g\' "$ENV_FILE") == 0' in installer
+    assert "deployment-user-owned file" not in installer
+    assert "owned by `root:root`" in deployment
+    assert "sudoedit /etc/bitcoin-bot/.env" in deployment
+    assert "(`root:root`, mode 0600)" in security
 
 
 def test_library_is_manifested():

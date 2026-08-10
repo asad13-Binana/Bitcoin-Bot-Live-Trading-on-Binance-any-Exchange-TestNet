@@ -69,8 +69,7 @@ simulation_env_preflight(){
   local runner_uid runner_gid
   runner_uid=$(id -u "$RUNNER_USER")
   runner_gid=$(id -g "$RUNNER_USER")
-  [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]] || fail "private env missing or unsafe: $ENV_FILE"
-  [[ $(stat -c '%a' "$ENV_FILE") == 600 ]] || fail "$ENV_FILE must be mode 600"
+  require_canonical_file "$ENV_FILE" 0 0 600
   command -v runuser >/dev/null 2>&1 || fail "runuser is required"
   if runuser -u "$RUNNER_USER" -- test -r "$ENV_FILE"; then
     fail "$RUNNER_USER must not be able to read $ENV_FILE"
@@ -80,15 +79,16 @@ simulation_env_preflight(){
       fail "$RUNNER_USER unexpectedly belongs to privileged group: $forbidden_group"
     fi
   done
-  python3 - "$ENV_FILE" "$runner_uid" "$runner_gid" <<'PY'
+  python3 - "$ENV_FILE" "$PERSIST" "$runner_uid" "$runner_gid" <<'PY'
 import os
 from pathlib import Path
 import re
 import sys
 
 path = Path(sys.argv[1])
-runner_uid = int(sys.argv[2])
-runner_gid = int(sys.argv[3])
+persist = Path(sys.argv[2])
+runner_uid = int(sys.argv[3])
+runner_gid = int(sys.argv[4])
 values = {}
 for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
     line = raw.strip()
@@ -147,9 +147,14 @@ try:
     bot_gid = int(values["BOT_GID"])
 except (KeyError, ValueError):
     raise SystemExit("BOT_UID and BOT_GID must be explicit numeric values")
+if bot_uid <= 0 or bot_gid <= 0:
+    raise SystemExit("BOT_UID and BOT_GID must identify a non-root account and group")
 stat = path.stat()
-if stat.st_uid != bot_uid or stat.st_gid != bot_gid:
-    raise SystemExit("private env ownership does not match BOT_UID/BOT_GID")
+if stat.st_uid != 0 or stat.st_gid != 0:
+    raise SystemExit("private env must be owned by root:root")
+persist_stat = persist.stat()
+if persist_stat.st_uid != bot_uid or persist_stat.st_gid != bot_gid:
+    raise SystemExit("persistent runtime ownership does not match BOT_UID/BOT_GID")
 if bot_uid == runner_uid or bot_gid == runner_gid:
     raise SystemExit("runner identity must be separate from the bot deployment identity")
 print("private simulation environment validated without exposing values")

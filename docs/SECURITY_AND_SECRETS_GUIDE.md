@@ -15,7 +15,7 @@ withdrawal. Rotate a key after any suspected disclosure.
 
 ## Storage
 
-Secrets live only in `/etc/bitcoin-bot/.env` (deployment user, mode 0600) and separate
+Secrets live only in `/etc/bitcoin-bot/.env` (`root:root`, mode 0600) and separate
 root/botmon monitor env files. Config snapshots are mode 0600 under a mode-0700
 directory and are bound into a success marker by SHA-256. Do not put any private env,
 key, evidence private key, database, or logs in Git or the ZIP.

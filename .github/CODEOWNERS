@@ -14,6 +14,8 @@
 /scripts/build_manifest.py                          @asad13-Binana
 /scripts/verify_manifest.py                         @asad13-Binana
 /deploy/install_artifact.sh                         @asad13-Binana
+/deploy/install_monitoring.sh                       @asad13-Binana
+/deploy/lib/envfile.sh                              @asad13-Binana
 /deploy/bitcoin-bot-deploy                          @asad13-Binana
 /deploy/oracle_setup.sh                             @asad13-Binana
 /deploy/verify_stack_identity.py                    @asad13-Binana
@@ -22,3 +24,4 @@
 /tests/test_execution_safety.py                     @asad13-Binana
 /tests/test_live_evidence.py                        @asad13-Binana
 /tests/test_deployment_identity.py                  @asad13-Binana
+/tests/test_env_file_parser.py                      @asad13-Binana
