@@ -346,6 +346,34 @@ def test_every_shipped_shell_script_is_covered():
     expected = set(set_git_exec_bits.expected_executables(tracked))
     shell = {path for path in tracked if path.endswith(".sh")}
     assert shell <= expected
-    assert len(expected) == 18, (
-        f"expected 18 release executables, found {len(expected)}: {sorted(expected)}"
+
+    # Pinned explicitly rather than by count, so drift names the file that moved.
+    # deploy/lib/envfile.sh is a sourced library, not a command; it carries the
+    # bit only because build_release_zip.py marks every *.sh 0755, which is
+    # harmless and keeps that rule simple.
+    known = {
+        "deploy/install_artifact.sh",
+        "deploy/install_monitoring.sh",
+        "deploy/lib/envfile.sh",
+        "deploy/oracle_setup.sh",
+        "deploy/verify_release.sh",
+        "deploy/verify_stack_identity.py",
+        "freqtrade/scripts/backtest.sh",
+        "freqtrade/scripts/download_data.sh",
+        "freqtrade/scripts/lookahead.sh",
+        "freqtrade/scripts/recursive.sh",
+        "freqtrade/scripts/start.sh",
+        "freqtrade/scripts/stop.sh",
+        "freqtrade/scripts/verify.sh",
+        "scripts/build_manifest.py",
+        "scripts/build_release_zip.py",
+        "scripts/certify_live_evidence.py",
+        "scripts/healthcheck.sh",
+        "scripts/verify_live_evidence.py",
+        "scripts/verify_manifest.py",
+    }
+    assert expected == known, (
+        "release executable set changed; add or remove the path deliberately.\n"
+        f"  unexpected: {sorted(expected - known)}\n"
+        f"  missing   : {sorted(known - expected)}"
     )

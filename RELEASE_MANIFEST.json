@@ -105,12 +105,16 @@
       "size": 18155
     },
     "deploy/install_artifact.sh": {
-      "sha256": "ab56749b4c4b7ed55249417be6c31de9805a40cc67cae09196a1f5be398497ab",
-      "size": 44643
+      "sha256": "4b17a191b53f4ff9f2256eea7fd7ebcdded3bf469ff5845bbe3ec2ed3d7d8f09",
+      "size": 50669
     },
     "deploy/install_monitoring.sh": {
-      "sha256": "06d5ec680975e263a2b6b65e57e25622b1b87b62662777d84a2fa4e31dbf74db",
-      "size": 10687
+      "sha256": "74338167890ccdb73f5f32568f400cc9017f4cd03b73ae5c2f179a23766a0d15",
+      "size": 16292
+    },
+    "deploy/lib/envfile.sh": {
+      "sha256": "1d1c29e1a559e7cd67e9d8a3f2620e9fa276ef5bfd0444bd92950845357f4027",
+      "size": 5297
     },
     "deploy/oracle_setup.sh": {
       "sha256": "bb14c98c2906ed85027f0373136d62c775f328c26a6cc7197cd7ab59aef16b0d",
@@ -165,12 +169,12 @@
       "size": 2483
     },
     "docs/audit/FILE_REVIEW_LEDGER.csv": {
-      "sha256": "8e692f9f909557d4daaaaa8ca22fb9afd22bbee42d5277f814bf623e36424c44",
-      "size": 38754
+      "sha256": "217736691c2e1f6b3874805f1a0ca627e777346c1343e054383692146027254a",
+      "size": 39607
     },
     "docs/audit/FUNCTION_PARITY_MATRIX.csv": {
-      "sha256": "8434f2658aff674c750c4ad7b864aa534c04643934389706e011b417a54fa83a",
-      "size": 109005
+      "sha256": "215da0e6a71ab3671695af73cb17697684f38d2483f6142c6543340f8f937cbf",
+      "size": 112124
     },
     "docs/audit/ISSUE_LEDGER.csv": {
       "sha256": "bf698153607092c4125eb2caf72f844325d6403502d5016de42f454f6e0701d4",
@@ -672,6 +676,10 @@
       "sha256": "9ab5323f2759a4279bd19395e3e70dca706fca615885b8394d0f9abee17341bf",
       "size": 4305
     },
+    "tests/test_env_file_parser.py": {
+      "sha256": "ec920dba256299a0a5760e1b73fc0a26bc7c08b32d85856599ef4ed22c03ab99",
+      "size": 11562
+    },
     "tests/test_execution_safety.py": {
       "sha256": "5a6169f0c1e0e22c3cb6773bac77c5238ccbaa153c6ae0153c204db448487cb9",
       "size": 50335
@@ -685,8 +693,8 @@
       "size": 10109
     },
     "tests/test_repository_hygiene.py": {
-      "sha256": "e1576655f7379787073b876fe24272172ab3fd5519fe2741cd25ed0325d89339",
-      "size": 13270
+      "sha256": "c97f22530896a695d996804fa1452dcbc4b7a8ef340c2aec6a434bf44a58b69c",
+      "size": 14416
     },
     "tests/test_secret_scan.py": {
       "sha256": "f7daa848c775f818396037cc62890f9223ab592cae5087e552ed6f24a0c1f174",
