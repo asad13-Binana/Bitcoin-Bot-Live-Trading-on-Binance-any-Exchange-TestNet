@@ -91,9 +91,10 @@ working tree or manually fabricated checksums. The workflow writes the exact
 commit to `.git-commit`, regenerates the manifest and creates an immutable
 tarball plus adjacent SHA-256.
 
-Before the local 13 August candidate is published, review its complete diff,
-commit it, push it, and let CI regenerate the final artifact. Until then it is
-not an Oracle release artifact.
+The initial hardening source is published. For an Oracle deployment, review the
+selected `main` commit and require that exact commit's successful workflow and
+immutable artifact. A local working tree or manually built archive is not an
+Oracle release artifact.
 
 Download the artifact for that exact commit to the administrator workstation.
 Verify the adjacent checksum locally and independently record the complete

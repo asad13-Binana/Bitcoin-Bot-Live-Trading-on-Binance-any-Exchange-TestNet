@@ -73,8 +73,8 @@
       "size": 1538
     },
     "ORACLE_DEPLOYMENT_HARDENING_REPORT_2026-08-13.md": {
-      "sha256": "b6fc035cfe3ab4ce4fabd5b7dbbccf21027872574f54c05fccda0cab2d391291",
-      "size": 18229
+      "sha256": "9f51e9353bb7644173fa289a00524bdac8a062cf63f3e8b6ddf01fab84b42eeb",
+      "size": 18412
     },
     "PACKAGE_NOTES.txt": {
       "sha256": "787165962ef3f1cd39235bf5050d0c3e54a2fcc36c86d2537387d093920dac61",
@@ -101,8 +101,8 @@
       "size": 8
     },
     "VALIDATION_STATUS.json": {
-      "sha256": "1f3d428d50e81f3e64f91d7b0c245b5694a054fa47541b158b09bd3d6fc98a1a",
-      "size": 12883
+      "sha256": "d151759929020804168d94aaa58a69b96d4716ebed3b9ee0f4aabd4054c2de37",
+      "size": 12995
     },
     "deploy/backup_state.sh": {
       "sha256": "026b30faacab207585194d11f14384ac8e171bb52f3bdc0fecb28b77dc860c9f",
@@ -193,16 +193,16 @@
       "size": 7301
     },
     "docs/ORACLE_SETUP_GUIDE.md": {
-      "sha256": "a7199b075be6c5c94a229cfc9b025fcd21d870387deb7f2a1fc3f282bf79c603",
-      "size": 11135
+      "sha256": "2be0567ef96e206301143b70df753422d38b3f46d8805d841d20586454ba0777",
+      "size": 11208
     },
     "docs/SECURITY_AND_SECRETS_GUIDE.md": {
       "sha256": "f6704f0f9e2738d768715086bcf50ad05e160b945c2b554cbf1ab1373cba2142",
       "size": 2479
     },
     "docs/audit/FILE_REVIEW_LEDGER.csv": {
-      "sha256": "74fa311fb8074fd7537ed23adaeb1a6f88af169b2a0c183eed6c49d3a335e283",
-      "size": 42866
+      "sha256": "3b0919015fa8d6e22b9320e7a708aaa376aa7baa1b353350be3846fa13671166",
+      "size": 42874
     },
     "docs/audit/FUNCTION_PARITY_MATRIX.csv": {
       "sha256": "8eaf114466b13ba9c1dd0d1a4c01268e00eba5600c1ec6fc0c220956f286d914",
