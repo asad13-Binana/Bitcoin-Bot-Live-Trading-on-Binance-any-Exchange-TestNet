@@ -1,6 +1,7 @@
 # Oracle deployment hardening report — 13 August 2026
 
-Classification: **review only — local TestNet candidate, not committed or pushed**.
+Classification: **review only — TestNet source hardening published; Oracle-host
+and authenticated TestNet validation pending**.
 
 ## Executive verdict
 
@@ -28,18 +29,13 @@ real money. LIVE promotion remains prohibited.
 | Release mode | `testnet` |
 | Default execution | `simulation` |
 | LIVE certified | false |
-| Local working state | modified, uncommitted, not pushed |
+| Initial hardening commit | `8a7d70dcc67a4491b3571ab271c60c90793835c8`; push CI passed |
 | LIVE reference HEAD | `e3771aeba67061ea343301235e652aa99154bff6` |
 | LIVE reference status | clean and untouched |
 
-The local candidate is in:
-
-```text
-C:\Users\asadm\Desktop\Bitcoin Codex Working\oracle-hardening-2026-08-13\bitcoin-bot-testnet
-```
-
-The separate LIVE checkout is a read-only comparison reference. It has no local
-change.
+The separate LIVE release remains an independent lineage and requires its own
+review, CI and runtime validation. TestNet publication does not authorise a LIVE
+deployment.
 
 ## Protected strategy proof
 
@@ -239,10 +235,10 @@ approval consumption, release/config identity, atomic current-link switch,
 deployment locks, bounded release retention, exact stack identity and
 transactional rollback.
 
-The local candidate is not an immutable release yet. After owner review it must
-be committed and pushed; GitHub CI must write the final `.git-commit`, regenerate
-the manifest and build the exact-head artifact. No local working-tree artifact
-should be installed on Oracle.
+The initial hardening commit passed its push workflow. For deployment, select a
+reviewed `main` commit with its own successful exact-head GitHub run; CI must
+write `.git-commit`, regenerate the manifest and build the immutable artifact.
+No local working-tree artifact should be installed on Oracle.
 
 ## Tests and evidence
 
@@ -311,6 +307,7 @@ PACKAGE_NOTES.txt
 README.md
 RELEASE_MANIFEST.json
 RELEASE_SHA256.txt
+VALIDATION_STATUS.json
 deploy/bitcoin-bot-deploy
 deploy/install_artifact.sh
 deploy/install_monitoring.sh
@@ -365,7 +362,9 @@ tests/test_oracle_hardening_2026_08_13.py
 5. No disk/OOM/network/DNS/corrupt-release/rollback fault injection was executed
    on Linux.
 6. No 14-day Oracle soak exists.
-7. The local candidate is uncommitted and has no exact-head CI artifact.
+7. Every later selected deployment commit requires its own green exact-head CI
+   run and immutable artifact; the successful initial hardening run does not
+   certify future commits.
 8. The root-only local backup requires owner-managed encryption and off-host
    retention; automatic cloud backup was intentionally not authorised.
 9. OCI A1 capacity and Tokyo-region availability are external and not guaranteed.
