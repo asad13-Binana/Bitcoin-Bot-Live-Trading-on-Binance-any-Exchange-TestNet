@@ -52,7 +52,7 @@ with a 5m hard trend filter.
 
 ## Safe first launch
 
-The supported Oracle path uses an Ubuntu 22.04 or 24.04 compute image. Verify the
+The current Oracle A1 target uses Ubuntu 24.04 LTS ARM64. Verify the
 immutable source before creating any runtime environment file:
 
 ```bash
@@ -85,7 +85,9 @@ production Spot and same-symbol USD-M public market data so dry/Testnet decision
 the real market. Testnet fills therefore validate lifecycle safety, not realistic
 liquidity, slippage, or profitability.
 
-For the supported Oracle installer and rollback flow, read
+For the beginner-safe Oracle host and installer flow, read
+[`docs/ORACLE_SETUP_GUIDE.md`](docs/ORACLE_SETUP_GUIDE.md). For the optional
+GitHub Actions simulation flow, read
 [`docs/GITHUB_ORACLE_DEPLOYMENT.md`](docs/GITHUB_ORACLE_DEPLOYMENT.md). For testnet
 and live gates, read [`docs/LIVE_PROMOTION_CHECKLIST.md`](docs/LIVE_PROMOTION_CHECKLIST.md).
 The pinned six-repository Binance review and adopted/rejected decisions are in

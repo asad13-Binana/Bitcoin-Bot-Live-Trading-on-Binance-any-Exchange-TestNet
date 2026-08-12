@@ -8,6 +8,7 @@
 - [Freqtrade official GitHub repository](https://github.com/freqtrade/freqtrade)
 - [Binance official Spot API repository](https://github.com/binance/binance-spot-api-docs)
 - [Binance Spot REST API](https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md)
+- [Binance current Spot REST API and request timing security](https://developers.binance.com/en/docs/products/spot/rest-api)
 - [Binance symbol/exchange filters](https://github.com/binance/binance-spot-api-docs/blob/master/filters.md)
 - [Binance Spot API changelog](https://github.com/binance/binance-spot-api-docs/blob/master/CHANGELOG.md)
 - [Binance Spot Test Network general information](https://github.com/binance/binance-spot-api-docs/blob/master/testnet/general-info.md)
@@ -17,11 +18,18 @@
 - [Oracle first Linux instance tutorial](https://docs.oracle.com/en-us/iaas/Content/Compute/tutorials/first-linux-instance/overview.htm)
 - [Oracle instance metadata service](https://docs.oracle.com/en-us/iaas/Content/Compute/Tasks/gettingmetadata.htm)
 - [Oracle Compute security](https://docs.oracle.com/en-us/iaas/Content/Security/Reference/compute_security.htm)
+- [Docker Engine installation on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+- [Docker Engine Linux post-install security](https://docs.docker.com/engine/install/linux-postinstall)
+- [Docker packet filtering, published ports and UFW](https://docs.docker.com/engine/network/packet-filtering-firewalls/)
+- [Docker daemon socket protection](https://docs.docker.com/engine/security/protect-access/)
+- [Ubuntu automatic security updates](https://documentation.ubuntu.com/server/how-to/software/automatic-updates/)
+- [Ubuntu OpenSSH server configuration](https://documentation.ubuntu.com/server/how-to/security/openssh-server/)
 - [GitHub deployments and environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)
 - [GitHub artifact attestations](https://docs.github.com/en/actions/concepts/security/artifact-attestations)
 - [GitHub Actions secure use](https://docs.github.com/en/actions/reference/security/secure-use)
 - [GitHub-hosted runner IP address guidance](https://docs.github.com/en/actions/reference/runners/github-hosted-runners#ip-addresses)
 - [GitHub self-hosted runners reference](https://docs.github.com/en/actions/reference/runners/self-hosted-runners)
+- [GitHub compromised runner security](https://docs.github.com/en/enterprise-cloud@latest/actions/concepts/security/compromised-runners)
 
 Exchange capabilities, limits, cloud capacity, software releases, and GitHub features
 can change. Recheck these official sources before each production promotion.

@@ -1,5 +1,5 @@
 [Unit]
-Description=Refresh the Bitcoin bot sanitized Docker status snapshot
+Description=Verify the Bitcoin bot sanitized container status snapshot
 
 [Timer]
 OnBootSec=30s

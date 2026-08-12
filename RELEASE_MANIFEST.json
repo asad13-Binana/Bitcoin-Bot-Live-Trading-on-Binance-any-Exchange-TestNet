@@ -5,8 +5,8 @@
       "size": 273
     },
     ".env.example": {
-      "sha256": "9df04ffd3fa495ceadfe7e07e3a3f4fe49b5f715452573fb463764ceaeaad02f",
-      "size": 4609
+      "sha256": "5cebd6e0d9d9c061e1cbae9e6464eec1dc81dcf4279b136abcf8c91a7fb93d33",
+      "size": 4691
     },
     ".git-commit": {
       "sha256": "e8c0557820faaaa942f1d921eb87aeee4f071d34b7805ff5288d6c9b1d98a1c7",
@@ -72,9 +72,13 @@
       "sha256": "96a3742a7b6d90051fcc1d0c4f9262f7dda7c6fbe4ed8a23c6791d456f0afda6",
       "size": 1538
     },
+    "ORACLE_DEPLOYMENT_HARDENING_REPORT_2026-08-13.md": {
+      "sha256": "b6fc035cfe3ab4ce4fabd5b7dbbccf21027872574f54c05fccda0cab2d391291",
+      "size": 18229
+    },
     "PACKAGE_NOTES.txt": {
-      "sha256": "274b268e79dd6273a322365635a8fb060218d8dabefa7e250633f34dd9fb864d",
-      "size": 1537
+      "sha256": "787165962ef3f1cd39235bf5050d0c3e54a2fcc36c86d2537387d093920dac61",
+      "size": 1536
     },
     "PATCH_NOTES_2026-08-01.txt": {
       "sha256": "ef2b2d46552d00b7fa5fad26f2553e1b34a343457ff8382bbc34a656bdd92202",
@@ -89,8 +93,8 @@
       "size": 4790
     },
     "README.md": {
-      "sha256": "d747a26519b5c77c97a6876ebbd285a8ca2f5ee77c29c6e33f338702550a6124",
-      "size": 8017
+      "sha256": "1dd0d5a75d7b975e18b8fd210f875bcfce95b2bc36e11ca97c20ede571c6bb1f",
+      "size": 8118
     },
     "RELEASE_MODE": {
       "sha256": "e4b87a69f913da48060c909bafab37d64bcf4dc7d835a19d388da46ebd838c3d",
@@ -100,25 +104,49 @@
       "sha256": "1f3d428d50e81f3e64f91d7b0c245b5694a054fa47541b158b09bd3d6fc98a1a",
       "size": 12883
     },
+    "deploy/backup_state.sh": {
+      "sha256": "026b30faacab207585194d11f14384ac8e171bb52f3bdc0fecb28b77dc860c9f",
+      "size": 2833
+    },
     "deploy/bitcoin-bot-deploy": {
-      "sha256": "3ea9aeabaffa1badf80604620a0774d536e5b1586aa690815f23cb459e3d4e53",
-      "size": 18342
+      "sha256": "fe66b588b7fee9dd94f57f3066eacc0f6e967bec2de0d486ede5c03351d575aa",
+      "size": 18772
     },
     "deploy/install_artifact.sh": {
-      "sha256": "b92545b915b9fa9d5f5f0b57427078c77c9985841ca05b951d5b391b09d06d24",
-      "size": 54808
+      "sha256": "c8c8594ffa9c44fbd38dacf81d31a401c5d98aa897209638fc31a42d99741044",
+      "size": 55619
     },
     "deploy/install_monitoring.sh": {
-      "sha256": "2076998343a76739718336582e037a8a8fdf375963a35d9295837f1db557ca5b",
-      "size": 20460
+      "sha256": "83b9271dee76f164f1cc65fbb0bdceeee310f2d680098b022651efc77e43155f",
+      "size": 21867
     },
     "deploy/lib/envfile.sh": {
-      "sha256": "1c28cb1e5deae3b28f48c0bc3a38c15af0f5f7da02059e0dd5e2ac642852d018",
-      "size": 9465
+      "sha256": "ed59903fc8225ec582efd3a477b84861c2aa453ec9d683b0dc3bcb447fe1a7f1",
+      "size": 9515
     },
     "deploy/oracle_setup.sh": {
-      "sha256": "a1981cfa4146248f8d2b8b1506302869f0745455962c41a0246eadde3106a7d1",
-      "size": 11368
+      "sha256": "53e3d35ac1eda36538d258c40980aaa4281b4e9e5278af079d294607636f4aac",
+      "size": 17813
+    },
+    "deploy/oracle_validate.sh": {
+      "sha256": "e70be59ab517ee531be0c0d3eee37f1a9c143b1df64424435e76ddee7e3517e6",
+      "size": 7900
+    },
+    "deploy/resource_guard.sh": {
+      "sha256": "78292945076bad6bc93bd2025e3d1e006d211b70d920430dd7733817792887f4",
+      "size": 6447
+    },
+    "deploy/systemd/bitcoin-bot-resource-guard.service": {
+      "sha256": "6e2ddb5812cbd341f2428404822569599afd1cb1920b2731d30b364506fa380b",
+      "size": 587
+    },
+    "deploy/systemd/bitcoin-bot-resource-guard.timer": {
+      "sha256": "2901aa45cd04e15b3ff33c43c104a72c15349f4fe4a6541d552128a10c148c43",
+      "size": 222
+    },
+    "deploy/verify_backup.sh": {
+      "sha256": "7ea7da5eaa7e40e03635458f8fd13a4356bfa1b09168a507d40cd4252aaf7955",
+      "size": 1746
     },
     "deploy/verify_release.sh": {
       "sha256": "59ac88054ff8c69fb9f38e7e00d1dd2ae48ee3d56c4f599121151aba10d565e8",
@@ -129,8 +157,8 @@
       "size": 8809
     },
     "docker-compose.yml": {
-      "sha256": "6efd733d0fbbcd13c631a997064855c0ebc80d4bd956da766ccc4ecbc3884c10",
-      "size": 14753
+      "sha256": "5e00abcabb57f6f71352fad4bff7feae9e5284e5f88d3f3890a0e6294fe3f74c",
+      "size": 15528
     },
     "docs/BACKTEST_REVIEW_2026-07-29.md": {
       "sha256": "fff48fa02a51ef181eeb1e19d9404f05bb4c2028a29d080142ee286656d1f348",
@@ -145,8 +173,8 @@
       "size": 2074
     },
     "docs/GITHUB_ORACLE_DEPLOYMENT.md": {
-      "sha256": "b0f9b5555caf1a7444a0fa1dda3856df0ce715737c1bff6e25354a97bde13236",
-      "size": 10484
+      "sha256": "323e833ceabf49788add03c4828d5ddeecc1e78c84b48f002d34782e2bf4d380",
+      "size": 11116
     },
     "docs/GITHUB_RELEASE_AND_ROLLBACK_GUIDE.md": {
       "sha256": "44e84ea5c9f654c571cd002c04cc5e4fd50b0a2955fa4b9bbb9e4cfeb59ace6e",
@@ -157,24 +185,28 @@
       "size": 4025
     },
     "docs/OFFICIAL_DEPLOYMENT_REFERENCES.md": {
-      "sha256": "c9838fa171209bbe4542e5aecec088f0721d4ba35acc0579a496c537ac2cd5c8",
-      "size": 2514
+      "sha256": "f69608f37d2ce2e06f31017e8f7ad775f368a67696bd9780ec70f46e63bb632e",
+      "size": 3410
     },
     "docs/ORACLE_GITHUB_SOURCE_REVIEW_2026-07-30.md": {
       "sha256": "30f9b16ee2099345d822242ca8d94554f1999fe77c043d1e3d2195855fc470cc",
       "size": 7301
+    },
+    "docs/ORACLE_SETUP_GUIDE.md": {
+      "sha256": "a7199b075be6c5c94a229cfc9b025fcd21d870387deb7f2a1fc3f282bf79c603",
+      "size": 11135
     },
     "docs/SECURITY_AND_SECRETS_GUIDE.md": {
       "sha256": "f6704f0f9e2738d768715086bcf50ad05e160b945c2b554cbf1ab1373cba2142",
       "size": 2479
     },
     "docs/audit/FILE_REVIEW_LEDGER.csv": {
-      "sha256": "5a69b82989606e1112d2b40ac1c1da255b272dbcb6f84689884b602191c7bab4",
-      "size": 40153
+      "sha256": "74fa311fb8074fd7537ed23adaeb1a6f88af169b2a0c183eed6c49d3a335e283",
+      "size": 42866
     },
     "docs/audit/FUNCTION_PARITY_MATRIX.csv": {
-      "sha256": "8e3515d0ffde0f10640bf1e93c2d68c762b0ad83ed7a4c113e803f1b032dacd2",
-      "size": 112670
+      "sha256": "8eaf114466b13ba9c1dd0d1a4c01268e00eba5600c1ec6fc0c220956f286d914",
+      "size": 113356
     },
     "docs/audit/ISSUE_LEDGER.csv": {
       "sha256": "bf698153607092c4125eb2caf72f844325d6403502d5016de42f454f6e0701d4",
@@ -257,15 +289,15 @@
       "size": 1914
     },
     "monitoring/.env.monitor.simulation.example": {
-      "sha256": "130e3010ac3440bb87ab0879aadc2a7aac3af9ae02fd2f1660d31fb3799c57b3",
+      "sha256": "835cd5baa58b90bc7d50a0d64e5bb8d98b97382d9fcce19221f7e294fb8d507a",
       "size": 1933
     },
     "monitoring/.env.monitor.testnet.example": {
-      "sha256": "239823ec532f7ce877b06ae42ba48ea88f1ca8d69079aa16dbdd0b43abd73394",
+      "sha256": "92845f0e01597edafb55f86ac1dbc09ed304e347f87ab75ea397b4e636fe9605",
       "size": 1849
     },
     "monitoring/INSTALL.md": {
-      "sha256": "acbaeee74ce04f39f8013df04dbfd605df163fb8979a8589289b812861943f1c",
+      "sha256": "79b194a717ff4d0173a6b557d9cfb6cb331b615a41a832951d42e5c0d5659c26",
       "size": 1753
     },
     "monitoring/MIGRATION_NOTES.md": {
@@ -277,8 +309,8 @@
       "size": 404
     },
     "monitoring/README.md": {
-      "sha256": "c1ef1131db99e7907ae4429b674a069ef50ce07c40fc7817fa30869434804f82",
-      "size": 2063
+      "sha256": "1ab4138759f67fe0ce9116e27566cfcccde70b7e86103b89656214dd9fcb28a3",
+      "size": 2129
     },
     "monitoring/SECURITY.md": {
       "sha256": "c4b3f300349b632bf8fd7687872913efc79700982b4ec79648f8868eb6ef533d",
@@ -301,7 +333,7 @@
       "size": 3073
     },
     "monitoring/api/configuration.py": {
-      "sha256": "1e5277bada18311613cb55577127db93b7facd7b2e60da7e7d11ee5b33b2ea37",
+      "sha256": "fb570684b49804b40461a15a809b30a0ba8e1b62e2d49f6b9711305c8ab20dd9",
       "size": 7246
     },
     "monitoring/api/database.py": {
@@ -325,7 +357,7 @@
       "size": 1378
     },
     "monitoring/mcp/monitor_mcp_server.py": {
-      "sha256": "3265013914fbeb193e8123bc1dd15864d249b4175fd5929434edc7a50816b2a0",
+      "sha256": "b28f4e864d7aac52f20c724b2e5234091fef935e1c64e7ed5d561f318e6a1b10",
       "size": 4227
     },
     "monitoring/requirements-monitoring-dev.txt": {
@@ -339,10 +371,6 @@
     "monitoring/requirements-monitoring.txt": {
       "sha256": "e57bf3606485dc53af612254ef75f74ab4d91577736fe69aef92e5e69b42f106",
       "size": 651
-    },
-    "monitoring/snapshot.py": {
-      "sha256": "dc3388a1ba1e57c96bb3a3d5800bbf60113d2879e862ff8227870169f4fc25a7",
-      "size": 3511
     },
     "monitoring/systemd/bitcoin-bot-monitor-live.service": {
       "sha256": "625ccf7d6ddb5d793beb25c4f03fa1405a9af99e091ce6505ae7e8b0750aca6d",
@@ -377,12 +405,12 @@
       "size": 1269
     },
     "monitoring/systemd/bitcoin-bot-monitor-snapshot.service": {
-      "sha256": "7ac3863e1613a26aa685879c1b71f432b2f17809bbbf744bc6700a3529f1866a",
-      "size": 802
+      "sha256": "c7f55a9664c7fe1b999a79c2ccc856c01938ff6c85be1aa68ea64751c26816bf",
+      "size": 774
     },
     "monitoring/systemd/bitcoin-bot-monitor-snapshot.timer": {
-      "sha256": "efd6a9da6b3100649df64a87ee0303c8b0f8520f2dcdb86d69e99262ca4cbd80",
-      "size": 210
+      "sha256": "181a3cede455f563d557fe717b0b623e1ecf73f0fcf00b53f9c8f69dedbbe9c3",
+      "size": 212
     },
     "monitoring/systemd/bitcoin-bot-monitor-testnet.service": {
       "sha256": "71b9ff585340a97249418aba19889c00a58991f15404e5dc7bbccbdbe58b01a3",
@@ -401,8 +429,8 @@
       "size": 0
     },
     "monitoring/tests/test_monitoring.py": {
-      "sha256": "04738351152827b64e5088d243b3b10ee8805867152999f40b9203348ad73d61",
-      "size": 20762
+      "sha256": "044ef6cebf89a04b7664d7571a73004cc34122445cba51ae11ac6c83d83f4934",
+      "size": 20520
     },
     "requirements-dev.txt": {
       "sha256": "3aa0499fadd0e46c5ee96b00b5819bc901f117a4143b3195544d3d702989054b",
@@ -457,8 +485,8 @@
       "size": 4065
     },
     "scripts/verify_systemd_units.py": {
-      "sha256": "fe5cde477fc76b71f3a10d4432b5208a3b506ae1fb7ca43fa4c1d8b101256a54",
-      "size": 10079
+      "sha256": "376bcae96bb23fd3eff96da8c1717b7a4ced2957dc358a0717c5e23c8094ffa4",
+      "size": 10531
     },
     "services/__init__.py": {
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -692,9 +720,13 @@
       "sha256": "15e79142a12a2b9551b06f9ef2c36ddb89d1a126df426b0f3c63e3a03587a53f",
       "size": 10109
     },
+    "tests/test_oracle_hardening_2026_08_13.py": {
+      "sha256": "b2bfd1b4fd3bbe2cd190598268f6b82236d941219aab7e95b7a0d270abaede83",
+      "size": 7752
+    },
     "tests/test_repository_hygiene.py": {
-      "sha256": "c97f22530896a695d996804fa1452dcbc4b7a8ef340c2aec6a434bf44a58b69c",
-      "size": 14416
+      "sha256": "746dc7a167a3ab5555771baaba2ec7e4e521affcf85546bf9edaebdac6bb1b36",
+      "size": 14236
     },
     "tests/test_secret_scan.py": {
       "sha256": "f7daa848c775f818396037cc62890f9223ab592cae5087e552ed6f24a0c1f174",

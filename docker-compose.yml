@@ -27,6 +27,9 @@ services:
     image: bitcoin-bot-services:${RELEASE_TAG:-local}
     command: python -m services.moneyflow.service
     environment:
+      BOT_PRODUCT: ${BOT_PRODUCT:-BITCOIN-BOT}
+      BOT_ENVIRONMENT: ${BOT_ENVIRONMENT:-TESTNET}
+      BOT_INSTANCE_ID: ${BOT_INSTANCE_ID:-BITCOIN-TN-TYO-01}
       DEPLOYED_RELEASE_HASH: ${DEPLOYED_RELEASE_HASH:?installer must bind the release hash}
       DEPLOYED_CONFIG_SHA256: ${DEPLOYED_CONFIG_SHA256:?installer must bind the config hash}
       SHARED_ROOT: /app/shared
@@ -67,6 +70,8 @@ services:
       - ${SHARED_HOST_PATH:-./shared}/runtime/moneyflow:/app/shared/runtime/moneyflow
       - ${SHARED_HOST_PATH:-./shared}/audit:/app/shared/audit
     mem_limit: 180m
+    cpus: 0.15
+    pids_limit: 128
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import json,time;d=json.load(open('/app/shared/runtime/moneyflow/moneyflow_health.json'));assert d.get('ok') is True and time.time()-float(d['ts'])<60\""]
       interval: 20s
@@ -82,6 +87,9 @@ services:
       moneyflow:
         condition: service_healthy
     environment:
+      BOT_PRODUCT: ${BOT_PRODUCT:-BITCOIN-BOT}
+      BOT_ENVIRONMENT: ${BOT_ENVIRONMENT:-TESTNET}
+      BOT_INSTANCE_ID: ${BOT_INSTANCE_ID:-BITCOIN-TN-TYO-01}
       DEPLOYED_RELEASE_HASH: ${DEPLOYED_RELEASE_HASH:?installer must bind the release hash}
       DEPLOYED_CONFIG_SHA256: ${DEPLOYED_CONFIG_SHA256:?installer must bind the config hash}
       FREQTRADE__API_SERVER__ENABLED: "true"
@@ -113,6 +121,8 @@ services:
       --config /freqtrade/shared/pair/freqtrade-active.json
       --strategy IctSmcStrategy
     mem_limit: 520m
+    cpus: 0.45
+    pids_limit: 256
     stop_grace_period: 2m
     security_opt:
       - no-new-privileges:true
@@ -136,6 +146,9 @@ services:
       freqtrade:
         condition: service_healthy
     environment:
+      BOT_PRODUCT: ${BOT_PRODUCT:-BITCOIN-BOT}
+      BOT_ENVIRONMENT: ${BOT_ENVIRONMENT:-TESTNET}
+      BOT_INSTANCE_ID: ${BOT_INSTANCE_ID:-BITCOIN-TN-TYO-01}
       DEPLOYED_RELEASE_HASH: ${DEPLOYED_RELEASE_HASH:?installer must bind the release hash}
       DEPLOYED_CONFIG_SHA256: ${DEPLOYED_CONFIG_SHA256:?installer must bind the config hash}
       EXECUTION_MODE: ${EXECUTION_MODE:-simulation}
@@ -217,6 +230,8 @@ services:
       - ${SHARED_HOST_PATH:-./shared}/runtime/sidecar:/app/shared/runtime/sidecar
       - ${SHARED_HOST_PATH:-./shared}/audit:/app/shared/audit
     mem_limit: 360m
+    cpus: 0.25
+    pids_limit: 128
     stop_grace_period: 2m
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import json,time;d=json.load(open('/app/shared/runtime/sidecar/sidecar_health.json'));assert d['ok'] and time.time()-float(d['ts'])<15\""]
@@ -235,6 +250,9 @@ services:
       freqtrade:
         condition: service_healthy
     environment:
+      BOT_PRODUCT: ${BOT_PRODUCT:-BITCOIN-BOT}
+      BOT_ENVIRONMENT: ${BOT_ENVIRONMENT:-TESTNET}
+      BOT_INSTANCE_ID: ${BOT_INSTANCE_ID:-BITCOIN-TN-TYO-01}
       DEPLOYED_RELEASE_HASH: ${DEPLOYED_RELEASE_HASH:?installer must bind the release hash}
       DEPLOYED_CONFIG_SHA256: ${DEPLOYED_CONFIG_SHA256:?installer must bind the config hash}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN}
@@ -273,6 +291,8 @@ services:
       - ${SHARED_HOST_PATH:-./shared}/runtime:/app/shared/runtime-readonly:ro
       - ${SHARED_HOST_PATH:-./shared}/audit:/app/shared/audit
     mem_limit: 140m
+    cpus: 0.10
+    pids_limit: 96
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import json,time;d=json.load(open('/app/shared/runtime/telegram/telegram_health.json'));assert d['ok'] and time.time()-float(d['ts'])<150\""]
       interval: 30s

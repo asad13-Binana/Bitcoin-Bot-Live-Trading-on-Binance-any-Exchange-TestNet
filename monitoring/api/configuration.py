@@ -69,7 +69,7 @@ class Config:
         self.enabled = _bool("MONITOR_ENABLED", True)
         self.telegram_reports_enabled = _bool("TELEGRAM_REPORTS_ENABLED", False)
         self.bind_host = os.getenv("MONITOR_BIND_HOST", "127.0.0.1").strip()
-        self.port = _int("MONITOR_PORT", 8090, 1, 65535)
+        self.port = _int("MONITOR_PORT", 8091, 1, 65535)
         self.token = os.getenv("MONITOR_TOKEN", "").strip()
         self.rate_limit_per_minute = _int(
             "MONITOR_RATE_LIMIT_PER_MINUTE", 30, 1, 100000

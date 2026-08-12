@@ -1,5 +1,10 @@
 # GitHub and Oracle simulation deployment runbook
 
+For the current Ubuntu 24.04 ARM64 A1 host baseline, optional-runner design,
+monitoring port 8091, backup/resource guard and redacted diagnostic, use
+[`ORACLE_SETUP_GUIDE.md`](ORACLE_SETUP_GUIDE.md). This document remains the
+GitHub Actions simulation-artifact workflow reference.
+
 This is the supported deployment path for the mode-separated Bitcoin Spot bot.
 The downloadable ZIP is a source distribution. GitHub Actions verifies it and
 creates the immutable `bitcoin-bot-<commit>.tar.gz` consumed by the Oracle
@@ -42,7 +47,7 @@ GitHub-hosted runner address ranges.
 
 ## 2. Prepare the Oracle host once
 
-Use a supported Oracle Ubuntu 22.04 or 24.04 Ampere A1 Flex instance. The
+Use an Oracle Ubuntu 24.04 ARM64 Ampere A1 Flex instance. The
 complete four-service stack requires at least 1,400 MiB physical RAM and 3,800
 MiB swap; the 1 GB E2.1.Micro shape is intentionally rejected. Free capacity is
 not guaranteed.
@@ -64,7 +69,7 @@ python3 scripts/verify_manifest.py
 python3 tests/secret_scan.py
 chmod +x deploy/oracle_setup.sh
 sudo -v
-DEPLOY_USER="$(id -un)" bash deploy/oracle_setup.sh
+DEPLOY_USER="$(id -un)" ENABLE_GITHUB_RUNNER=false bash deploy/oracle_setup.sh
 ```
 
 The setup configures the already selected deployment user and creates:
@@ -75,7 +80,8 @@ The setup configures the already selected deployment user and creates:
 - `/var/lib/bitcoin-bot/incoming`, mode `0700`, owned by `gha-runner`;
 - root-only staging and `/etc/bitcoin-bot/approved-artifact.sha256`;
 - root-owned `/usr/local/sbin/bitcoin-bot-deploy`;
-- a sudoers rule for exactly `preflight`, `simulation`, and `verify`.
+- an optional sudoers rule for exactly `preflight`, `simulation`, and `verify`
+  only when `ENABLE_GITHUB_RUNNER=true` is explicitly selected.
 
 The runner is not in `docker`, `sudo`, `adm`, `lxd`, `disk`, or `root`. The
 Docker group is root-equivalent; never add `gha-runner` to it. The runner also
@@ -117,7 +123,12 @@ Network work, this bot's `BINANCE_SPOT_EXECUTION_PUBLIC_BASE` expects the origin
 `https://testnet.binance.vision` because the client appends `/api/v3`; do not put
 the trailing `/api` into this bot-specific variable.
 
-## 4. Register the dedicated self-hosted runner
+## 4. Optionally register the dedicated self-hosted runner
+
+The preferred manual immutable-artifact path leaves the runner application and
+runner sudo policy disabled. Follow this section only when the owner explicitly
+accepts the persistent-runner risk and reruns host setup with
+`ENABLE_GITHUB_RUNNER=true`.
 
 In the private repository, open:
 

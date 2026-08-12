@@ -222,10 +222,6 @@ def verifier():
     [
         "Command /opt/bitcoin-bot/monitoring-current/bin/python is not executable: "
         "No such file or directory",
-        "Command /usr/local/libexec/bitcoin-bot-monitor-snapshot is not executable: "
-        "No such file or directory",
-        "Failed to create bitcoin-bot-monitor-snapshot.service/start: "
-        "Unit docker.service not found.",
     ],
 )
 def test_expected_preinstall_lines_are_accepted_in_source_mode(verifier, line):
@@ -252,7 +248,6 @@ def test_real_defects_are_rejected_in_source_mode(verifier, line):
 
 def test_project_owned_prefixes_do_not_cover_arbitrary_paths(verifier):
     assert verifier.project_owned("/opt/bitcoin-bot/monitoring-current/bin/python")
-    assert verifier.project_owned("/usr/local/libexec/bitcoin-bot-monitor-snapshot")
     assert not verifier.project_owned("/usr/bin/python3")
     assert not verifier.project_owned("/usr/local/libexec/other-tool")
     assert not verifier.project_owned("/opt/something-else/bin/python")
@@ -352,10 +347,14 @@ def test_every_shipped_shell_script_is_covered():
     # bit only because build_release_zip.py marks every *.sh 0755, which is
     # harmless and keeps that rule simple.
     known = {
+        "deploy/backup_state.sh",
         "deploy/install_artifact.sh",
         "deploy/install_monitoring.sh",
         "deploy/lib/envfile.sh",
+        "deploy/oracle_validate.sh",
         "deploy/oracle_setup.sh",
+        "deploy/resource_guard.sh",
+        "deploy/verify_backup.sh",
         "deploy/verify_release.sh",
         "deploy/verify_stack_identity.py",
         "freqtrade/scripts/backtest.sh",

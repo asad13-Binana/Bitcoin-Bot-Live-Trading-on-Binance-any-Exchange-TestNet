@@ -117,6 +117,15 @@ def require(name, minimum=1):
 
 if values.get("EXECUTION_MODE", "simulation") != "simulation":
     raise SystemExit("self-hosted wrapper permits EXECUTION_MODE=simulation only")
+if values.get("BOT_PRODUCT", "BITCOIN-BOT") != "BITCOIN-BOT":
+    raise SystemExit("BOT_PRODUCT must be BITCOIN-BOT")
+if values.get("BOT_ENVIRONMENT", "TESTNET") != "TESTNET":
+    raise SystemExit("BOT_ENVIRONMENT must be TESTNET")
+if not re.fullmatch(
+    r"BITCOIN-TN-[A-Z0-9][A-Z0-9-]{2,47}",
+    values.get("BOT_INSTANCE_ID", "BITCOIN-TN-TYO-01"),
+):
+    raise SystemExit("BOT_INSTANCE_ID must use the BITCOIN-TN- namespace")
 for name in ("LIVE_TRADING_ENABLED", "AUTO_CONFIRM", "AUTO_PROTECTION_ENABLED"):
     if values.get(name, "false").lower() != "false":
         raise SystemExit(f"{name} must be false for self-hosted simulation deployment")

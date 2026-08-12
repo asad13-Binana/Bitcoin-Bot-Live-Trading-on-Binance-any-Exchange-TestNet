@@ -11,7 +11,7 @@ from monitoring.api.configuration import loopback_http_url, secret_is_configured
 from monitoring.api.log_redaction import redact
 
 
-URL = os.getenv("MONITOR_URL", "http://127.0.0.1:8090").rstrip("/")
+URL = os.getenv("MONITOR_URL", "http://127.0.0.1:8091").rstrip("/")
 TOKEN = os.getenv("MONITOR_TOKEN", "")
 
 

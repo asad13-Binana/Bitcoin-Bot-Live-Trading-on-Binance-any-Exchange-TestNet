@@ -68,7 +68,8 @@ env_file_key_allowed() {
     AUTO_TIGHT_TRAIL_BIPS|BINANCE_API_KEY|BINANCE_API_SECRET|\
     BINANCE_HTTP_TIMEOUT_SECONDS|BINANCE_RECV_WINDOW_MS|BINANCE_REST_BASE|\
     BINANCE_SPOT_EXECUTION_PUBLIC_BASE|BINANCE_TIME_SYNC_MAX_RTT_MS|\
-    BOT_DIRECTORY|BOT_GID|BOT_MODE|BOT_UID|BREAK_EVEN_SLIPPAGE_PCT|\
+    BOT_DIRECTORY|BOT_ENVIRONMENT|BOT_GID|BOT_INSTANCE_ID|BOT_MODE|BOT_PRODUCT|\
+    BOT_UID|BREAK_EVEN_SLIPPAGE_PCT|\
     BTC_PAIR_REGISTRY_TTL_SECONDS|BTC_QUOTE_ALLOWLIST|CALLBACK_TTL_SECONDS|\
     COINGECKO_API_KEY|COINGECKO_CONTEXT_ENABLED|\
     COINGECKO_MAX_MONTHLY_ATTEMPTS|COINGECKO_MAX_REQUESTS_PER_MINUTE|\
@@ -327,6 +328,14 @@ case "$EXECUTION_MODE" in
   simulation|testnet|live) ;;
   *) fail 'EXECUTION_MODE must be simulation, testnet, or live' ;;
 esac
+BOT_PRODUCT=${BOT_PRODUCT:-BITCOIN-BOT}
+BOT_ENVIRONMENT=${BOT_ENVIRONMENT:-TESTNET}
+BOT_INSTANCE_ID=${BOT_INSTANCE_ID:-BITCOIN-TN-TYO-01}
+[[ "$BOT_PRODUCT" == BITCOIN-BOT ]] || fail 'BOT_PRODUCT must be BITCOIN-BOT'
+[[ "$BOT_ENVIRONMENT" == TESTNET ]] || \
+  fail 'this TestNet package requires BOT_ENVIRONMENT=TESTNET'
+[[ "$BOT_INSTANCE_ID" =~ ^BITCOIN-TN-[A-Z0-9][A-Z0-9-]{2,47}$ ]] || \
+  fail 'BOT_INSTANCE_ID must use the BITCOIN-TN- namespace'
 if [[ -n "${EXPECTED_EXECUTION_MODE:-}" && "$EXECUTION_MODE" != "$EXPECTED_EXECUTION_MODE" ]]; then
   fail "host EXECUTION_MODE=$EXECUTION_MODE does not match requested $EXPECTED_EXECUTION_MODE"
 fi
@@ -565,6 +574,13 @@ case "$PACKAGE_MODE" in
              || fail 'testnet package permits only simulation or testnet execution' ;;
   *) fail 'artifact RELEASE_MODE must be live or testnet' ;;
 esac
+if [[ "$PACKAGE_MODE" == testnet ]]; then
+  [[ "$BOT_ENVIRONMENT" == TESTNET ]] || fail 'testnet artifact identity mismatch'
+  case "${BINANCE_SPOT_EXECUTION_PUBLIC_BASE:-}" in
+    ''|https://testnet.binance.vision) ;;
+    *) fail 'testnet package rejects a non-Testnet Binance execution endpoint' ;;
+  esac
+fi
 NEW_TAG="bitcoin-${RELEASE_HASH:0:16}"
 NEW_CONFIG="$CONFIG_ROOT/$STAMP.env"
 [[ ! -e "$NEW_CONFIG" ]] || fail "config snapshot already exists: $NEW_CONFIG"

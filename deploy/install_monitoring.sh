@@ -56,7 +56,8 @@ env_file_key_allowed() {
     AUTO_TIGHT_TRAIL_BIPS|BINANCE_API_KEY|BINANCE_API_SECRET|\
     BINANCE_HTTP_TIMEOUT_SECONDS|BINANCE_RECV_WINDOW_MS|BINANCE_REST_BASE|\
     BINANCE_SPOT_EXECUTION_PUBLIC_BASE|BINANCE_TIME_SYNC_MAX_RTT_MS|\
-    BOT_DIRECTORY|BOT_GID|BOT_MODE|BOT_UID|BREAK_EVEN_SLIPPAGE_PCT|\
+    BOT_DIRECTORY|BOT_ENVIRONMENT|BOT_GID|BOT_INSTANCE_ID|BOT_MODE|BOT_PRODUCT|\
+    BOT_UID|BREAK_EVEN_SLIPPAGE_PCT|\
     BTC_PAIR_REGISTRY_TTL_SECONDS|BTC_QUOTE_ALLOWLIST|CALLBACK_TTL_SECONDS|\
     COINGECKO_API_KEY|COINGECKO_CONTEXT_ENABLED|\
     COINGECKO_MAX_MONTHLY_ATTEMPTS|COINGECKO_MAX_REQUESTS_PER_MINUTE|\
@@ -293,11 +294,10 @@ fi
 ln -sfn "$VENV_TARGET" "$APP_ROOT/monitoring-current.new"
 mv -Tf "$APP_ROOT/monitoring-current.new" "$APP_ROOT/monitoring-current"
 
-# The privileged Docker snapshot helper is copied outside the writable release
-# tree and made root-owned. botmon never receives the Docker socket.
-install -m 0755 -o root -g root \
-  "$RELEASE_DIR/monitoring/snapshot.py" \
-  /usr/local/libexec/bitcoin-bot-monitor-snapshot
+# Remove the obsolete privileged monitoring helper from earlier releases.
+# Container status now comes only from the root-owned resource guard installed
+# by oracle_setup.sh; no monitoring component receives Docker access.
+rm -f /usr/local/libexec/bitcoin-bot-monitor-snapshot
 
 ENV_FILE="$PRIVATE/${MODE}-monitor.env"
 TEMPLATE="$RELEASE_DIR/monitoring/.env.monitor.${MODE}.example"
@@ -341,6 +341,14 @@ monitor_enabled=${MONITOR_ENABLED:-false}
 reports_enabled=${TELEGRAM_REPORTS_ENABLED:-false}
 [[ "$monitor_enabled" == true || "$monitor_enabled" == false ]] || fail 'MONITOR_ENABLED must be true or false'
 [[ "$reports_enabled" == true || "$reports_enabled" == false ]] || fail 'TELEGRAM_REPORTS_ENABLED must be true or false'
+MONITOR_PORT=${MONITOR_PORT:-8091}
+MONITOR_BIND_HOST=${MONITOR_BIND_HOST:-127.0.0.1}
+[[ "$MONITOR_PORT" =~ ^[0-9]+$ && "$MONITOR_PORT" -ge 1 && "$MONITOR_PORT" -le 65535 ]] || \
+  fail 'MONITOR_PORT must be an integer from 1 through 65535'
+case "$MONITOR_BIND_HOST" in
+  127.0.0.1|::1|localhost) ;;
+  *) fail 'MONITOR_BIND_HOST must be loopback' ;;
+esac
 if [[ "$reports_enabled" == true ]]; then
   [[ "$monitor_enabled" == true ]] || fail 'Telegram reports require MONITOR_ENABLED=true'
   [[ "${TELEGRAM_MONITOR_BOT_TOKEN:-}" =~ ^[0-9]+:[A-Za-z0-9_-]{20,}$ ]] || \
@@ -350,8 +358,27 @@ if [[ "$reports_enabled" == true ]]; then
 fi
 
 if [[ "$monitor_enabled" == true ]]; then
+  # Stop the previous generation before checking so its own listener is not
+  # mistaken for a collision. The immediate bind probe fails clearly when the
+  # Bitcoin default (8091) or a configured loopback port belongs to anything
+  # else. The service starts directly after the probe to minimise the race.
+  systemctl stop "bitcoin-bot-monitor-${MODE}.service" >/dev/null 2>&1 || true
+  MONITOR_BIND_HOST="$MONITOR_BIND_HOST" MONITOR_PORT="$MONITOR_PORT" python3 - <<'PY' || \
+    fail "monitor port ${MONITOR_BIND_HOST}:${MONITOR_PORT} is already occupied"
+import os
+import socket
+
+host = os.environ["MONITOR_BIND_HOST"]
+port = int(os.environ["MONITOR_PORT"])
+family = socket.AF_INET6 if ":" in host else socket.AF_INET
+with socket.socket(family, socket.SOCK_STREAM) as probe:
+    probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+    probe.bind((host, port))
+PY
   systemctl enable bitcoin-bot-monitor-snapshot.timer >/dev/null
   systemctl restart bitcoin-bot-monitor-snapshot.timer
+  systemctl start bitcoin-bot-resource-guard.service || \
+    fail 'resource guard refused the host before monitoring start'
   systemctl start bitcoin-bot-monitor-snapshot.service
   [[ $(systemctl show -p Result --value bitcoin-bot-monitor-snapshot.service) == success ]] || \
     fail 'initial container snapshot did not complete successfully'

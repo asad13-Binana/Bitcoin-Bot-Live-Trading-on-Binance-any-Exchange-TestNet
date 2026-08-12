@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the monitoring systemd units in an explicit validation context.
+"""Verify the monitoring and host-guard systemd units in an explicit context.
 
 `systemd-analyze verify` resolves every ExecStart binary against the machine
 running the check. On a source-validation host the bot is not installed, so
@@ -40,13 +40,16 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-UNIT_DIR = ROOT / "monitoring/systemd"
+DEFAULT_UNIT_DIR = ROOT / "monitoring/systemd"
+UNIT_DIR = DEFAULT_UNIT_DIR
+HOST_UNIT_DIR = ROOT / "deploy/systemd"
 
 # Absolute paths this project owns and that the Oracle installer creates. Only
 # these may be reported absent in source mode.
 INSTALL_CREATED_PREFIXES = (
     "/opt/bitcoin-bot/",
     "/usr/local/libexec/bitcoin-bot-",
+    "/usr/local/libexec/bitcoin-bot/",
     "/etc/bitcoin-bot/",
     "/var/lib/bitcoin-bot/",
     "/var/log/bitcoin-bot/",
@@ -115,7 +118,15 @@ def display_path(path: Path) -> str:
 
 
 def unit_files() -> list[Path]:
-    units = sorted(UNIT_DIR.glob("*.service")) + sorted(UNIT_DIR.glob("*.timer"))
+    directories = [UNIT_DIR]
+    # Tests intentionally replace UNIT_DIR with a staged fixture. Include the
+    # host units only for the real repository validation context.
+    if UNIT_DIR == DEFAULT_UNIT_DIR:
+        directories.append(HOST_UNIT_DIR)
+    units = []
+    for directory in directories:
+        units.extend(sorted(directory.glob("*.service")))
+        units.extend(sorted(directory.glob("*.timer")))
     if not units:
         fail(f"no systemd units found under {display_path(UNIT_DIR)}")
     return units

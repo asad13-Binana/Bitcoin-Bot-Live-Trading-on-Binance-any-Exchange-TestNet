@@ -1,0 +1,26 @@
+[Unit]
+Description=Bitcoin Bot root storage pressure guard
+After=docker.service
+RequiresMountsFor=/var/lib/bitcoin-bot
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/bitcoin-bot/resource_guard.sh
+User=root
+Group=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/bitcoin-bot/shared/runtime /run /var/run
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

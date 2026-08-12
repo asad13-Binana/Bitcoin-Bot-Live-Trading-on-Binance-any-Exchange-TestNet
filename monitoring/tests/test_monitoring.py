@@ -29,7 +29,7 @@ from monitoring.api.authentication import _WINDOWS  # noqa: E402
 from monitoring.api.configuration import CONFIG, Config, loopback_http_url  # noqa: E402
 from monitoring.api.database import query  # noqa: E402
 from monitoring.api.log_redaction import redact, redact_obj  # noqa: E402
-from monitoring import control, snapshot  # noqa: E402
+from monitoring import control  # noqa: E402
 from monitoring.mcp import monitor_mcp_server as bridge  # noqa: E402
 from monitoring.telegram import telegram_reporter as reporter  # noqa: E402
 
@@ -67,7 +67,7 @@ def isolated_config(tmp_path, monkeypatch):
     CONFIG.validation_status_path = tmp_path / "release_validation.json"
     CONFIG.binance_base = "https://testnet.binance.vision"
     _WINDOWS.clear()
-    bridge.URL = "http://127.0.0.1:8090"
+    bridge.URL = "http://127.0.0.1:8091"
     bridge.TOKEN = TOKEN
     for name in (
         "TELEGRAM_REPORTS_ENABLED", "TELEGRAM_MONITOR_BOT_TOKEN",
@@ -387,7 +387,7 @@ def test_telegram_disabled_flag_is_enforced(capsys):
 def test_telegram_failure_never_prints_its_token(monkeypatch, capsys):
     telegram = "1234567:" + "S" * 40
     monkeypatch.setenv("TELEGRAM_REPORTS_ENABLED", "true")
-    monkeypatch.setenv("MONITOR_URL", "http://127.0.0.1:8090")
+    monkeypatch.setenv("MONITOR_URL", "http://127.0.0.1:8091")
     monkeypatch.setenv("MONITOR_TOKEN", TOKEN)
     monkeypatch.setenv("TELEGRAM_MONITOR_BOT_TOKEN", telegram)
     monkeypatch.setenv("TELEGRAM_MONITOR_CHAT_ID", "123")
@@ -407,9 +407,9 @@ def test_telegram_checks_json_ok(monkeypatch, capsys):
 
 # Static integration and release controls.
 def test_loopback_url_validation():
-    assert loopback_http_url("http://127.0.0.1:8090")
-    assert not loopback_http_url("https://127.0.0.1:8090")
-    assert not loopback_http_url("http://example.com:8090")
+    assert loopback_http_url("http://127.0.0.1:8091")
+    assert not loopback_http_url("https://127.0.0.1:8091")
+    assert not loopback_http_url("http://example.com:8091")
 
 
 def test_monitor_config_source_does_not_read_trading_credentials():
@@ -425,8 +425,8 @@ def test_mode_templates_have_correct_topology_ports_and_isolation(monkeypatch):
     assert all("/opt/bitcoin-bot/current" in text for text in (simulation, testnet, live))
     assert "BOT_MODE=simulation" in simulation
     assert "BINANCE_REST_BASE=https://api.binance.com" in simulation
-    assert "MONITOR_URL=http://127.0.0.1:8090" in simulation
-    assert "MONITOR_URL=http://127.0.0.1:8090" in testnet
+    assert "MONITOR_URL=http://127.0.0.1:8091" in simulation
+    assert "MONITOR_URL=http://127.0.0.1:8091" in testnet
     assert "MONITOR_URL=http://127.0.0.1:8091" in live
     assert "simulation-audit.jsonl" in simulation
     assert "testnet-audit.jsonl" in testnet and "live-audit.jsonl" in live
@@ -455,12 +455,6 @@ def test_systemd_pairs_and_hardening():
         assert "User=botmon" in api and "ProtectSystem=strict" in api and "PrivateDevices=true" in api
         assert f"/etc/bitcoin-bot/{mode}-monitor.env" in api
         assert "docker.sock" not in api
-
-
-def test_snapshot_helper_has_no_mutating_docker_commands():
-    source = inspect.getsource(snapshot.collect)
-    for forbidden in (" stop ", " restart ", " exec ", " rm ", " kill "):
-        assert forbidden not in source.lower()
 
 
 def test_ci_and_release_gate_include_monitoring():

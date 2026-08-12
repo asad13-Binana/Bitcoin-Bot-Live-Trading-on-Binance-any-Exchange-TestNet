@@ -13,7 +13,7 @@ token without printing it. Inspect it only when configuring a local MCP client:
 ```bash
 sudo grep '^MONITOR_TOKEN=' /etc/bitcoin-bot/simulation-monitor.env
 curl -H 'Authorization: Bearer TOKEN' \
-  http://127.0.0.1:8090/api/v1/health
+  http://127.0.0.1:8091/api/v1/health
 ```
 
 The equivalent testnet install also generates its monitor token
@@ -22,7 +22,7 @@ without printing it. Inspect it only when configuring a local MCP client:
 ```bash
 sudo grep '^MONITOR_TOKEN=' /etc/bitcoin-bot/testnet-monitor.env
 curl -H 'Authorization: Bearer TOKEN' \
-  http://127.0.0.1:8090/api/v1/health
+  http://127.0.0.1:8091/api/v1/health
 ```
 
 Telegram reporting uses a separate bot token in the monitor env. Set
