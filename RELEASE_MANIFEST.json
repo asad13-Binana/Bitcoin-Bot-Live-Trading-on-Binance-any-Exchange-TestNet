@@ -25,7 +25,7 @@
       "size": 1898
     },
     ".github/workflows/ci.yml": {
-      "sha256": "8baaea6b36602d12133483f33071976933d1e83555c137634da55a7997aa8457",
+      "sha256": "c2d4033805c2a1ed5494c76c2c0efa6a71d737ad2be76fab10b5464caf430109",
       "size": 9132
     },
     ".gitignore": {
