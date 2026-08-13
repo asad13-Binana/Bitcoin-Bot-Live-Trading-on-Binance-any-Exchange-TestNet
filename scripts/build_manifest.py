@@ -11,7 +11,7 @@ from services.common.strategy_fingerprint import fingerprints  # noqa: E402
 EXCLUDE = {
     'RELEASE_MANIFEST.json', 'RELEASE_SHA256.txt',
 }
-EXCLUDE_PARTS = {'.git', '__pycache__', '.pytest_cache', '.ruff_cache'}
+EXCLUDE_PARTS = {'.git', '__pycache__', '.pytest_cache', '.ruff_cache', '.hypothesis'}
 
 SIGNAL_METHODS = [
     'populate_indicators_5m', 'populate_indicators',

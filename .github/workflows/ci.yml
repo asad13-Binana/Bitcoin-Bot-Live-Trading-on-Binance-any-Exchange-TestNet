@@ -71,6 +71,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -101,9 +103,49 @@ jobs:
         run: >-
           python -m bandit -q -r services monitoring scripts
           --severity-level high --confidence-level high --skip B413
+      - name: Scan every reachable Git commit for high-confidence secrets
+        run: python scripts/scan_git_history_secrets.py
+
+  quality-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FREQTRADE_API_PASSWORD: GENERATE_COVERAGE_ONLY_PASSWORD_000000
+      FREQTRADE_API_JWT_SECRET: GENERATE_COVERAGE_ONLY_JWT_SECRET_00000000000
+      FREQTRADE_API_WS_TOKEN: GENERATE_COVERAGE_ONLY_WS_TOKEN_0000000000000
+      SIGNAL_HMAC_KEY: GENERATE_COVERAGE_ONLY_SIGNAL_HMAC_00000000000
+      COMMAND_HMAC_KEY: GENERATE_COVERAGE_ONLY_COMMAND_HMAC_000000000
+      TELEGRAM_BOT_TOKEN: 123456789:GENERATE_COVERAGE_ONLY_BOT_TOKEN_000000000
+      TELEGRAM_OWNER_CHAT_ID: '1'
+      SIDECAR_RELEASE_HASH: 0000000000000000000000000000000000000000000000000000000000000000
+      DEPLOYED_RELEASE_HASH: 0000000000000000000000000000000000000000000000000000000000000000
+      DEPLOYED_CONFIG_SHA256: 1111111111111111111111111111111111111111111111111111111111111111
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install verification dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Measure branch coverage and run property tests
+        run: >-
+          python -m coverage run --branch --source=services,monitoring
+          --data-file=/tmp/bitcoin.coverage -m pytest -q tests monitoring/tests
+      - name: Enforce coverage non-regression and report the 85 percent target
+        run: |
+          python -m coverage json --data-file=/tmp/bitcoin.coverage -o /tmp/bitcoin-coverage.json
+          python scripts/verify_coverage_ratchet.py /tmp/bitcoin-coverage.json --minimum 61 --target 85
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bitcoin-coverage-${{ github.sha }}
+          path: /tmp/bitcoin-coverage.json
+          retention-days: 14
+          if-no-files-found: error
 
   artifact:
-    needs: [verify, sast]
+    needs: [verify, sast, quality-evidence]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

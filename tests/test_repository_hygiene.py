@@ -33,7 +33,9 @@ PROVENANCE = ROOT / "ARTIFACT_PROVENANCE.json"
 INSTALLER = ROOT / "deploy/install_artifact.sh"
 DEPLOY_WRAPPER = ROOT / "deploy/bitcoin-bot-deploy"
 
-EXCLUDED_PARTS = {".git", "__pycache__", ".pytest_cache", ".ruff_cache"}
+EXCLUDED_PARTS = {
+    ".git", "__pycache__", ".pytest_cache", ".ruff_cache", ".hypothesis",
+}
 
 
 def release_files() -> list[Path]:
