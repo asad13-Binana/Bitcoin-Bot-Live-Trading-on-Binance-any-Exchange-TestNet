@@ -25,8 +25,8 @@
       "size": 1898
     },
     ".github/workflows/ci.yml": {
-      "sha256": "c2d4033805c2a1ed5494c76c2c0efa6a71d737ad2be76fab10b5464caf430109",
-      "size": 9132
+      "sha256": "140d7f09e9c4b8af99325a3f8e6ffae10c643934499d4c1d9e3e38b7636a31e1",
+      "size": 10634
     },
     ".gitignore": {
       "sha256": "25c70bd7f6a6d7a75a89f3abcf8e59fe51c22789af22dd598ba7e8fc1ee448b8",
@@ -41,8 +41,8 @@
       "size": 2387
     },
     "BITCOIN_BOT_SERVICES_FUNCTIONS_AND_TELEGRAM_GUIDE.txt": {
-      "sha256": "00e7bdba8eb3903db3f6de00889e2f764454f37d4eba83678d5f848fe5ce6e2e",
-      "size": 152692
+      "sha256": "74bc6b158e27694cfcd9dec14287d6c62741b1e34ac973b0b1245b7ff0866a89",
+      "size": 115971
     },
     "BOT_SIMPLE_DESCRIPTION.txt": {
       "sha256": "ccc73189de6aed1eb09ce917daac4be9202b0ab8f09627b220da37a4d8df5e5c",
@@ -201,12 +201,12 @@
       "size": 2479
     },
     "docs/audit/FILE_REVIEW_LEDGER.csv": {
-      "sha256": "3b0919015fa8d6e22b9320e7a708aaa376aa7baa1b353350be3846fa13671166",
-      "size": 42874
+      "sha256": "a10206324b62b438ba926134ccf6eb0572c57d9db02f00cc3ea238cedd3f85d6",
+      "size": 43007
     },
     "docs/audit/FUNCTION_PARITY_MATRIX.csv": {
-      "sha256": "8eaf114466b13ba9c1dd0d1a4c01268e00eba5600c1ec6fc0c220956f286d914",
-      "size": 113356
+      "sha256": "a7df90cb5f74dd27eeff36a200ffe00cf5627ad3549091a4bf92eae9e56cdfa2",
+      "size": 113533
     },
     "docs/audit/ISSUE_LEDGER.csv": {
       "sha256": "bf698153607092c4125eb2caf72f844325d6403502d5016de42f454f6e0701d4",
@@ -433,8 +433,8 @@
       "size": 20520
     },
     "requirements-dev.txt": {
-      "sha256": "3aa0499fadd0e46c5ee96b00b5819bc901f117a4143b3195544d3d702989054b",
-      "size": 106
+      "sha256": "f62cb5a25bca743862050604b6362ac97906f027705c74d838a0534cfdcbab58",
+      "size": 133
     },
     "requirements.services.lock": {
       "sha256": "7bb7301ed48c65bb50ed2efdb6bbe6d3148618368f1a9a74e45b422cb17af7e2",
@@ -449,8 +449,8 @@
       "size": 10102
     },
     "scripts/build_audit_ledgers.py": {
-      "sha256": "334a690c2255768aab0763aaab42548a7928eb31ef1f4c8eba280e671fb01d75",
-      "size": 7522
+      "sha256": "ce4f6554159209c5fc25f9766f0c40dbaa447b3e1bb83333d36bc4344ce0a1c3",
+      "size": 9967
     },
     "scripts/build_manifest.py": {
       "sha256": "1ff883fba7ac25c69955af9703c660f0e46f435a1f22bcf899aa0c894b9a7a1e",

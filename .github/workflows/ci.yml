@@ -66,8 +66,44 @@ jobs:
       - name: Monitoring dependency vulnerability audit
         run: python -m pip_audit -r monitoring/requirements-monitoring.lock --strict
 
+  sast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install verification dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Ruff critical correctness checks
+        run: python -m ruff check --select E9,F63,F7,F82 .
+      - name: Verify maintained Crypto namespace provider
+        run: |
+          python - <<'PY'
+          from importlib import metadata
+
+          version = metadata.version("pycryptodome")
+          try:
+              metadata.version("pycrypto")
+          except metadata.PackageNotFoundError:
+              pass
+          else:
+              raise SystemExit("abandoned pycrypto package must not be installed")
+          print(f"maintained pycryptodome provider verified: {version}")
+          PY
+      - name: Bandit high-severity security checks
+        # B413 identifies the shared Crypto import namespace, not the installed
+        # provider. The preceding step proves the maintained PyCryptodome
+        # distribution is installed and rejects abandoned PyCrypto.
+        run: >-
+          python -m bandit -q -r services monitoring scripts
+          --severity-level high --confidence-level high --skip B413
+
   artifact:
-    needs: verify
+    needs: [verify, sast]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

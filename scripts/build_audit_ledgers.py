@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+from collections import Counter
 import csv
 import hashlib
 import io
@@ -14,6 +15,8 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 FUNCTION_MATRIX = ROOT / "docs/audit/FUNCTION_PARITY_MATRIX.csv"
 FILE_LEDGER = ROOT / "docs/audit/FILE_REVIEW_LEDGER.csv"
+FUNCTION_GUIDE = ROOT / "BITCOIN_BOT_SERVICES_FUNCTIONS_AND_TELEGRAM_GUIDE.txt"
+FUNCTION_GUIDE_MARKER = "8. COMPLETE NON-TEST PYTHON AND BASH FUNCTION INVENTORY"
 EXCLUDED_PARTS = {
     ".git",
     "__pycache__",
@@ -185,6 +188,50 @@ def matrix_text(rows: list[dict[str, str]]) -> str:
     return buffer.getvalue()
 
 
+def function_guide_text(rows: list[dict[str, str]]) -> str:
+    """Render the guide inventory from the authoritative function matrix rows."""
+    current = FUNCTION_GUIDE.read_text(encoding="utf-8")
+    if FUNCTION_GUIDE_MARKER not in current:
+        raise ValueError(
+            f"{FUNCTION_GUIDE.name} lacks the generated inventory marker"
+        )
+    prefix = current.split(FUNCTION_GUIDE_MARKER, 1)[0].rstrip()
+    kinds = Counter(row["kind"] for row in rows)
+    kind_summary = ", ".join(
+        f"{kind}={kinds[kind]}" for kind in sorted(kinds)
+    )
+    lines = [
+        prefix,
+        "",
+        FUNCTION_GUIDE_MARKER,
+        f"Total callable declarations: {len(rows)}",
+        f"Kinds: {kind_summary}",
+        (
+            "This section is generated from "
+            "docs/audit/FUNCTION_PARITY_MATRIX.csv. Python rows carry an "
+            "exact function source hash. Bash rows carry the exact containing-"
+            "file hash; the release manifest independently binds every byte "
+            "of every file."
+        ),
+        "",
+    ]
+    paths = sorted({row["path"] for row in rows})
+    for path in paths:
+        path_rows = [row for row in rows if row["path"] == path]
+        lines.append(f"FILE: {path} ({len(path_rows)} callable(s))")
+        for row in path_rows:
+            line_span = row["line"]
+            if row["end_line"] != row["line"]:
+                line_span += f"-{row['end_line']}"
+            lines.append(
+                f"line {line_span} | {row['kind']} | "
+                f"{row['qualified_name']} | {row['disposition']} | "
+                f"sha256={row['source_sha256']}"
+            )
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def verify_file_ledger() -> None:
     with FILE_LEDGER.open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
@@ -214,11 +261,21 @@ def main() -> int:
     args = parser.parse_args()
     rows = function_rows()
     expected = matrix_text(rows)
+    try:
+        expected_guide = function_guide_text(rows)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     if args.check:
         actual = FUNCTION_MATRIX.read_text(encoding="utf-8")
         if actual != expected:
             raise SystemExit(
                 "function-parity matrix is stale; run "
+                "python scripts/build_audit_ledgers.py"
+            )
+        actual_guide = FUNCTION_GUIDE.read_text(encoding="utf-8")
+        if actual_guide != expected_guide:
+            raise SystemExit(
+                "human function guide is stale; run "
                 "python scripts/build_audit_ledgers.py"
             )
         try:
@@ -232,8 +289,13 @@ def main() -> int:
         return 0
     FUNCTION_MATRIX.parent.mkdir(parents=True, exist_ok=True)
     FUNCTION_MATRIX.write_text(expected, encoding="utf-8", newline="\n")
+    FUNCTION_GUIDE.write_text(
+        expected_guide,
+        encoding="utf-8",
+        newline="\n",
+    )
     print(
-        f"wrote {FUNCTION_MATRIX} with "
+        f"wrote {FUNCTION_MATRIX} and {FUNCTION_GUIDE} with "
         f"{len(rows)} non-test Python and shell functions"
     )
     return 0
