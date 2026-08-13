@@ -28,6 +28,14 @@ not authorization for Testnet or real-money trading.
 5. Add repository variable `ORACLE_DEPLOY_ENABLED=false`. Change it to `true`
    only while performing an approved simulation deployment.
 
+If GitHub rejects branch protection for the private repository on the current
+plan, source code cannot remove that platform limitation. Until the repository
+is upgraded to a plan that supports the required rules, use owner-only access,
+no direct pushes, pull requests only, exact-head green CI, code-owner review and
+an independent manifest/checksum comparison before every merge and deployment.
+This procedural fallback reduces risk but is not equivalent to enforced branch
+protection.
+
 Required environment reviewers must not be treated as the primary control for a
 private repository because availability depends on the GitHub plan. This release
 instead uses independent main-branch, manual-dispatch, exact-confirmation,
@@ -176,8 +184,17 @@ Use a two-pass process:
 The artifact build is deterministic for the same commit. The wrapper copies the
 runner-owned files into root-only staging, checks the adjacent checksum, checks
 the independent root-approved digest, safely extracts the archive, verifies the
-manifest, secret scan and full protected-strategy hash, and validates the private
-simulation environment.
+manifest, deterministic CycloneDX SBOM, manifest-bound GitHub Actions provenance,
+secret scan and full protected-strategy hash, and validates the private simulation
+environment.
+
+Artifacts are retained for 90 days. `ARTIFACT_PROVENANCE.json` binds the source
+commit, repository, Git ref, workflow identity/run and SBOM digest into the
+release manifest; deployment additionally requires a `main`-branch provenance
+record. This record is deliberately labelled non-cryptographic. GitHub's native
+artifact attestations for private repositories require GitHub Enterprise Cloud,
+so enabling the Sigstore-backed attestation action on an unsupported plan would
+break CI. Upgrade the plan before treating native GitHub attestation as closed.
 
 Immediately before installation it consumes the approval. A failed or repeated
 deployment requires the administrator to approve the digest again; a workflow

@@ -383,7 +383,9 @@ class SpotFilterValidator:
                     raise FilterViolation(
                         f'{symbol} {leg.order_type} notional {notional_price * leg.qty} above maxNotional {max_notional}')
             if leg.trailing_delta is not None:
-                assert trail_min is not None and trail_max is not None
+                if trail_min is None or trail_max is None:
+                    raise FilterViolation(
+                        f'{symbol} TRAILING_DELTA sell bounds are unavailable')
                 if not trail_min <= leg.trailing_delta <= trail_max:
                     raise FilterViolation(
                         f'{symbol} trailingDelta {leg.trailing_delta} outside '

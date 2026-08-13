@@ -25,8 +25,8 @@
       "size": 1898
     },
     ".github/workflows/ci.yml": {
-      "sha256": "140d7f09e9c4b8af99325a3f8e6ffae10c643934499d4c1d9e3e38b7636a31e1",
-      "size": 10634
+      "sha256": "98d022f0c5d006cd3b32ee45eb0408e5a46906fbcfcd3c9fd7ee501d646f8b50",
+      "size": 10996
     },
     ".gitignore": {
       "sha256": "25c70bd7f6a6d7a75a89f3abcf8e59fe51c22789af22dd598ba7e8fc1ee448b8",
@@ -36,13 +36,17 @@
       "sha256": "b6ca885b503c94b084cbc53083eefc8ba44c72ffde13d39be4e0dfb579372051",
       "size": 3813
     },
+    "ARTIFACT_PROVENANCE.json": {
+      "sha256": "49a0ee5bba57e87b7d9b2393af7986fca53fc49aec6a7a0f56fc3d366713b62b",
+      "size": 770
+    },
     "AUDIT_AND_RELEASE_NOTES_2026-07-22.md": {
       "sha256": "bf64b7ce0344fce4eccf89dae3453dc2809a4459d9ceb0a18dbfca45de8b7033",
       "size": 2387
     },
     "BITCOIN_BOT_SERVICES_FUNCTIONS_AND_TELEGRAM_GUIDE.txt": {
-      "sha256": "065eb8078c825a6ed4ca34ef37bcbc0caf34662b434fa3fd0e7627a3ed36afc8",
-      "size": 117780
+      "sha256": "73e13f7c163baf5c57514dcedc17e750f8cb6184df8717c7fc364a9f4c9532f4",
+      "size": 120941
     },
     "BOT_SIMPLE_DESCRIPTION.txt": {
       "sha256": "ccc73189de6aed1eb09ce917daac4be9202b0ab8f09627b220da37a4d8df5e5c",
@@ -100,21 +104,25 @@
       "sha256": "e4b87a69f913da48060c909bafab37d64bcf4dc7d835a19d388da46ebd838c3d",
       "size": 8
     },
+    "SBOM.cyclonedx.json": {
+      "sha256": "f57e6038b76c9172e4e57e62e0eee6a0f91f8a6e11fe4380a8b762652d1dc9a1",
+      "size": 18713
+    },
     "VALIDATION_STATUS.json": {
-      "sha256": "d151759929020804168d94aaa58a69b96d4716ebed3b9ee0f4aabd4054c2de37",
-      "size": 12995
+      "sha256": "71bec1643d875154826f4a4b32a923292d5d2ade95b52a224a6a2f70c8c71970",
+      "size": 13263
     },
     "deploy/backup_state.sh": {
       "sha256": "026b30faacab207585194d11f14384ac8e171bb52f3bdc0fecb28b77dc860c9f",
       "size": 2833
     },
     "deploy/bitcoin-bot-deploy": {
-      "sha256": "fe66b588b7fee9dd94f57f3066eacc0f6e967bec2de0d486ede5c03351d575aa",
-      "size": 18772
+      "sha256": "5ce8c82e7858289f22a615f86fb2233bac9c697a14a15aa3ecb3e4c895c7ae5d",
+      "size": 18907
     },
     "deploy/install_artifact.sh": {
-      "sha256": "c8c8594ffa9c44fbd38dacf81d31a401c5d98aa897209638fc31a42d99741044",
-      "size": 55619
+      "sha256": "9a06cdf8e4918525b65487b8ab2e9ce4c892986929bd0da0002f936c61bd2cc5",
+      "size": 55753
     },
     "deploy/install_monitoring.sh": {
       "sha256": "83b9271dee76f164f1cc65fbb0bdceeee310f2d680098b022651efc77e43155f",
@@ -149,8 +157,8 @@
       "size": 1746
     },
     "deploy/verify_release.sh": {
-      "sha256": "59ac88054ff8c69fb9f38e7e00d1dd2ae48ee3d56c4f599121151aba10d565e8",
-      "size": 6227
+      "sha256": "86443cf604f3a22a484572417f57513b9f209b15ac4837e4dd33c40f7c09adf1",
+      "size": 6315
     },
     "deploy/verify_stack_identity.py": {
       "sha256": "de9395b9b0043f053cae030543b70803fadb5835eb1879be50d4d5baa2b0e582",
@@ -173,8 +181,8 @@
       "size": 2074
     },
     "docs/GITHUB_ORACLE_DEPLOYMENT.md": {
-      "sha256": "323e833ceabf49788add03c4828d5ddeecc1e78c84b48f002d34782e2bf4d380",
-      "size": 11116
+      "sha256": "fabbe6281afeb932f919fe8f5edc6b8fc65ff38ebcfb0b4df5df891d2eacdcd3",
+      "size": 12231
     },
     "docs/GITHUB_RELEASE_AND_ROLLBACK_GUIDE.md": {
       "sha256": "44e84ea5c9f654c571cd002c04cc5e4fd50b0a2955fa4b9bbb9e4cfeb59ace6e",
@@ -201,12 +209,12 @@
       "size": 2479
     },
     "docs/audit/FILE_REVIEW_LEDGER.csv": {
-      "sha256": "e68a3969523a3ce28c2131fe589132ea16f4b73096a37131b47fdd57cd295d64",
-      "size": 43446
+      "sha256": "2166c9debecd259a8b91f2fa64f2d8d38c242f8344eff7ea3abfd797323a210c",
+      "size": 44789
     },
     "docs/audit/FUNCTION_PARITY_MATRIX.csv": {
-      "sha256": "4197f0047968fc60e982b797cde8316dbde5badaa7bcbcdd9c2aa2e0a61f68e4",
-      "size": 115738
+      "sha256": "18130fa4ed7ee8764792a68285623a4c535c2be852e29f7da7df913735af2f8f",
+      "size": 119230
     },
     "docs/audit/ISSUE_LEDGER.csv": {
       "sha256": "88bc6dc05728e5fbc1125bd2b8b8a0590008a3615308507419cffe1a9eca5440",
@@ -448,6 +456,10 @@
       "sha256": "6988d7ea012cebd563617e5749eb5478a8c6125eb46ab6e524588064f1b4a04c",
       "size": 10102
     },
+    "scripts/build_artifact_provenance.py": {
+      "sha256": "b4d6b4158fdc7c4662736aa584d06f5a5516e89e614b99a051ca1a29ebf76673",
+      "size": 2528
+    },
     "scripts/build_audit_ledgers.py": {
       "sha256": "ce4f6554159209c5fc25f9766f0c40dbaa447b3e1bb83333d36bc4344ce0a1c3",
       "size": 9967
@@ -460,6 +472,10 @@
       "sha256": "3342c52521116e592aa6af9a7131666b914e1cb3d729f2ef902e3b16eaf0bf18",
       "size": 4173
     },
+    "scripts/build_sbom.py": {
+      "sha256": "54a9939ffa4cb2baffc3d4ae4607720c9f6036817608237151e8899bd4766dce",
+      "size": 3247
+    },
     "scripts/certify_live_evidence.py": {
       "sha256": "c4fc7875d2c472836fc8db791eea06ede63248d2426443a8b16b9aa263cbcfbf",
       "size": 9370
@@ -471,6 +487,10 @@
     "scripts/set_git_exec_bits.py": {
       "sha256": "dbbc1b0e592893c73034ef0e9f22501bd297afbfa8a2291abf76ccf133ef97d0",
       "size": 4474
+    },
+    "scripts/verify_artifact_provenance.py": {
+      "sha256": "78eace8f4caab80ad7c092560084680ac80d808295546c5be4df83d9aaddab4d",
+      "size": 4120
     },
     "scripts/verify_binance_public_kline_archive.py": {
       "sha256": "25860d3ebf452f3d0b52e7a2d8a9458ac5b39529a9a43296e0a107050d1f024c",
@@ -561,8 +581,8 @@
       "size": 1320
     },
     "services/execution_sidecar/filters.py": {
-      "sha256": "81d171bd5e8a4d7675c1fa112e38b0bba211a3a94c0780fcf7b9484c2e07cc9c",
-      "size": 24332
+      "sha256": "f773434d4fa61fd9756d1ba298d9f44189268e1f5e6f2576758bd1065ce75971",
+      "size": 24443
     },
     "services/execution_sidecar/live_evidence.py": {
       "sha256": "bf438e084d99a83eb69908711629e0f8545ff0791b46187fec741a52c3c32d06",
@@ -645,8 +665,8 @@
       "size": 297
     },
     "services/telegram_broker/bot.py": {
-      "sha256": "bb4541312fcbfb3d060ccbf29d57cf5a7aa7246bdfc6bb597965d748fa2a8a33",
-      "size": 32800
+      "sha256": "a1cd8c93087ab3ba509427d9bd9ebc27cabdea10812c7bbcce28526f1f653540",
+      "size": 42575
     },
     "services/telegram_broker/callbacks.py": {
       "sha256": "6455b165682b6e525ac90a5b06e6b722bc6b5abb323c5520f753f7513b3fd218",
@@ -697,8 +717,8 @@
       "size": 11721
     },
     "tests/test_control_and_flow.py": {
-      "sha256": "9d4a4546b65b6093c141beebbcbe5ffaac5474617afa8f78b85ea7fc4484576a",
-      "size": 47398
+      "sha256": "2f73b586f98ab50f626bb6903e3f01f321840a7a167ac0ef27df90cb500579ec",
+      "size": 49382
     },
     "tests/test_deployment_identity.py": {
       "sha256": "9ab5323f2759a4279bd19395e3e70dca706fca615885b8394d0f9abee17341bf",
@@ -709,8 +729,8 @@
       "size": 14695
     },
     "tests/test_execution_safety.py": {
-      "sha256": "741fead6d4f452c4853cd847d648806a264f3df067e19fa51c30ceb166709702",
-      "size": 58702
+      "sha256": "2534b7d05f9c7c5ac4ec266478fd16bf698eb573f89389e4ab8ca0cb0e5f17fc",
+      "size": 59176
     },
     "tests/test_external_market_context.py": {
       "sha256": "93218ec6c4f6f1e1aa28f76ae3ee3b0bc4ce17570c98f66a0ea06571d8623d87",
@@ -725,8 +745,8 @@
       "size": 7752
     },
     "tests/test_repository_hygiene.py": {
-      "sha256": "746dc7a167a3ab5555771baaba2ec7e4e521affcf85546bf9edaebdac6bb1b36",
-      "size": 14236
+      "sha256": "ecab0fbed5e652df2f40013e1f46f60e41d4305316776bbe68f138afcea34485",
+      "size": 16291
     },
     "tests/test_secret_scan.py": {
       "sha256": "f7daa848c775f818396037cc62890f9223ab592cae5087e552ed6f24a0c1f174",

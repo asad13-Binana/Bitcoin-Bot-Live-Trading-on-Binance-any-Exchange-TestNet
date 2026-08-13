@@ -28,6 +28,10 @@ UNIT_DIR = ROOT / "monitoring/systemd"
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
 DOCKERIGNORE = ROOT / ".dockerignore"
 SERVICES_DOCKERFILE = ROOT / "Dockerfile.services"
+SBOM = ROOT / "SBOM.cyclonedx.json"
+PROVENANCE = ROOT / "ARTIFACT_PROVENANCE.json"
+INSTALLER = ROOT / "deploy/install_artifact.sh"
+DEPLOY_WRAPPER = ROOT / "deploy/bitcoin-bot-deploy"
 
 EXCLUDED_PARTS = {".git", "__pycache__", ".pytest_cache", ".ruff_cache"}
 
@@ -142,6 +146,56 @@ def test_release_mode_is_present_in_the_services_image_context():
     dockerfile = SERVICES_DOCKERFILE.read_text(encoding="utf-8")
     assert "COPY RELEASE_MODE /app/RELEASE_MODE" in dockerfile
     assert "!RELEASE_MODE" in ignored
+
+
+def test_sbom_is_deterministic_and_lock_bound():
+    import json
+
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/build_sbom.py"), "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    document = json.loads(SBOM.read_text(encoding="utf-8"))
+    assert document["bomFormat"] == "CycloneDX"
+    assert document["specVersion"] == "1.6"
+    assert document["components"]
+    properties = document["metadata"]["properties"]
+    assert {item["name"] for item in properties} == {
+        "bitcoin-bot:lock-sha256:monitoring",
+        "bitcoin-bot:lock-sha256:services",
+    }
+
+
+def test_source_provenance_is_honest_and_manifest_bound():
+    import json
+
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/verify_artifact_provenance.py")],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    document = json.loads(PROVENANCE.read_text(encoding="utf-8"))
+    assert document["attestation"]["cryptographic"] is False
+    assert "not a GitHub or Sigstore attestation" in document["attestation"]["limitation"]
+    assert document["sbom"]["path"] == SBOM.name
+
+
+def test_artifact_provenance_is_created_and_required_at_deployment():
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    installer = INSTALLER.read_text(encoding="utf-8")
+    wrapper = DEPLOY_WRAPPER.read_text(encoding="utf-8")
+    assert "scripts/build_artifact_provenance.py" in workflow
+    assert "--workflow-ref \"$GITHUB_WORKFLOW_REF\"" in workflow
+    assert "retention-days: 90" in workflow
+    assert "verify_artifact_provenance.py\" --deployment" in installer
+    assert "verify_artifact_provenance.py --deployment" in wrapper
 
 
 # --------------------------------------------------------------------------

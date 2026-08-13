@@ -7,11 +7,13 @@ ever contacting Binance or requiring credentials.
 
 from __future__ import annotations
 
+import ast
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from decimal import Decimal
 import hashlib
 import json
+from pathlib import Path
 import re
 import sqlite3
 import time
@@ -44,6 +46,9 @@ from services.execution_sidecar.state_store import StateStore
 from services.execution_sidecar.risk_checks import FreshSignalGuard
 
 
+FILTERS_PATH = Path(__file__).resolve().parents[1] / "services/execution_sidecar/filters.py"
+
+
 @pytest.fixture(autouse=True)
 def bounded_execution_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("ALLOWED_STABLE_QUOTES", "USDT,USDC,FDUSD")
@@ -54,6 +59,13 @@ def bounded_execution_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("TRAILING_DELTA_BIPS", "40")
     monkeypatch.setenv("LIMIT_FILL_BUFFER_BIPS", "20")
     monkeypatch.setenv("FEE_PCT_PER_SIDE", "0.1")
+
+
+def test_filter_validation_uses_explicit_fail_closed_trailing_bounds():
+    source = FILTERS_PATH.read_text(encoding="utf-8")
+    tree = compile(source, str(FILTERS_PATH), "exec", ast.PyCF_ONLY_AST)
+    assert not any(isinstance(node, ast.Assert) for node in ast.walk(tree))
+    assert "TRAILING_DELTA sell bounds are unavailable" in source
 
 
 def exchange_symbol(pair: str = "BTC/USDT") -> dict:
