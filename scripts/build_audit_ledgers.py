@@ -22,6 +22,7 @@ EXCLUDED_PARTS = {
     "__pycache__",
     ".pytest_cache",
     ".ruff_cache",
+    ".hypothesis",
 }
 SHELL_FUNCTION = re.compile(
     r"^\s*(?:function\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*(?:\(\s*\))?\s*\{"

@@ -47,7 +47,7 @@ import pathlib
 import re
 
 for path in pathlib.Path('.').rglob('*.json'):
-    if any(part in {'.git', '__pycache__', '.pytest_cache'} for part in path.parts):
+    if any(part in {'.git', '__pycache__', '.pytest_cache', '.hypothesis'} for part in path.parts):
         continue
     json.loads(path.read_text(encoding='utf-8'))
 names = []
@@ -135,7 +135,7 @@ import yaml
 
 parsed = {}
 for path in list(pathlib.Path('.').rglob('*.yml')) + list(pathlib.Path('.').rglob('*.yaml')):
-    if any(part in {'.git', '__pycache__', '.ruff_cache'} for part in path.parts):
+    if any(part in {'.git', '__pycache__', '.ruff_cache', '.hypothesis'} for part in path.parts):
         continue
     parsed[path.as_posix()] = yaml.safe_load(path.read_text(encoding='utf-8'))
 root = parsed.get('docker-compose.yml')

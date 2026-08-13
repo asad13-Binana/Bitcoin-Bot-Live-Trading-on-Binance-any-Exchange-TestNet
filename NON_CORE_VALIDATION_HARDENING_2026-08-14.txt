@@ -1,0 +1,35 @@
+NON-CORE VALIDATION HARDENING - 2026-08-14
+
+Scope
+-----
+This change adds validation only. It does not modify strategy indicators,
+entry/exit rules, pair selection, position sizing, execution semantics, risk
+controls, or any protected runtime file.
+
+Added
+-----
+1. A whole-history high-confidence secret scanner for deleted credentials.
+2. Hypothesis property tests for canonical signing bytes, configuration bounds,
+   redaction, client-order identifiers and fail-closed evidence parsing.
+3. A release-bound Binance Spot Testnet evidence verifier and non-passing
+   operator template. The verifier never calls Binance or reads credentials.
+4. A coverage non-regression ratchet. The long-term target remains 85%; the
+   ratchet does not mislabel a lower result as target completion.
+5. CI coverage and history-secret enforcement. Existing Ruff/Bandit SAST stays
+   mandatory. Hypothesis and Coverage are CI-only tools.
+
+Already present and deliberately not changed
+--------------------------------------------
+- Durable SQLite safety state, deterministic migration and disk-full failure.
+- Restart recovery, fail-closed reconciliation and lifecycle tests.
+- Existing fixed-clock concurrency, idempotency and monitoring tests.
+- Existing monitoring API authentication, read-only routes and Telegram
+  redaction/failure tests.
+
+External evidence still required
+--------------------------------
+- Real restricted Binance Spot Testnet credentials and controlled tiny orders.
+- Real Telegram test credentials and owner-private-chat delivery.
+- Oracle fault drills and soak.
+- The exact strategy's profitability gate is still failed. No profitability or
+  LIVE-money certification is created by this validation change.
