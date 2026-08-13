@@ -401,6 +401,7 @@ def test_every_shipped_shell_script_is_covered():
     # bit only because build_release_zip.py marks every *.sh 0755, which is
     # harmless and keeps that rule simple.
     known = {
+        "deploy/api_preflight.sh",
         "deploy/backup_state.sh",
         "deploy/install_artifact.sh",
         "deploy/install_monitoring.sh",

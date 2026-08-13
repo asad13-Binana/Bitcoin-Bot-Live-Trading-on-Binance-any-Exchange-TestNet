@@ -1,5 +1,10 @@
 # Bitcoin Spot Bot — mode-separated Oracle/GitHub release
 
+For credential setup and the safe GET-only Oracle API preflight, see
+[`docs/API_READINESS_RUNBOOK.md`](docs/API_READINESS_RUNBOOK.md). Run TestNet
+first. The preflight never places an order or sends a Telegram message and does
+not certify LIVE trading.
+
 This repository is a Bitcoin-only Binance Spot trading system. It supports one
 operator-selected pair at a time. The owner menu is built from current Binance
 `exchangeInfo` rows whose base asset is exactly `BTC`, status is `TRADING`, and

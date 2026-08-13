@@ -2,6 +2,10 @@
 
 These checks require real infrastructure and were not represented as local passes.
 
+Before lifecycle testing, run the credential-gated read-only checks in
+`docs/API_READINESS_RUNBOOK.md`. A successful preflight proves API identity and
+authentication only; it does not replace any drill below.
+
 ## Binance Spot Testnet
 
 Use a dedicated test account and the chosen BTC pair. Record timestamps, request IDs,

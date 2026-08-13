@@ -83,6 +83,46 @@ LEDGER_ROWS = {
             "wording only; requires professional legal review."
         ),
     },
+    "deploy/api_preflight.sh": {
+        "path": "deploy/api_preflight.sh",
+        "category": "Deployment",
+        "review_scope": "Root-only credentialed API preflight launcher",
+        "disposition": "REVIEWED; GET-ONLY",
+        "notable_result": (
+            "Requires the trusted literal env parser and root-owned private config; "
+            "launches the redacted API probe without evaluating the environment file."
+        ),
+    },
+    "docs/API_READINESS_RUNBOOK.md": {
+        "path": "docs/API_READINESS_RUNBOOK.md",
+        "category": "Documentation",
+        "review_scope": "TestNet-first API credential and validation procedure",
+        "disposition": "REVIEWED",
+        "notable_result": (
+            "Separates read-only authentication from order lifecycle, Oracle soak, "
+            "Telegram delivery and LIVE certification; contains no credentials."
+        ),
+    },
+    "scripts/api_readiness.py": {
+        "path": "scripts/api_readiness.py",
+        "category": "Deployment validation",
+        "review_scope": "Redacted Binance, Telegram and optional provider API probe",
+        "disposition": "REVIEWED; NO MUTATING HTTP METHODS",
+        "notable_result": (
+            "Uses fixed package endpoints and GET only; reports booleans, timings and "
+            "counts without balances, identifiers, response bodies or secrets."
+        ),
+    },
+    "tests/test_api_readiness.py": {
+        "path": "tests/test_api_readiness.py",
+        "category": "Tests",
+        "review_scope": "API preflight identity, live interlock and secret-redaction regressions",
+        "disposition": "REVIEWED",
+        "notable_result": (
+            "Proves TestNet endpoint binding, LIVE simulation-only confirmation, "
+            "GET-only source, redacted output and fail-closed unexpected errors."
+        ),
+    },
 }
 
 OWNER_PATTERN = re.compile(r"^@[A-Za-z0-9][A-Za-z0-9-]{0,38}(/[A-Za-z0-9._-]{1,100})?$")
@@ -245,7 +285,9 @@ def main() -> int:
         write_license(license_owner)
         activated.append("LICENSE")
 
-    added = ensure_ledger_rows(activated)
+    added = ensure_ledger_rows([*activated, *(
+        path for path in LEDGER_ROWS if (ROOT / path).is_file()
+    )])
 
     try:
         # Order matters: the function-parity matrix is itself manifested, so it
