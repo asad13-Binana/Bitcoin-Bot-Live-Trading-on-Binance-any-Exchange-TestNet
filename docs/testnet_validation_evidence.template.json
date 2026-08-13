@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "repository": "OWNER/REPOSITORY",
+  "commit_sha": "REPLACE_WITH_EXACT_40_CHARACTER_COMMIT_SHA",
+  "release_manifest_sha256": "REPLACE_WITH_RELEASE_MANIFEST_SHA256",
+  "package_mode": "testnet",
+  "binance_base": "https://testnet.binance.vision",
+  "performed_on_binance_spot_testnet": true,
+  "live_orders_attempted": false,
+  "credentials_redacted": true,
+  "operator_approved": false,
+  "started_at": "REPLACE_WITH_UTC_TIMESTAMP",
+  "completed_at": "REPLACE_WITH_UTC_TIMESTAMP",
+  "cases": {
+    "full_fill": {"status": "PENDING", "observations": 0, "evidence_sha256": "REPLACE"},
+    "partial_fill": {"status": "PENDING", "observations": 0, "evidence_sha256": "REPLACE"},
+    "cancel_fill_race": {"status": "PENDING", "observations": 0, "evidence_sha256": "REPLACE"},
+    "accepted_timeout_query_before_retry": {"status": "PENDING", "observations": 0, "evidence_sha256": "REPLACE"},
+    "restart_reconciliation": {"status": "PENDING", "observations": 0, "evidence_sha256": "REPLACE"},
+    "user_stream_reconnect": {"status": "PENDING", "observations": 0, "evidence_sha256": "REPLACE"},
+    "duplicate_signal_idempotency": {"status": "PENDING", "observations": 0, "evidence_sha256": "REPLACE"},
+    "monitoring_api_authentication": {"status": "PENDING", "observations": 0, "evidence_sha256": "REPLACE"},
+    "telegram_delivery": {"status": "PENDING", "observations": 0, "evidence_sha256": "REPLACE"}
+  }
+}
