@@ -724,7 +724,11 @@ class BitcoinSpotAdapter:
             for_entry=True,
         )
         self.state_store.register_symbol_pair(state["symbol"], state["pair"])
-        self._pause("startup-reconciliation-required")
+        # Startup reconciliation is an execution-entry interlock, not a reason
+        # to overwrite a durable risk pause restored from SQLite. Keep entries
+        # off while preserving any independent owner/risk halt verbatim.
+        self.enabled = False
+        self.state_store.set_entries(False, "startup-reconciliation-required")
         self.stream = self.stream_factory(
             self.gateway, self._on_order_update, self._on_list_update,
             self._on_resync, testnet=self.mode == "testnet")
@@ -732,7 +736,6 @@ class BitcoinSpotAdapter:
         result = self.verified_reconcile()
         if not result["ok"]:
             raise RuntimeError(result["detail"])
-        self.guard.clear_global_pause()
         self.started = True
         audit("bitcoin_spot_adapter_started", details={
             "mode": self.mode, "pair": state["pair"], "entries": "off"})
@@ -742,12 +745,16 @@ class BitcoinSpotAdapter:
         if on:
             if self.mode == "live" and self.state_store.data.get("live_restart_required", False):
                 return "OFF: live pair/policy changed; fresh signed evidence and restart required"
+            risk_pause = str(
+                getattr(getattr(self, "guard", None), "state", {}).get("global_pause", "")
+            )
+            if risk_pause:
+                return "OFF: global risk pause: " + risk_pause
             result = self.verified_reconcile()
             if not result["ok"]:
                 return "OFF: reconciliation failed: " + result["detail"]
             if self.state_store.unresolved_intents():
                 return "OFF: unresolved operation intent"
-            self.guard.clear_global_pause()
         self.enabled = bool(on)
         return "ON" if self.enabled else "OFF"
 

@@ -255,6 +255,15 @@ audit/deployment/config snapshots, rejects symlinked content and writes a full
 checksum inventory. It can contain private configuration and must remain mode
 `0700/0600` on the Oracle host. Encrypt it before any off-host transfer.
 
+On the first start of this release, a valid legacy
+`shared/runtime/sidecar/fresh_signal_guard.json` is transactionally migrated
+into SQLite schema version 2 and retained as a compatibility/evidence
+projection. Do not delete or rename that file before the first successful
+start. An existing schema version 1 database with no legacy risk state fails
+closed. After migration, SQLite is authoritative and a missing or damaged JSON
+projection is rebuilt without resetting cooldowns, stop-out counters or the
+global risk pause.
+
 Restore is deliberately not automatic. During a maintenance window: stop the
 stack, verify the backup, preserve the failed state, restore only the selected
 database/config generation, rerun SQLite `quick_check`, then start in simulation

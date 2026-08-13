@@ -7,6 +7,26 @@ from typing import Any
 from services.common.atomic import atomic_write_json, read_json
 from services.common.models import LifecycleState, ProtectionMode
 
+BASE_SCHEMA_VERSION = 1
+RISK_STATE_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = RISK_STATE_SCHEMA_VERSION
+
+RISK_STATE_SCHEMA = '''
+CREATE TABLE risk_guard_state (
+  singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
+  state_version INTEGER NOT NULL,
+  payload_json TEXT NOT NULL,
+  payload_sha256 TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE schema_migrations (
+  version INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  source_sha256 TEXT,
+  applied_at TEXT NOT NULL
+);
+'''
+
 SCHEMA = '''
 PRAGMA journal_mode=WAL;
 PRAGMA synchronous=FULL;
@@ -81,6 +101,7 @@ class StateStore:
     def __init__(self, path: str | Path, db_path: str | Path | None = None):
         self.path = Path(path)
         self.db_path = Path(db_path or self.path.with_suffix('.sqlite'))
+        self.database_preexisted = self.db_path.exists()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.lock = threading.RLock()
@@ -97,11 +118,22 @@ class StateStore:
             # store is silently damaged; the operator must restore a verified
             # backup instead.
             self._verify_integrity(con)
+            version = self._schema_version(con)
+            if version not in {0, BASE_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION}:
+                raise RuntimeError(
+                    f'unsupported SQLite state schema version {version}; fail closed')
             con.executescript(SCHEMA)
             columns = {row['name'] for row in con.execute('PRAGMA table_info(trade_records)')}
             if 'entry_submitted_at' not in columns:
                 con.execute('ALTER TABLE trade_records ADD COLUMN entry_submitted_at TEXT')
+            if version == 0:
+                con.execute(f'PRAGMA user_version = {BASE_SCHEMA_VERSION}')
         self.save()
+
+    @staticmethod
+    def _schema_version(con) -> int:
+        row = con.execute('PRAGMA user_version').fetchone()
+        return int(row[0]) if row else 0
 
     @staticmethod
     def _verify_integrity(con) -> None:
@@ -125,6 +157,9 @@ class StateStore:
         try:
             yield con
             con.commit()
+        except Exception:
+            con.rollback()
+            raise
         finally:
             con.close()
 
@@ -135,6 +170,114 @@ class StateStore:
     def save(self):
         with self.lock:
             atomic_write_json(self.path, self.data)
+
+    @staticmethod
+    def _canonical_payload(payload: dict[str, Any]) -> tuple[str, str]:
+        text = json.dumps(payload, sort_keys=True, separators=(',', ':'), default=str)
+        return text, hashlib.sha256(text.encode('utf-8')).hexdigest()
+
+    def schema_version(self) -> int:
+        with self._connect() as con:
+            return self._schema_version(con)
+
+    def initialize_risk_guard_state(
+        self, payload: dict[str, Any], *, source_sha256: str | None,
+        allow_new_install: bool,
+    ) -> dict[str, Any]:
+        """Atomically migrate or initialize the authoritative risk state.
+
+        Version 1 databases predate SQLite-backed risk state. An existing
+        database therefore requires a validated legacy projection; only the
+        process that created a genuinely new database may initialize empty
+        state without one.
+        """
+        if not isinstance(payload, dict):
+            raise TypeError('risk state payload must be a mapping')
+        if source_sha256 is None and not allow_new_install:
+            raise RuntimeError(
+                'legacy risk state is unexpectedly missing for an existing database; '
+                'fail closed and restore verified state')
+        payload_text, payload_sha256 = self._canonical_payload(payload)
+        with self.lock, self._connect() as con:
+            con.execute('BEGIN IMMEDIATE')
+            version = self._schema_version(con)
+            if version == CURRENT_SCHEMA_VERSION:
+                return self._read_risk_guard_state(con)
+            if version != BASE_SCHEMA_VERSION:
+                raise RuntimeError(
+                    f'cannot migrate risk state from SQLite schema version {version}')
+            for statement in filter(None, (item.strip() for item in RISK_STATE_SCHEMA.split(';'))):
+                con.execute(statement)
+            now = self._now()
+            con.execute(
+                '''INSERT INTO risk_guard_state(
+                   singleton,state_version,payload_json,payload_sha256,updated_at)
+                   VALUES(1,1,?,?,?)''',
+                (payload_text, payload_sha256, now),
+            )
+            con.execute(
+                '''INSERT INTO schema_migrations(version,name,source_sha256,applied_at)
+                   VALUES(?,?,?,?)''',
+                (CURRENT_SCHEMA_VERSION, 'sqlite-authoritative-risk-guard-state',
+                 source_sha256, now),
+            )
+            con.execute(f'PRAGMA user_version = {CURRENT_SCHEMA_VERSION}')
+            restored = self._read_risk_guard_state(con)
+            if restored != payload:
+                raise RuntimeError('risk state migration read-back verification failed')
+            return restored
+
+    def _read_risk_guard_state(self, con) -> dict[str, Any]:
+        row = con.execute(
+            '''SELECT state_version,payload_json,payload_sha256
+               FROM risk_guard_state WHERE singleton=1'''
+        ).fetchone()
+        if row is None or int(row['state_version']) != 1:
+            raise RuntimeError('authoritative risk state row is missing or unsupported')
+        payload_text = str(row['payload_json'])
+        actual = hashlib.sha256(payload_text.encode('utf-8')).hexdigest()
+        if actual != str(row['payload_sha256']):
+            raise RuntimeError('authoritative risk state checksum mismatch')
+        try:
+            payload = json.loads(payload_text)
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise RuntimeError('authoritative risk state payload is malformed') from exc
+        if not isinstance(payload, dict):
+            raise RuntimeError('authoritative risk state payload must be a mapping')
+        return payload
+
+    def risk_guard_state(self) -> dict[str, Any]:
+        with self._connect() as con:
+            if self._schema_version(con) != CURRENT_SCHEMA_VERSION:
+                raise RuntimeError('authoritative risk state has not been initialized')
+            return self._read_risk_guard_state(con)
+
+    def save_risk_guard_state(self, payload: dict[str, Any]) -> None:
+        """Commit one complete risk-state mutation before acknowledging it."""
+        if not isinstance(payload, dict):
+            raise TypeError('risk state payload must be a mapping')
+        payload_text, payload_sha256 = self._canonical_payload(payload)
+        with self.lock, self._connect() as con:
+            con.execute('BEGIN IMMEDIATE')
+            if self._schema_version(con) != CURRENT_SCHEMA_VERSION:
+                raise RuntimeError('authoritative risk state schema is unavailable')
+            cur = con.execute(
+                '''UPDATE risk_guard_state
+                   SET payload_json=?,payload_sha256=?,updated_at=? WHERE singleton=1''',
+                (payload_text, payload_sha256, self._now()),
+            )
+            if cur.rowcount != 1:
+                raise RuntimeError('authoritative risk state row is missing')
+
+    def risk_guard_migration(self) -> dict[str, Any] | None:
+        with self._connect() as con:
+            if self._schema_version(con) < CURRENT_SCHEMA_VERSION:
+                return None
+            row = con.execute(
+                'SELECT * FROM schema_migrations WHERE version=?',
+                (CURRENT_SCHEMA_VERSION,),
+            ).fetchone()
+        return dict(row) if row else None
 
     def get_mode(self):
         return self.data.get('protection_mode', ProtectionMode.OCO_TRAILING.value)

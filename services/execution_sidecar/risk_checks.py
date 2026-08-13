@@ -2,6 +2,8 @@ from __future__ import annotations
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from pathlib import Path
+from copy import deepcopy
+import hashlib
 import json
 import threading
 
@@ -33,12 +35,7 @@ class FreshSignalGuard:
         self.lock = threading.RLock()
         if self.path.is_symlink():
             raise ConfigError('risk state file must not be a symlink')
-        try:
-            self.state = json.loads(self.path.read_text(encoding='utf-8'))
-        except FileNotFoundError:
-            self.state = {}
-        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            raise ConfigError('existing risk state is unreadable or malformed') from exc
+        self.state = self._load_state()
         if not isinstance(self.state, dict):
             raise ConfigError('existing risk state must be a JSON object')
         self.state.setdefault('pairs', {})
@@ -50,6 +47,58 @@ class FreshSignalGuard:
         self.cooldown_seconds = env_int('PAIR_COOLDOWN_SECONDS', 60, 0, 86_400)
         self.max_age_seconds = env_int('MAX_SIGNAL_AGE_SECONDS', 180, 10, 3600)
         self.max_candle_age_seconds = env_int('MAX_CANDLE_AGE_SECONDS', 180, 10, 3600)
+        self._write_projection()
+
+    def _load_state(self):
+        if self.store is None:
+            try:
+                return json.loads(self.path.read_text(encoding='utf-8'))
+            except FileNotFoundError:
+                return {}
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                raise ConfigError('existing risk state is unreadable or malformed') from exc
+        try:
+            if self.store.schema_version() >= 2:
+                state = self.store.risk_guard_state()
+                self._report_projection_difference(state)
+                return state
+            legacy_bytes = self.path.read_bytes() if self.path.exists() else None
+            if legacy_bytes is None:
+                legacy = {}
+                source_sha256 = None
+            else:
+                source_sha256 = hashlib.sha256(legacy_bytes).hexdigest()
+                legacy = json.loads(legacy_bytes.decode('utf-8'))
+            if not isinstance(legacy, dict):
+                raise ConfigError('existing risk state must be a JSON object')
+            legacy.setdefault('pairs', {})
+            legacy.setdefault('daily', {})
+            legacy.setdefault('global_pause', '')
+            self.state = legacy
+            self._validate_state()
+            return self.store.initialize_risk_guard_state(
+                legacy,
+                source_sha256=source_sha256,
+                allow_new_install=not self.store.database_preexisted,
+            )
+        except ConfigError:
+            raise
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise ConfigError('existing risk state is unreadable or malformed') from exc
+        except Exception as exc:
+            raise ConfigError('authoritative SQLite risk state is unavailable') from exc
+
+    def _report_projection_difference(self, authoritative):
+        if not self.path.exists():
+            audit('risk_state_projection_missing_rebuilt', severity='WARNING')
+            return
+        try:
+            projection = json.loads(self.path.read_text(encoding='utf-8'))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            audit('risk_state_projection_damaged_rebuilt', severity='WARNING')
+            return
+        if projection != authoritative:
+            audit('risk_state_projection_mismatch_rebuilt', severity='WARNING')
 
     def _validate_state(self):
         pairs = self.state.get('pairs')
@@ -89,19 +138,42 @@ class FreshSignalGuard:
     def _day(now):
         return now.astimezone(timezone.utc).date().isoformat()
 
-    def _save(self):
+    def _write_projection(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_json(self.path, self.state)
+        try:
+            atomic_write_json(self.path, self.state)
+        except OSError as exc:
+            audit('risk_state_projection_write_failed', severity='WARNING',
+                  details={'error': type(exc).__name__})
+
+    def _save(self, prior_state):
+        try:
+            if self.store is not None:
+                self.store.save_risk_guard_state(self.state)
+            self._write_projection()
+        except Exception:
+            self.state = prior_state
+            if self.store is not None:
+                self.store.data['entries_enabled'] = False
+                self.store.data['pause_reason'] = 'risk-state-persistence-failed'
+                try:
+                    self.store.save()
+                except Exception:
+                    pass
+            audit('risk_state_commit_failed_entries_disabled', severity='CRITICAL')
+            raise
 
     def set_global_pause(self, reason: str):
         with self.lock:
+            prior = deepcopy(self.state)
             self.state['global_pause'] = reason
-            self._save()
+            self._save(prior)
 
     def clear_global_pause(self):
         with self.lock:
+            prior = deepcopy(self.state)
             self.state['global_pause'] = ''
-            self._save()
+            self._save(prior)
 
     def allow(self, signal, active_pair: str, pair_state_hash: str, state_store=None):
         now = datetime.now(timezone.utc)
@@ -163,6 +235,7 @@ class FreshSignalGuard:
 
     def record(self, signal, result):
         with self.lock:
+            before = deepcopy(self.state)
             pair = signal['pair']
             prior = self.state['pairs'].get(pair, {})
             prior.update({
@@ -170,10 +243,11 @@ class FreshSignalGuard:
                 'result': result, 'recorded_at': datetime.now(timezone.utc).isoformat()
             })
             self.state['pairs'][pair] = prior
-            self._save()
+            self._save(before)
 
     def record_stopout(self, symbol: str, event_time=None):
         with self.lock:
+            prior = deepcopy(self.state)
             now = self._dt(event_time) if event_time else datetime.now(timezone.utc)
             if self.store is None:
                 raise RuntimeError('authoritative state store is required for symbol mapping')
@@ -190,7 +264,7 @@ class FreshSignalGuard:
             ps = self.state['pairs'].setdefault(pair, {})
             ps['last_stopout_time'] = now.isoformat()
             ps['cooldown_until'] = (now + timedelta(seconds=self.cooldown_seconds)).isoformat()
-            self._save()
+            self._save(prior)
 
     def _classify_protective_exit(self, event: dict) -> tuple[bool, str]:
         """True when this filled stop-type SELL is a realized LOSS (M-005).
