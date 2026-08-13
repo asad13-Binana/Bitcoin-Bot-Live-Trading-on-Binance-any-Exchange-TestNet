@@ -1,0 +1,23 @@
+Status: non-core Oracle host-loss resilience implementation
+
+Added:
+- encrypted off-host backup to private OCI Object Storage;
+- OCI instance-principal authentication with no user API key on the VM;
+- digest-pinned official OCI CLI container for ARM64 and AMD64;
+- non-overwriting uploads plus OCI/local SHA-256 verification;
+- download, decrypt, safe-extract and backup-integrity staging with no automatic restore;
+- daily systemd off-host backup service and timer;
+- external OCI metric-absence alarm helper and operator runbook;
+- redacted Oracle validation status for local and off-host backup timers.
+
+Not changed:
+- strategy, indicators, entries, exits, risk, execution, Sharia screening,
+  position sizing, release interlocks, or preserved legacy core.
+
+Honest boundary:
+- no code can guarantee Oracle will never reclaim an Always Free instance;
+- no artificial load is generated;
+- OCI bucket, dynamic-group policy, email confirmation, alarm delivery, upload,
+  restore drill and host soak require the owner's real Oracle tenancy;
+- LIVE-money readiness and profitability are not claimed.
+

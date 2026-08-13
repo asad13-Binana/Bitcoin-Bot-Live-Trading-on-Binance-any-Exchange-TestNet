@@ -65,6 +65,7 @@ def isolated_config(tmp_path, monkeypatch):
     CONFIG.moneyflow_max_age_seconds = 90
     CONFIG.deploy_status_path = tmp_path / "deployment_status.json"
     CONFIG.validation_status_path = tmp_path / "release_validation.json"
+    CONFIG.offhost_backup_status_path = tmp_path / "offhost_backup_status.json"
     CONFIG.binance_base = "https://testnet.binance.vision"
     _WINDOWS.clear()
     bridge.URL = "http://127.0.0.1:8091"
@@ -186,6 +187,26 @@ def test_recursive_redaction_covers_sensitive_fields():
 # SQLite, topology, and the known midnight/date-format regression.
 def test_database_missing_is_structured():
     assert metrics.execution_state()["error"] == "database_missing"
+
+
+def test_offhost_backup_status_is_missing_safe_fresh_and_failed():
+    assert metrics.offhost_backup_status()["status"] == "not_configured"
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+    _write(CONFIG.offhost_backup_status_path, {
+        "ok": True, "completed_at": now, "source_backup": "20260814T010000Z",
+        "object_name": "bitcoin-testnet/20260814T010000Z.tar.age",
+        "encrypted_sha256": "a" * 64, "authentication": "instance_principal",
+    })
+    healthy = metrics.offhost_backup_status()
+    assert healthy["status"] == "healthy" and healthy["fresh"] is True
+    _write(CONFIG.offhost_backup_status_path, {
+        "ok": False, "failed_at": now, "exit_code": 1,
+        "authentication": "instance_principal",
+    })
+    failed = metrics.offhost_backup_status()
+    assert failed["status"] == "degraded" and failed["fresh"] is True
+    payload = client.get("/api/v1/health", headers=AUTH).json()
+    assert payload["offhost_backup"]["status"] == "degraded"
 
 
 def test_database_malformed_is_structured():

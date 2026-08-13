@@ -100,11 +100,26 @@ command_value UTC-date date -u +%Y-%m-%dT%H:%M:%SZ
 section 'Services'
 for unit in \
   docker.service chrony.service unattended-upgrades.service \
-  bitcoin-bot-resource-guard.timer bitcoin-bot-monitor-testnet.service \
+  bitcoin-bot-resource-guard.timer bitcoin-bot-state-backup.timer \
+  bitcoin-bot-offhost-backup.timer bitcoin-bot-monitor-testnet.service \
   bitcoin-bot-monitor-snapshot.timer bitcoin-bot-monitor-report-testnet.timer; do
   state=$(systemctl is-active "$unit" 2>/dev/null || true)
   line "$unit" "${state:-not-installed}"
 done
+if [[ -f "$PERSIST/runtime/offhost_backup_status.json" \
+   && ! -L "$PERSIST/runtime/offhost_backup_status.json" ]]; then
+  python3 - "$PERSIST/runtime/offhost_backup_status.json" <<'PY'
+import json, pathlib, sys
+data = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+safe = {key: data.get(key) for key in (
+    "ok", "completed_at", "failed_at", "source_backup", "object_name",
+    "encrypted_sha256", "authentication", "exit_code"
+) if key in data}
+print("offhost_backup_status=" + json.dumps(safe, sort_keys=True))
+PY
+else
+  line offhost_backup_status NOT_CONFIGURED_OR_NOT_RUN
+fi
 
 section 'Release'
 if [[ -L "$CURRENT" ]]; then

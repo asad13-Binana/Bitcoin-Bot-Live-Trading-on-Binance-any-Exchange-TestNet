@@ -30,6 +30,7 @@ def _format(report: dict) -> str:
     order_quality = report.get("order_quality", {})
     active_pair = report.get("active_pair", {})
     moneyflow = report.get("moneyflow", {})
+    offhost_backup = report.get("offhost_backup", {})
     classification = moneyflow.get("classification", {})
     futures = moneyflow.get("futures", {})
     lines = [
@@ -45,6 +46,7 @@ def _format(report: dict) -> str:
         f"Crashes: {crashes.get('crash_count', 'n/a')} ({crashes.get('window_hours', 'n/a')}h)",
         f"Binance REST: {'ok' if latency.get('reachable') else 'DOWN'} | median {latency.get('median_ms', 'n/a')}ms | p95 {latency.get('p95_ms', 'n/a')}ms | p99 {latency.get('p99_ms', 'n/a')}ms",
         f"CPU {system.get('cpu_pct', 'n/a')}% | MEM {system.get('mem_pct', 'n/a')}% | DISK {system.get('disk_used_pct', 'n/a')}%",
+        f"Off-host backup: {offhost_backup.get('status', 'not_configured')} | age {offhost_backup.get('age_seconds', 'n/a')}s",
     ]
     if performance.get("error"):
         lines.append(f"Performance source note: {performance['error']}")

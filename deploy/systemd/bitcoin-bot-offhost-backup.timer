@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily encrypted Bitcoin Bot off-host backup
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+RandomizedDelaySec=15m
+Persistent=true
+Unit=bitcoin-bot-offhost-backup.service
+
+[Install]
+WantedBy=timers.target

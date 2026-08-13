@@ -44,6 +44,7 @@ def health(request_id: str = Depends(require_bearer)):
         log=metrics.log_freshness(),
         active_pair=metrics.active_pair_status(),
         moneyflow=metrics.moneyflow_status(),
+        offhost_backup=metrics.offhost_backup_status(),
     )
 
 
@@ -60,6 +61,7 @@ def status(request_id: str = Depends(require_bearer)):
         active_pair=metrics.active_pair_status(),
         moneyflow=metrics.moneyflow_status(),
         deployment=metrics.deployment_info(),
+        offhost_backup=metrics.offhost_backup_status(),
     )
 
 
@@ -165,6 +167,7 @@ def report(
         ("system", metrics.system_resources, ()),
         ("crashes", metrics.crash_blocks, (24,)),
         ("deployment", metrics.deployment_info, ()),
+        ("offhost_backup", metrics.offhost_backup_status, ()),
         ("security_warnings", metrics.recent_security_warnings, ()),
     )
     for key, collector, args in collectors:
