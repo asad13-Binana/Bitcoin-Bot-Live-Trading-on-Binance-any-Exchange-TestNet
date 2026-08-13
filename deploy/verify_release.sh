@@ -37,6 +37,8 @@ done
 "$PYTHON" -m pytest -q monitoring/tests
 "$PYTHON" tests/secret_scan.py
 "$PYTHON" scripts/build_audit_ledgers.py --check
+"$PYTHON" scripts/build_sbom.py --check
+"$PYTHON" scripts/verify_artifact_provenance.py
 "$PYTHON" scripts/verify_manifest.py
 
 "$PYTHON" - <<'PY'

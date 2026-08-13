@@ -1,0 +1,23 @@
+{
+  "attestation": {
+    "cryptographic": false,
+    "limitation": "GitHub artifact attestations for private repositories require GitHub Enterprise Cloud; this record is manifest-bound workflow provenance, not a GitHub or Sigstore attestation",
+    "type": "manifest-bound-github-actions-metadata"
+  },
+  "builder": {
+    "run_attempt": 0,
+    "run_id": 0,
+    "workflow_ref": "SOURCE_ZIP_NO_GIT_WORKFLOW"
+  },
+  "release_mode": "testnet",
+  "sbom": {
+    "path": "SBOM.cyclonedx.json",
+    "sha256": "f57e6038b76c9172e4e57e62e0eee6a0f91f8a6e11fe4380a8b762652d1dc9a1"
+  },
+  "schema": "bitcoin-bot-artifact-provenance-v1",
+  "source": {
+    "commit": "SOURCE_ZIP_NO_GIT_COMMIT",
+    "ref": "SOURCE_ZIP_NO_GIT_REF",
+    "repository": "SOURCE_ZIP_NO_GIT_REPOSITORY"
+  }
+}

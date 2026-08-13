@@ -562,6 +562,7 @@ NEW="$TMP/bitcoin-bot"
 [[ -d "$NEW" && -f "$NEW/RELEASE_MANIFEST.json" && -f "$NEW/RELEASE_SHA256.txt" \
    && -f "$NEW/RELEASE_MODE" ]] || fail 'invalid release root'
 python3 "$NEW/scripts/verify_manifest.py"
+python3 "$NEW/scripts/verify_artifact_provenance.py" --deployment
 python3 "$NEW/tests/secret_scan.py"
 RELEASE_HASH=$(awk 'NF{print $1;exit}' "$NEW/RELEASE_SHA256.txt")
 [[ "$RELEASE_HASH" =~ ^[0-9a-f]{64}$ ]] || fail 'invalid release hash'
@@ -1180,6 +1181,7 @@ on_cutover_failure(){
 # after its prior container and monitoring gates. Never bless a symlink here.
 if [[ -n "$OLD" ]]; then
   python3 "$OLD/scripts/verify_manifest.py"
+  python3 "$OLD/scripts/verify_artifact_provenance.py" --deployment
   stack_healthy "$OLD" "$OLD_HASH" "$OLD_TAG" || \
     fail 'current release is not the exact healthy four-service rollback generation'
   if [[ "$OLD_EXECUTION_MODE" == live ]]; then

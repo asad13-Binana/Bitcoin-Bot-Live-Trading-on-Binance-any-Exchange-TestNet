@@ -124,6 +124,14 @@ jobs:
       - name: Create deterministic immutable artifact
         run: |
           printf '%s\n' "$GITHUB_SHA" > .git-commit
+          python scripts/build_sbom.py --check
+          python scripts/build_artifact_provenance.py \
+            --commit "$GITHUB_SHA" \
+            --repository "$GITHUB_REPOSITORY" \
+            --ref "$GITHUB_REF" \
+            --workflow-ref "$GITHUB_WORKFLOW_REF" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
           python scripts/build_manifest.py
           mkdir -p /tmp/bitcoin-bot-artifact
           tar --sort=name --mtime='UTC 2020-01-01' --owner=0 --group=0 --numeric-owner \
@@ -190,7 +198,7 @@ jobs:
         with:
           name: bitcoin-bot-${{ github.sha }}
           path: /tmp/bitcoin-bot-artifact/*
-          retention-days: 14
+          retention-days: 90
           if-no-files-found: error
 
   deploy-oracle-simulation:

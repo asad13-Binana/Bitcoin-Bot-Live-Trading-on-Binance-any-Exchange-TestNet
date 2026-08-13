@@ -1200,3 +1200,58 @@ def test_live_adapter_restart_latch_blocks_rearming_before_reconciliation():
         "OFF: live pair/policy changed; fresh signed evidence and restart required"
     )
     assert adapter.enabled is False
+
+
+def test_telegram_update_store_migrates_offset_and_rejects_replay(tmp_path):
+    legacy = tmp_path / "telegram_offset.json"
+    legacy.write_text(json.dumps({"offset": 42}), encoding="utf-8")
+    store = telegram_bot.TelegramUpdateStore(
+        tmp_path / "telegram_updates.sqlite3",
+        legacy_offset_path=legacy,
+    )
+    try:
+        assert store.offset() == 42
+        assert store.claim(41) is False
+        assert store.claim(42) is True
+        store.complete(42, "handled")
+        assert store.offset() == 43
+        assert store.claim(42) is False
+    finally:
+        store.close()
+
+
+def test_telegram_update_claim_survives_crash_without_reexecution(tmp_path):
+    database = tmp_path / "telegram_updates.sqlite3"
+    first = telegram_bot.TelegramUpdateStore(database)
+    assert first.claim(1001) is True
+    assert first.offset() == 1002
+    first.close()
+
+    recovered = telegram_bot.TelegramUpdateStore(database)
+    try:
+        assert recovered.recovered_uncertain == 1
+        assert recovered.uncertain_count() == 1
+        assert recovered.offset() == 1002
+        assert recovered.claim(1001) is False
+    finally:
+        recovered.close()
+
+
+def test_telegram_update_store_fails_closed_on_malformed_legacy_offset(tmp_path):
+    legacy = tmp_path / "telegram_offset.json"
+    legacy.write_text('{"offset": "not-an-integer"}', encoding="utf-8")
+    with pytest.raises(RuntimeError, match="legacy Telegram offset is malformed"):
+        telegram_bot.TelegramUpdateStore(
+            tmp_path / "telegram_updates.sqlite3",
+            legacy_offset_path=legacy,
+        )
+
+
+def test_telegram_poll_backoff_is_bounded_exponential_with_jitter_hook():
+    no_jitter = lambda _low, _high: 0.0
+    delays = [
+        telegram_bot._poll_backoff(failures, jitter=no_jitter)
+        for failures in range(1, 9)
+    ]
+    assert delays == [3.0, 6.0, 12.0, 24.0, 48.0, 60.0, 60.0, 60.0]
+    assert telegram_bot._poll_backoff(1, jitter=lambda _low, high: high) == 3.75

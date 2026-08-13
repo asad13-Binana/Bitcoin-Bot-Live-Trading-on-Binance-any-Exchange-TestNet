@@ -5,6 +5,8 @@ import json
 import logging
 import math
 import os
+import random
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 import time
@@ -35,11 +37,198 @@ FT_BASE = os.getenv("FREQTRADE_API_URL", "http://freqtrade:8080/api/v1").rstrip(
 FT_USER = os.getenv("FREQTRADE_API_USERNAME", "freqtrade")
 FT_PASS = os.getenv("FREQTRADE_API_PASSWORD", "")
 OFFSET_PATH = RUNTIME / "telegram_offset.json"
+UPDATE_DB_PATH = Path(os.getenv(
+    "TELEGRAM_UPDATE_DB_PATH", str(RUNTIME / "telegram_updates.sqlite3")))
+UPDATE_RETENTION = max(100, int(os.getenv("TELEGRAM_UPDATE_RETENTION", "10000")))
 SIDECAR_RUNTIME = Path(os.getenv("SIDECAR_RUNTIME_DIR", str(RUNTIME)))
 DEPLOYMENT_STATUS_FILE = Path(os.getenv(
     "DEPLOYMENT_STATUS_FILE", str(RUNTIME / "deployment_status.json")))
 LIVE_EVIDENCE_FILE = Path(os.getenv(
     "LIVE_EVIDENCE_FILE", str(SIDECAR_RUNTIME / "LIVE_EVIDENCE.json")))
+
+
+class TelegramUpdateStore:
+    """Durably claim Telegram updates before any control action is handled.
+
+    A claim and the next Telegram offset are committed in one SQLite
+    transaction.  A process crash can therefore drop one uncertain command,
+    which the owner may safely reissue, but cannot execute the same update
+    twice.  This is intentionally fail-closed rather than pretending that an
+    external Telegram request and local side effects can be exactly-once.
+    """
+
+    SCHEMA_VERSION = 1
+    FINAL_STATES = {"handled", "failed", "uncertain"}
+
+    def __init__(
+        self,
+        path: Path,
+        *,
+        legacy_offset_path: Path | None = None,
+        retention: int = 10000,
+        now=time.time,
+    ):
+        self.path = Path(path)
+        self.legacy_offset_path = legacy_offset_path
+        self.retention = max(100, int(retention))
+        self.now = now
+        if self.path.is_symlink():
+            raise RuntimeError("Telegram update database must not be a symlink")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.connection = sqlite3.connect(
+            self.path, timeout=10.0, isolation_level=None)
+        try:
+            self.connection.execute("PRAGMA journal_mode=WAL")
+            self.connection.execute("PRAGMA synchronous=FULL")
+            self.connection.execute("PRAGMA foreign_keys=ON")
+            self._initialize()
+        except Exception:
+            self.connection.close()
+            raise
+
+    def _initialize(self) -> None:
+        version = int(self.connection.execute(
+            "PRAGMA user_version").fetchone()[0])
+        if version not in {0, self.SCHEMA_VERSION}:
+            raise RuntimeError(
+                f"unsupported Telegram update schema version: {version}")
+        self.connection.execute("BEGIN IMMEDIATE")
+        try:
+            self.connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS telegram_update_meta (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+                """
+            )
+            self.connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS telegram_updates (
+                    update_id INTEGER PRIMARY KEY,
+                    state TEXT NOT NULL CHECK (
+                        state IN ('claimed', 'handled', 'failed', 'uncertain')
+                    ),
+                    claimed_at REAL NOT NULL,
+                    completed_at REAL,
+                    error TEXT NOT NULL DEFAULT ''
+                )
+                """
+            )
+            self.connection.execute(
+                "INSERT OR IGNORE INTO telegram_update_meta(key, value) "
+                "VALUES ('offset', '0')"
+            )
+            legacy_offset = self._legacy_offset()
+            if legacy_offset is not None:
+                current = self._offset_unlocked()
+                self._set_offset_unlocked(max(current, legacy_offset))
+            recovered = self.connection.execute(
+                "UPDATE telegram_updates SET state='uncertain', "
+                "completed_at=?, error='process-stopped-after-durable-claim' "
+                "WHERE state='claimed'",
+                (float(self.now()),),
+            ).rowcount
+            self.connection.execute(
+                f"PRAGMA user_version={self.SCHEMA_VERSION}")
+            self.connection.execute("COMMIT")
+            self.recovered_uncertain = int(recovered)
+        except Exception:
+            self.connection.execute("ROLLBACK")
+            raise
+
+    def _legacy_offset(self) -> int | None:
+        path = self.legacy_offset_path
+        if path is None or not path.exists():
+            return None
+        if path.is_symlink() or not path.is_file():
+            raise RuntimeError("legacy Telegram offset path is unsafe")
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            offset = int(payload["offset"])
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise RuntimeError("legacy Telegram offset is malformed") from exc
+        if offset < 0:
+            raise RuntimeError("legacy Telegram offset must be non-negative")
+        return offset
+
+    def _offset_unlocked(self) -> int:
+        row = self.connection.execute(
+            "SELECT value FROM telegram_update_meta WHERE key='offset'"
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("Telegram update offset metadata is missing")
+        try:
+            offset = int(row[0])
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("Telegram update offset metadata is malformed") from exc
+        if offset < 0:
+            raise RuntimeError("Telegram update offset metadata is negative")
+        return offset
+
+    def _set_offset_unlocked(self, offset: int) -> None:
+        self.connection.execute(
+            "UPDATE telegram_update_meta SET value=? WHERE key='offset'",
+            (str(int(offset)),),
+        )
+
+    def offset(self) -> int:
+        return self._offset_unlocked()
+
+    def claim(self, update_id: int) -> bool:
+        update_id = int(update_id)
+        if not 0 <= update_id < 2**63 - 1:
+            raise ValueError("Telegram update_id is outside the SQLite range")
+        self.connection.execute("BEGIN IMMEDIATE")
+        try:
+            current_offset = self._offset_unlocked()
+            if update_id < current_offset:
+                self.connection.execute("COMMIT")
+                return False
+            inserted = self.connection.execute(
+                "INSERT OR IGNORE INTO telegram_updates"
+                "(update_id, state, claimed_at) VALUES (?, 'claimed', ?)",
+                (update_id, float(self.now())),
+            ).rowcount
+            self._set_offset_unlocked(max(current_offset, update_id + 1))
+            if inserted:
+                self.connection.execute(
+                    "DELETE FROM telegram_updates WHERE update_id IN ("
+                    "SELECT update_id FROM telegram_updates "
+                    "WHERE state != 'claimed' ORDER BY update_id DESC "
+                    "LIMIT -1 OFFSET ?)",
+                    (self.retention,),
+                )
+            self.connection.execute("COMMIT")
+            return bool(inserted)
+        except Exception:
+            self.connection.execute("ROLLBACK")
+            raise
+
+    def complete(self, update_id: int, state: str, error: str = "") -> None:
+        if state not in self.FINAL_STATES:
+            raise ValueError("invalid Telegram update final state")
+        self.connection.execute("BEGIN IMMEDIATE")
+        try:
+            updated = self.connection.execute(
+                "UPDATE telegram_updates SET state=?, completed_at=?, error=? "
+                "WHERE update_id=? AND state='claimed'",
+                (state, float(self.now()), redact_text(error)[:500], int(update_id)),
+            ).rowcount
+            if updated != 1:
+                raise RuntimeError("Telegram update claim is missing or already final")
+            self.connection.execute("COMMIT")
+        except Exception:
+            self.connection.execute("ROLLBACK")
+            raise
+
+    def uncertain_count(self) -> int:
+        return int(self.connection.execute(
+            "SELECT COUNT(*) FROM telegram_updates WHERE state='uncertain'"
+        ).fetchone()[0])
+
+    def close(self) -> None:
+        self.connection.close()
 
 
 def _safe_error(exc) -> str:
@@ -716,9 +905,11 @@ def handle_callback(callback):
         _confirm_action(item["action"], item["args"], chat)
 
 
-def _load_offset():
-    try: return max(0, int((read_json(OFFSET_PATH, {}) or {}).get("offset", 0)))
-    except Exception: return 0
+def _poll_backoff(failures: int, *, jitter=random.uniform) -> float:
+    """Return bounded exponential backoff with a small randomised delay."""
+    exponent = max(0, min(int(failures) - 1, 5))
+    base = min(3.0 * (2**exponent), 60.0)
+    return base + float(jitter(0.0, min(1.0, base * 0.25)))
 
 
 def main():
@@ -726,28 +917,79 @@ def main():
     if not TOKEN or not OWNER:
         raise SystemExit("TELEGRAM_BOT_TOKEN and TELEGRAM_OWNER_CHAT_ID required")
     envelope.load_key(envelope.BUS_COMMAND)
-    offset = _load_offset()
-    while True:
-        try:
-            response = requests.get(BASE + "/getUpdates", params={
-                "offset": offset, "timeout": 25,
-                "allowed_updates": json.dumps(["message", "callback_query"])}, timeout=35).json()
-            if not response.get("ok"):
-                raise RuntimeError("Telegram getUpdates returned an error")
-            previous = offset
-            for update in response.get("result", []):
-                offset = max(offset, int(update["update_id"]) + 1)
-                if "message" in update: handle_message(update["message"])
-                if "callback_query" in update: handle_callback(update["callback_query"])
-            if offset != previous:
-                atomic_write_json(OFFSET_PATH, {"offset": offset, "ts": time.time()})
-            atomic_write_json(RUNTIME / "telegram_health.json", {
-                "ok": True, "ts": time.time(), "offset": offset})
-        except Exception as exc:
-            atomic_write_json(RUNTIME / "telegram_health.json", {
-                "ok": False, "ts": time.time(), "error": _safe_error(exc)})
-            log.warning("Telegram poll failed: %s", _safe_error(exc))
-            time.sleep(3)
+    update_store = TelegramUpdateStore(
+        UPDATE_DB_PATH,
+        legacy_offset_path=OFFSET_PATH,
+        retention=UPDATE_RETENTION,
+    )
+    offset = update_store.offset()
+    failures = 0
+    if update_store.recovered_uncertain:
+        log.warning(
+            "Recovered %d durably claimed Telegram update(s) as uncertain; "
+            "they will not be replayed",
+            update_store.recovered_uncertain,
+        )
+    try:
+        while True:
+            try:
+                response = requests.get(BASE + "/getUpdates", params={
+                    "offset": offset, "timeout": 25,
+                    "allowed_updates": json.dumps(
+                        ["message", "callback_query"])}, timeout=35).json()
+                if not response.get("ok"):
+                    raise RuntimeError("Telegram getUpdates returned an error")
+                previous = offset
+                for update in response.get("result", []):
+                    update_id = int(update["update_id"])
+                    if not update_store.claim(update_id):
+                        audit(
+                            "telegram_update_replay_rejected",
+                            actor="telegram-broker",
+                            details={"update_id": update_id},
+                        )
+                        continue
+                    try:
+                        if "message" in update:
+                            handle_message(update["message"])
+                        if "callback_query" in update:
+                            handle_callback(update["callback_query"])
+                    except Exception as exc:
+                        update_store.complete(update_id, "failed", _safe_error(exc))
+                        raise
+                    else:
+                        update_store.complete(update_id, "handled")
+                    offset = update_store.offset()
+                offset = update_store.offset()
+                if offset != previous:
+                    atomic_write_json(
+                        OFFSET_PATH, {"offset": offset, "ts": time.time()})
+                failures = 0
+                atomic_write_json(RUNTIME / "telegram_health.json", {
+                    "ok": True,
+                    "ts": time.time(),
+                    "offset": offset,
+                    "uncertain_updates": update_store.uncertain_count(),
+                })
+            except Exception as exc:
+                failures += 1
+                delay = _poll_backoff(failures)
+                atomic_write_json(RUNTIME / "telegram_health.json", {
+                    "ok": False,
+                    "ts": time.time(),
+                    "offset": update_store.offset(),
+                    "uncertain_updates": update_store.uncertain_count(),
+                    "retry_seconds": delay,
+                    "error": _safe_error(exc),
+                })
+                log.warning(
+                    "Telegram poll failed; retrying in %.2fs: %s",
+                    delay,
+                    _safe_error(exc),
+                )
+                time.sleep(delay)
+    finally:
+        update_store.close()
 
 
 if __name__ == "__main__":

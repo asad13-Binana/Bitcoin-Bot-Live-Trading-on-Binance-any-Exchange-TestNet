@@ -1,0 +1,776 @@
+{
+  "$schema": "https://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:pypi/aiohappyeyeballs@2.7.1",
+      "name": "aiohappyeyeballs",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/aiohappyeyeballs@2.7.1",
+      "type": "library",
+      "version": "2.7.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/aiohttp@3.14.3",
+      "name": "aiohttp",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/aiohttp@3.14.3",
+      "type": "library",
+      "version": "3.14.3"
+    },
+    {
+      "bom-ref": "pkg:pypi/aiosignal@1.4.0",
+      "name": "aiosignal",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/aiosignal@1.4.0",
+      "type": "library",
+      "version": "1.4.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/annotated-doc@0.0.4",
+      "name": "annotated-doc",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/annotated-doc@0.0.4",
+      "type": "library",
+      "version": "0.0.4"
+    },
+    {
+      "bom-ref": "pkg:pypi/annotated-types@0.7.0",
+      "name": "annotated-types",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/annotated-types@0.7.0",
+      "type": "library",
+      "version": "0.7.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/anyio@4.14.2",
+      "name": "anyio",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/anyio@4.14.2",
+      "type": "library",
+      "version": "4.14.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/async-timeout@5.0.1",
+      "name": "async-timeout",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/async-timeout@5.0.1",
+      "type": "library",
+      "version": "5.0.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/attrs@26.1.0",
+      "name": "attrs",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring,services"
+        }
+      ],
+      "purl": "pkg:pypi/attrs@26.1.0",
+      "type": "library",
+      "version": "26.1.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/certifi@2026.6.17",
+      "name": "certifi",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring,services"
+        }
+      ],
+      "purl": "pkg:pypi/certifi@2026.6.17",
+      "type": "library",
+      "version": "2026.6.17"
+    },
+    {
+      "bom-ref": "pkg:pypi/cffi@2.1.0",
+      "name": "cffi",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/cffi@2.1.0",
+      "type": "library",
+      "version": "2.1.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/charset-normalizer@3.4.9",
+      "name": "charset-normalizer",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/charset-normalizer@3.4.9",
+      "type": "library",
+      "version": "3.4.9"
+    },
+    {
+      "bom-ref": "pkg:pypi/click@8.4.2",
+      "name": "click",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/click@8.4.2",
+      "type": "library",
+      "version": "8.4.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/colorama@0.4.6",
+      "name": "colorama",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/colorama@0.4.6",
+      "type": "library",
+      "version": "0.4.6"
+    },
+    {
+      "bom-ref": "pkg:pypi/cryptography@50.0.0",
+      "name": "cryptography",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/cryptography@50.0.0",
+      "type": "library",
+      "version": "50.0.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/dateparser@1.4.1",
+      "name": "dateparser",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/dateparser@1.4.1",
+      "type": "library",
+      "version": "1.4.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/exceptiongroup@1.3.1",
+      "name": "exceptiongroup",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/exceptiongroup@1.3.1",
+      "type": "library",
+      "version": "1.3.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/fastapi@0.139.2",
+      "name": "fastapi",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/fastapi@0.139.2",
+      "type": "library",
+      "version": "0.139.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/frozenlist@1.8.0",
+      "name": "frozenlist",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/frozenlist@1.8.0",
+      "type": "library",
+      "version": "1.8.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/h11@0.16.0",
+      "name": "h11",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/h11@0.16.0",
+      "type": "library",
+      "version": "0.16.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/httpcore@1.0.9",
+      "name": "httpcore",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/httpcore@1.0.9",
+      "type": "library",
+      "version": "1.0.9"
+    },
+    {
+      "bom-ref": "pkg:pypi/httpx@0.28.1",
+      "name": "httpx",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/httpx@0.28.1",
+      "type": "library",
+      "version": "0.28.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/httpx-sse@0.4.3",
+      "name": "httpx-sse",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/httpx-sse@0.4.3",
+      "type": "library",
+      "version": "0.4.3"
+    },
+    {
+      "bom-ref": "pkg:pypi/idna@3.18",
+      "name": "idna",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring,services"
+        }
+      ],
+      "purl": "pkg:pypi/idna@3.18",
+      "type": "library",
+      "version": "3.18"
+    },
+    {
+      "bom-ref": "pkg:pypi/jsonschema@4.26.0",
+      "name": "jsonschema",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/jsonschema@4.26.0",
+      "type": "library",
+      "version": "4.26.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/jsonschema-specifications@2025.9.1",
+      "name": "jsonschema-specifications",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/jsonschema-specifications@2025.9.1",
+      "type": "library",
+      "version": "2025.9.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/mcp@1.28.1",
+      "name": "mcp",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/mcp@1.28.1",
+      "type": "library",
+      "version": "1.28.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/multidict@6.7.1",
+      "name": "multidict",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/multidict@6.7.1",
+      "type": "library",
+      "version": "6.7.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/propcache@0.5.2",
+      "name": "propcache",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/propcache@0.5.2",
+      "type": "library",
+      "version": "0.5.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/psutil@7.2.2",
+      "name": "psutil",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/psutil@7.2.2",
+      "type": "library",
+      "version": "7.2.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/pycparser@3.0",
+      "name": "pycparser",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/pycparser@3.0",
+      "type": "library",
+      "version": "3.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/pycryptodome@3.23.0",
+      "name": "pycryptodome",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/pycryptodome@3.23.0",
+      "type": "library",
+      "version": "3.23.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/pydantic@2.12.5",
+      "name": "pydantic",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/pydantic@2.12.5",
+      "type": "library",
+      "version": "2.12.5"
+    },
+    {
+      "bom-ref": "pkg:pypi/pydantic-core@2.41.5",
+      "name": "pydantic-core",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/pydantic-core@2.41.5",
+      "type": "library",
+      "version": "2.41.5"
+    },
+    {
+      "bom-ref": "pkg:pypi/pydantic-settings@2.14.2",
+      "name": "pydantic-settings",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/pydantic-settings@2.14.2",
+      "type": "library",
+      "version": "2.14.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/pyjwt@2.13.0",
+      "name": "pyjwt",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/pyjwt@2.13.0",
+      "type": "library",
+      "version": "2.13.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/python-binance@1.0.28",
+      "name": "python-binance",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/python-binance@1.0.28",
+      "type": "library",
+      "version": "1.0.28"
+    },
+    {
+      "bom-ref": "pkg:pypi/python-dateutil@2.9.0.post0",
+      "name": "python-dateutil",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/python-dateutil@2.9.0.post0",
+      "type": "library",
+      "version": "2.9.0.post0"
+    },
+    {
+      "bom-ref": "pkg:pypi/python-dotenv@1.2.2",
+      "name": "python-dotenv",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/python-dotenv@1.2.2",
+      "type": "library",
+      "version": "1.2.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/python-multipart@0.0.32",
+      "name": "python-multipart",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/python-multipart@0.0.32",
+      "type": "library",
+      "version": "0.0.32"
+    },
+    {
+      "bom-ref": "pkg:pypi/pytz@2024.2",
+      "name": "pytz",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/pytz@2024.2",
+      "type": "library",
+      "version": "2024.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/pywin32@312",
+      "name": "pywin32",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/pywin32@312",
+      "type": "library",
+      "version": "312"
+    },
+    {
+      "bom-ref": "pkg:pypi/referencing@0.37.0",
+      "name": "referencing",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/referencing@0.37.0",
+      "type": "library",
+      "version": "0.37.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/regex@2026.7.10",
+      "name": "regex",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/regex@2026.7.10",
+      "type": "library",
+      "version": "2026.7.10"
+    },
+    {
+      "bom-ref": "pkg:pypi/requests@2.34.2",
+      "name": "requests",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/requests@2.34.2",
+      "type": "library",
+      "version": "2.34.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/rpds-py@0.30.0",
+      "name": "rpds-py",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/rpds-py@0.30.0",
+      "type": "library",
+      "version": "0.30.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/six@1.17.0",
+      "name": "six",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/six@1.17.0",
+      "type": "library",
+      "version": "1.17.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/sse-starlette@3.4.5",
+      "name": "sse-starlette",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/sse-starlette@3.4.5",
+      "type": "library",
+      "version": "3.4.5"
+    },
+    {
+      "bom-ref": "pkg:pypi/starlette@1.3.1",
+      "name": "starlette",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/starlette@1.3.1",
+      "type": "library",
+      "version": "1.3.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/typing-extensions@4.16.0",
+      "name": "typing-extensions",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring,services"
+        }
+      ],
+      "purl": "pkg:pypi/typing-extensions@4.16.0",
+      "type": "library",
+      "version": "4.16.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/typing-inspection@0.4.2",
+      "name": "typing-inspection",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/typing-inspection@0.4.2",
+      "type": "library",
+      "version": "0.4.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/tzdata@2026.3",
+      "name": "tzdata",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/tzdata@2026.3",
+      "type": "library",
+      "version": "2026.3"
+    },
+    {
+      "bom-ref": "pkg:pypi/tzlocal@5.4.4",
+      "name": "tzlocal",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/tzlocal@5.4.4",
+      "type": "library",
+      "version": "5.4.4"
+    },
+    {
+      "bom-ref": "pkg:pypi/urllib3@2.7.0",
+      "name": "urllib3",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/urllib3@2.7.0",
+      "type": "library",
+      "version": "2.7.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/uvicorn@0.41.0",
+      "name": "uvicorn",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "monitoring"
+        }
+      ],
+      "purl": "pkg:pypi/uvicorn@0.41.0",
+      "type": "library",
+      "version": "0.41.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/websocket-client@1.8.0",
+      "name": "websocket-client",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/websocket-client@1.8.0",
+      "type": "library",
+      "version": "1.8.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/websockets@16.1",
+      "name": "websockets",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/websockets@16.1",
+      "type": "library",
+      "version": "16.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/yarl@1.24.2",
+      "name": "yarl",
+      "properties": [
+        {
+          "name": "bitcoin-bot:dependency-scope",
+          "value": "services"
+        }
+      ],
+      "purl": "pkg:pypi/yarl@1.24.2",
+      "type": "library",
+      "version": "1.24.2"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "pkg:generic/bitcoin-bot@1.1",
+      "name": "bitcoin-bot",
+      "type": "application",
+      "version": "1.1"
+    },
+    "properties": [
+      {
+        "name": "bitcoin-bot:lock-sha256:monitoring",
+        "value": "44b6bc9d5a0ad2a45d95995d6dde9b8d8838481d79ca5118e96ee125ba3b5f61"
+      },
+      {
+        "name": "bitcoin-bot:lock-sha256:services",
+        "value": "7bb7301ed48c65bb50ed2efdb6bbe6d3148618368f1a9a74e45b422cb17af7e2"
+      }
+    ],
+    "tools": {
+      "components": [
+        {
+          "name": "build_sbom.py",
+          "type": "application",
+          "version": "1"
+        }
+      ]
+    }
+  },
+  "specVersion": "1.6",
+  "version": 1
+}

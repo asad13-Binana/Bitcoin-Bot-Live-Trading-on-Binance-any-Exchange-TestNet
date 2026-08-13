@@ -266,6 +266,7 @@ PY
   (
     cd "$VERIFIED_RELEASE_DIR"
     python3 scripts/verify_manifest.py
+    python3 scripts/verify_artifact_provenance.py --deployment
     python3 tests/secret_scan.py
   )
   case "$(<"$VERIFIED_RELEASE_DIR/RELEASE_MODE")" in
@@ -314,6 +315,7 @@ verify_runtime(){
   base=$(basename "$release")
   [[ "$base" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] || fail "current release name is not canonical"
   python3 "$release/scripts/verify_manifest.py"
+  python3 "$release/scripts/verify_artifact_provenance.py" --deployment
   release_hash=$(awk 'NF {print $1; exit}' "$release/RELEASE_SHA256.txt")
   [[ "$release_hash" =~ ^[0-9a-f]{64}$ ]] || fail "current release hash is malformed"
   config=$PERSIST_PARENT/config-snapshots/$base.env
