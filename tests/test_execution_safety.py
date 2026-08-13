@@ -10,8 +10,10 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from decimal import Decimal
+import hashlib
 import json
 import re
+import sqlite3
 import time
 
 import pytest
@@ -115,6 +117,170 @@ def test_existing_corrupt_risk_state_fails_closed_instead_of_resetting(tmp_path,
         FreshSignalGuard(path)
 
 
+def test_existing_database_cannot_silently_reset_missing_legacy_risk_state(tmp_path):
+    json_path = tmp_path / "sidecar.json"
+    database = tmp_path / "execution.sqlite"
+    first = StateStore(json_path, database)
+    assert first.schema_version() == 1
+    restarted = StateStore(json_path, database)
+    assert restarted.database_preexisted is True
+    with pytest.raises(ConfigError, match="authoritative SQLite risk state is unavailable"):
+        FreshSignalGuard(tmp_path / "missing-risk.json", state_store=restarted)
+
+
+@pytest.mark.parametrize(
+    "content",
+    [b"{broken", b"[]", b'{"daily":{"x":{"global_stopouts":-1}}}'],
+)
+def test_invalid_legacy_migration_rolls_back_and_keeps_schema_at_v1(tmp_path, content):
+    json_path = tmp_path / "sidecar.json"
+    database = tmp_path / "execution.sqlite"
+    StateStore(json_path, database)
+    legacy_path = tmp_path / "fresh_signal_guard.json"
+    legacy_path.write_bytes(content)
+    store = StateStore(json_path, database)
+    with pytest.raises(ConfigError):
+        FreshSignalGuard(legacy_path, state_store=store)
+    assert store.schema_version() == 1
+    with sqlite3.connect(database) as connection:
+        table = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='risk_guard_state'"
+        ).fetchone()
+    assert table is None
+
+
+def test_valid_legacy_risk_state_migrates_transactionally_with_source_hash(tmp_path):
+    json_path = tmp_path / "sidecar.json"
+    database = tmp_path / "execution.sqlite"
+    StateStore(json_path, database)
+    legacy_path = tmp_path / "fresh_signal_guard.json"
+    legacy = {
+        "pairs": {"BTC/USDT": {"cooldown_until": "2030-01-01T00:00:00+00:00"}},
+        "daily": {"2026-08-13": {"global_stopouts": 2, "pairs": {"BTC/USDT": 2}}},
+        "global_pause": "daily-risk-limit",
+    }
+    source = json.dumps(legacy, separators=(",", ":")).encode("utf-8")
+    legacy_path.write_bytes(source)
+    store = StateStore(json_path, database)
+    guard = FreshSignalGuard(legacy_path, state_store=store)
+    assert store.schema_version() == 2
+    assert guard.state == legacy
+    assert store.risk_guard_state() == legacy
+    migration = store.risk_guard_migration()
+    assert migration["source_sha256"] == hashlib.sha256(source).hexdigest()
+    assert migration["name"] == "sqlite-authoritative-risk-guard-state"
+
+
+def test_failure_between_migration_steps_rolls_back_all_new_risk_state(tmp_path):
+    json_path = tmp_path / "sidecar.json"
+    database = tmp_path / "execution.sqlite"
+    StateStore(json_path, database)
+    with sqlite3.connect(database) as connection:
+        connection.execute("CREATE TABLE schema_migrations(broken TEXT)")
+    risk_path = tmp_path / "fresh_signal_guard.json"
+    risk_path.write_text(
+        json.dumps({"pairs": {}, "daily": {}, "global_pause": "preserve-me"}),
+        encoding="utf-8",
+    )
+    store = StateStore(json_path, database)
+    with pytest.raises(ConfigError, match="authoritative SQLite risk state is unavailable"):
+        FreshSignalGuard(risk_path, state_store=store)
+    assert store.schema_version() == 1
+    with sqlite3.connect(database) as connection:
+        risk_table = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='risk_guard_state'"
+        ).fetchone()
+    assert risk_table is None
+
+
+def test_sqlite_risk_state_survives_restart_when_json_projection_disappears(tmp_path):
+    json_path = tmp_path / "sidecar.json"
+    database = tmp_path / "execution.sqlite"
+    risk_path = tmp_path / "fresh_signal_guard.json"
+    store = StateStore(json_path, database)
+    store.register_symbol_pair("BTCUSDT", "BTC/USDT")
+    guard = FreshSignalGuard(risk_path, state_store=store)
+    guard.record_stopout("BTCUSDT", 1_700_000_000_000)
+    guard.set_global_pause("daily-risk-limit")
+    expected = json.loads(json.dumps(guard.state))
+    risk_path.unlink()
+
+    restarted_store = StateStore(json_path, database)
+    restarted = FreshSignalGuard(risk_path, state_store=restarted_store)
+    assert restarted.state == expected
+    assert json.loads(risk_path.read_text(encoding="utf-8")) == expected
+
+
+def test_sqlite_is_authoritative_when_legacy_projection_conflicts(tmp_path):
+    store = make_store(tmp_path)
+    risk_path = tmp_path / "risk.json"
+    guard = FreshSignalGuard(risk_path, state_store=store)
+    guard.set_global_pause("authoritative-pause")
+    risk_path.write_text(
+        json.dumps({"pairs": {}, "daily": {}, "global_pause": "wrong-pause"}),
+        encoding="utf-8",
+    )
+    restarted_store = StateStore(store.path, store.db_path)
+    restarted = FreshSignalGuard(risk_path, state_store=restarted_store)
+    assert restarted.state["global_pause"] == "authoritative-pause"
+    assert json.loads(risk_path.read_text(encoding="utf-8"))["global_pause"] == (
+        "authoritative-pause"
+    )
+
+
+def test_risk_state_checksum_tampering_fails_closed(tmp_path):
+    store = make_store(tmp_path)
+    risk_path = tmp_path / "risk.json"
+    FreshSignalGuard(risk_path, state_store=store)
+    with sqlite3.connect(store.db_path) as connection:
+        connection.execute(
+            "UPDATE risk_guard_state SET payload_sha256=? WHERE singleton=1", ("0" * 64,)
+        )
+    restarted_store = StateStore(store.path, store.db_path)
+    with pytest.raises(ConfigError, match="authoritative SQLite risk state is unavailable"):
+        FreshSignalGuard(risk_path, state_store=restarted_store)
+
+
+def test_failed_risk_state_commit_reverts_memory_and_disables_entries(
+    tmp_path, monkeypatch
+):
+    store = make_store(tmp_path)
+    guard = FreshSignalGuard(tmp_path / "risk.json", state_store=store)
+    store.set_entries(True)
+
+    def fail_commit(_payload):
+        raise sqlite3.OperationalError("simulated disk full")
+
+    monkeypatch.setattr(store, "save_risk_guard_state", fail_commit)
+    with pytest.raises(sqlite3.OperationalError, match="simulated disk full"):
+        guard.set_global_pause("must-not-appear-committed")
+    assert guard.state["global_pause"] == ""
+    assert store.entries() is False
+    assert store.data["pause_reason"] == "risk-state-persistence-failed"
+
+
+def test_unsupported_sqlite_schema_version_fails_closed(tmp_path):
+    database = tmp_path / "future.sqlite"
+    with sqlite3.connect(database) as connection:
+        connection.execute("PRAGMA user_version = 99")
+    with pytest.raises(RuntimeError, match="unsupported SQLite state schema version 99"):
+        StateStore(tmp_path / "sidecar.json", database)
+
+
+def test_verified_sqlite_backup_contains_authoritative_risk_state(tmp_path):
+    store = make_store(tmp_path)
+    guard = FreshSignalGuard(tmp_path / "risk.json", state_store=store)
+    guard.set_global_pause("backup-must-preserve-this")
+    backup = store.backup(tmp_path / "backups", retain=2)
+    with sqlite3.connect(backup) as connection:
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        payload = connection.execute(
+            "SELECT payload_json FROM risk_guard_state WHERE singleton=1"
+        ).fetchone()[0]
+    assert json.loads(payload)["global_pause"] == "backup-must-preserve-this"
+
+
 def make_pair_controller(tmp_path, pair: str = "BTC/USDT", name: str = "pair"):
     root = tmp_path / name
     controller = PairController(
@@ -157,6 +323,14 @@ class FakeGuard:
 
     def on_exchange_event(self, event):
         self.events.append(dict(event))
+
+
+class NoopStream:
+    def __init__(self, *_args, **_kwargs):
+        self.started = False
+
+    def start(self):
+        self.started = True
 
 
 class FakeExchangeError(RuntimeError):
@@ -363,6 +537,31 @@ def make_live_adapter(tmp_path, *, gateway=None, validator=None, pair="BTC/USDT"
         execution_mode="testnet",
     )
     return adapter, store, guard, controller, gateway, validator
+
+
+def test_startup_reconciliation_preserves_restored_global_risk_pause(tmp_path):
+    controller, pair_state = make_pair_controller(tmp_path)
+    store = make_store(tmp_path)
+    store.register_symbol_pair(pair_state["symbol"], pair_state["pair"])
+    guard = FreshSignalGuard(tmp_path / "risk.json", state_store=store)
+    guard.set_global_pause("daily-risk-limit")
+    adapter = BitcoinSpotAdapter(
+        store,
+        guard,
+        controller,
+        gateway=FakeGateway(),
+        filter_validator=RecordingValidator(),
+        stream_factory=NoopStream,
+        execution_mode="testnet",
+    )
+    adapter.verified_reconcile = lambda: {"ok": True, "detail": "verified"}
+
+    assert adapter.start() is True
+    assert guard.state["global_pause"] == "daily-risk-limit"
+    assert store.entries() is False
+    assert adapter.set_enabled(True) == "OFF: global risk pause: daily-risk-limit"
+    guard.clear_global_pause()
+    assert adapter.set_enabled(True) == "ON"
 
 
 @pytest.mark.parametrize(
