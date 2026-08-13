@@ -12,10 +12,12 @@
 /services/execution_sidecar/pair_control.py          @YOUR_GITHUB_USERNAME
 /scripts/build_manifest.py                          @YOUR_GITHUB_USERNAME
 /scripts/verify_manifest.py                         @YOUR_GITHUB_USERNAME
+/scripts/api_readiness.py                           @YOUR_GITHUB_USERNAME
 /deploy/install_artifact.sh                         @YOUR_GITHUB_USERNAME
 /deploy/install_monitoring.sh                       @YOUR_GITHUB_USERNAME
 /deploy/lib/envfile.sh                              @YOUR_GITHUB_USERNAME
 /deploy/bitcoin-bot-deploy                          @YOUR_GITHUB_USERNAME
+/deploy/api_preflight.sh                            @YOUR_GITHUB_USERNAME
 /deploy/oracle_setup.sh                             @YOUR_GITHUB_USERNAME
 /deploy/verify_stack_identity.py                    @YOUR_GITHUB_USERNAME
 /.github/workflows/ci.yml                           @YOUR_GITHUB_USERNAME

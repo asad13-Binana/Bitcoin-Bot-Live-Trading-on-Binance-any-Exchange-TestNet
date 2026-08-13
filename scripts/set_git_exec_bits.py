@@ -2,7 +2,7 @@
 """Record the release executable bits in the Git index.
 
 Git for Windows sets core.filemode=false, so `git add -A` records every file as
-mode 100644 and the executable bit of all 18 release executables is lost. A
+mode 100644 and the executable bit of release executables is lost. A
 clone of that repository onto the Oracle host produces a tree where
 `./deploy/oracle_setup.sh` and `./deploy/install_artifact.sh` fail with
 "Permission denied".

@@ -13,10 +13,12 @@
 /services/execution_sidecar/pair_control.py          @asad13-Binana
 /scripts/build_manifest.py                          @asad13-Binana
 /scripts/verify_manifest.py                         @asad13-Binana
+/scripts/api_readiness.py                           @asad13-Binana
 /deploy/install_artifact.sh                         @asad13-Binana
 /deploy/install_monitoring.sh                       @asad13-Binana
 /deploy/lib/envfile.sh                              @asad13-Binana
 /deploy/bitcoin-bot-deploy                          @asad13-Binana
+/deploy/api_preflight.sh                            @asad13-Binana
 /deploy/oracle_setup.sh                             @asad13-Binana
 /deploy/verify_stack_identity.py                    @asad13-Binana
 /.github/workflows/ci.yml                           @asad13-Binana
