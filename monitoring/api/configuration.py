@@ -138,6 +138,9 @@ class Config:
         self.validation_status_path = Path(os.getenv(
             "VALIDATION_STATUS_PATH", str(runtime / "release_validation.json")
         ))
+        self.offhost_backup_status_path = Path(os.getenv(
+            "OFFHOST_BACKUP_STATUS_PATH", str(runtime / "offhost_backup_status.json")
+        ))
 
         self.enable_docs = _bool("MONITOR_ENABLE_DOCS", False)
         # Simulation still observes real public market data, but has no

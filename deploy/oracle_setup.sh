@@ -61,7 +61,7 @@ PHYSICAL_MEMORY_MIB=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
 as_root apt-get update
 as_root apt-get install -y \
   ca-certificates curl git gnupg jq chrony iproute2 logrotate openssh-server \
-  python3 python3-venv python3-pycryptodome sqlite3 unattended-upgrades
+  python3 python3-venv python3-pycryptodome sqlite3 unattended-upgrades age
 python3 -c 'import sys; raise SystemExit(0 if (3, 10) <= sys.version_info[:2] <= (3, 13) else 1)' || \
   fail 'Oracle host Python must be a supported CPython 3.10 through 3.13 (target Ubuntu 24.04)'
 # Follow Docker's current official Ubuntu repository format. Conflicting
@@ -317,6 +317,14 @@ if [[ ! -f "$PRIVATE/.env" ]]; then
 fi
 as_root chown root:root "$PRIVATE/.env"
 as_root chmod 0600 "$PRIVATE/.env"
+if [[ ! -e "$PRIVATE/offhost-backup.env" ]]; then
+  as_root install -m 0600 -o root -g root "$SCRIPT_DIR/offhost-backup.env.example" \
+    "$PRIVATE/offhost-backup.env"
+fi
+[[ -f "$PRIVATE/offhost-backup.env" && ! -L "$PRIVATE/offhost-backup.env" ]] || \
+  fail "$PRIVATE/offhost-backup.env must be a regular non-symlink file"
+as_root chown root:root "$PRIVATE/offhost-backup.env"
+as_root chmod 0600 "$PRIVATE/offhost-backup.env"
 
 if [[ ! -e "$APPROVED_DIGEST" ]]; then
   as_root install -m 0600 -o root -g root /dev/null "$APPROVED_DIGEST"
@@ -336,9 +344,17 @@ as_root chmod 0600 "$APPROVED_DIGEST"
 [[ -f "$SCRIPT_DIR/backup_state.sh" && ! -L "$SCRIPT_DIR/backup_state.sh" \
    && -f "$SCRIPT_DIR/verify_backup.sh" && ! -L "$SCRIPT_DIR/verify_backup.sh" ]] || \
   fail 'backup or restore-validation tool is missing or a symlink'
+for tool in offhost_backup.sh configure_offhost_backup.sh stage_offhost_restore.sh; do
+  [[ -f "$SCRIPT_DIR/$tool" && ! -L "$SCRIPT_DIR/$tool" ]] || \
+    fail "off-host recovery tool is missing or a symlink: $tool"
+done
 [[ -f "$SCRIPT_DIR/systemd/bitcoin-bot-resource-guard.service" \
-   && -f "$SCRIPT_DIR/systemd/bitcoin-bot-resource-guard.timer" ]] || \
-  fail 'resource guard systemd units are missing'
+   && -f "$SCRIPT_DIR/systemd/bitcoin-bot-resource-guard.timer" \
+   && -f "$SCRIPT_DIR/systemd/bitcoin-bot-state-backup.service" \
+   && -f "$SCRIPT_DIR/systemd/bitcoin-bot-state-backup.timer" \
+   && -f "$SCRIPT_DIR/systemd/bitcoin-bot-offhost-backup.service" \
+   && -f "$SCRIPT_DIR/systemd/bitcoin-bot-offhost-backup.timer" ]] || \
+  fail 'resource guard or backup systemd units are missing'
 as_root install -m 0755 -o root -g root -d "$ROOT_LIBEXEC"
 as_root install -m 0755 -o root -g root \
   "$SCRIPT_DIR/install_artifact.sh" "$ROOT_LIBEXEC/install_artifact.sh"
@@ -349,20 +365,35 @@ as_root install -m 0755 -o root -g root \
 as_root install -m 0755 -o root -g root \
   "$SCRIPT_DIR/verify_backup.sh" "$ROOT_LIBEXEC/verify_backup.sh"
 as_root install -m 0755 -o root -g root \
+  "$SCRIPT_DIR/offhost_backup.sh" "$ROOT_LIBEXEC/offhost_backup.sh"
+as_root install -m 0755 -o root -g root \
+  "$SCRIPT_DIR/configure_offhost_backup.sh" "$ROOT_LIBEXEC/configure_offhost_backup.sh"
+as_root install -m 0755 -o root -g root \
+  "$SCRIPT_DIR/stage_offhost_restore.sh" "$ROOT_LIBEXEC/stage_offhost_restore.sh"
+as_root install -m 0755 -o root -g root \
   "$SCRIPT_DIR/bitcoin-bot-deploy" "$ROOT_WRAPPER"
 as_root install -m 0755 -o root -g root \
   "$SCRIPT_DIR/oracle_validate.sh" /usr/local/sbin/bitcoin-bot-oracle-validate
 as_root install -m 0644 -o root -g root \
   "$SCRIPT_DIR/systemd/bitcoin-bot-resource-guard.service" \
   "$SCRIPT_DIR/systemd/bitcoin-bot-resource-guard.timer" \
+  "$SCRIPT_DIR/systemd/bitcoin-bot-state-backup.service" \
+  "$SCRIPT_DIR/systemd/bitcoin-bot-state-backup.timer" \
+  "$SCRIPT_DIR/systemd/bitcoin-bot-offhost-backup.service" \
+  "$SCRIPT_DIR/systemd/bitcoin-bot-offhost-backup.timer" \
   /etc/systemd/system/
 as_root systemctl daemon-reload
-as_root systemctl enable --now bitcoin-bot-resource-guard.timer >/dev/null
+as_root systemctl enable --now bitcoin-bot-resource-guard.timer \
+  bitcoin-bot-state-backup.timer >/dev/null
 as_root install -m 0700 -o root -g root -d /var/backups/bitcoin-bot
 BACKUP_LOCK_FILE=/var/lock/bitcoin-bot.backup.lock
 as_root touch "$BACKUP_LOCK_FILE"
 as_root chown root:root "$BACKUP_LOCK_FILE"
 as_root chmod 0600 "$BACKUP_LOCK_FILE"
+OFFHOST_BACKUP_LOCK_FILE=/var/lock/bitcoin-bot.offhost-backup.lock
+as_root touch "$OFFHOST_BACKUP_LOCK_FILE"
+as_root chown root:root "$OFFHOST_BACKUP_LOCK_FILE"
+as_root chmod 0600 "$OFFHOST_BACKUP_LOCK_FILE"
 
 SUDOERS_TMP=$(mktemp)
 cleanup_sudoers(){ rm -f -- "$SUDOERS_TMP"; }

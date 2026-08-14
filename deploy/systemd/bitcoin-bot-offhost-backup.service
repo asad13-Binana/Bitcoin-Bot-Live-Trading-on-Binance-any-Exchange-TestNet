@@ -1,0 +1,26 @@
+[Unit]
+Description=Encrypted Bitcoin Bot backup to OCI Object Storage
+After=docker.service bitcoin-bot-state-backup.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/local/libexec/bitcoin-bot/offhost_backup.sh
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadOnlyPaths=/usr/local/libexec/bitcoin-bot /etc/bitcoin-bot/offhost-backup.env
+ReadWritePaths=/var/backups/bitcoin-bot /var/lib/bitcoin-bot/shared/runtime /var/lock
