@@ -3,8 +3,10 @@
 set -euo pipefail
 
 [[ $EUID -eq 0 ]] || { echo 'ERROR: verify_backup.sh must run as root' >&2; exit 1; }
-BACKUP_ROOT=/var/backups/bitcoin-bot
-BACKUP=${1:?usage: verify_backup.sh /var/backups/bitcoin-bot/YYYYMMDDTHHMMSSZ}
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=deploy/instance_identity.sh
+source "$SCRIPT_DIR/instance_identity.sh"
+BACKUP=${1:?usage: verify_backup.sh $BACKUP_ROOT/YYYYMMDDTHHMMSSZ}
 [[ -d "$BACKUP" && ! -L "$BACKUP" ]] || {
   echo 'ERROR: backup is missing or a symlink' >&2; exit 1; }
 resolved=$(readlink -f "$BACKUP")

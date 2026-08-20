@@ -1,0 +1,248 @@
+FOUR-BOT ORACLE CO-HOST AUDIT AND CHANGE RECORD
+Date: 2026-08-21
+Status: REVIEW ONLY UNTIL GITHUB CI AND REAL ORACLE VALIDATION COMPLETE
+
+SCOPE
+-----
+Repositories audited against their exact main heads at the start of this work:
+
+1. Binana Binance Spot Sharia TestNet
+   c1ec26558ce207dbf82fa82fe475e78cdf2f578c
+2. Binana Binance Spot Sharia LIVE
+   3ec7eae69f8df0c1dee7e2c8a58fec02af7255a6
+3. Bitcoin Bot TestNet
+   5feefe8cd12b5650c514dac7ced278852781dc41
+4. Bitcoin Bot LIVE
+   35c4eab73b33de3952280b7cf15ba4c97c267403
+
+The task was to review all supplied audits and packages, reconcile their
+claims with the current repositories, and make the four packages safe to
+install side by side on one Oracle Always Free VM. The protected trading core
+was not authorised for modification.
+
+SUPPLIED MATERIAL REVIEWED
+--------------------------
+- Five pasted audit/re-test/co-host reports.
+- BEAST_BINANCE_BOT_AUDIT.txt.
+- FUNCTION_AUDIT_CARDS.txt.
+- Binance Audit 1.zip: 60 safe entries; its 33-file checksum ledger verified
+  33/33.
+- Binance Audit 2.zip: 27 safe entries.
+- The 22 files duplicated between the two ZIP packages were byte-identical.
+- Function cards were contiguous and unique for 4,311 cards: 4,263 CLEAN and
+  48 flagged. They cover the two Binana repositories and are a heuristic
+  inventory, not proof that every function is correct.
+
+Supplied-file SHA-256 evidence captured during review:
+- BEAST_BINANCE_BOT_AUDIT.txt
+  38bd01fb3dde9a5d1a14dac3068482175377bf1a655c5a6a2a3823ba4bdc5403
+- FUNCTION_AUDIT_CARDS.txt
+  aea385be71ed6e442c6d490a22c087f4af6624227ba3ba367fdde519ae17d1d2
+- Binance Audit 1.zip
+  2c6ccff76ee0a4ca94963a6ff8e0dc8cb567085649661e60a571ef30df39df6b
+- Binance Audit 2.zip
+  ec91155ae2ebd1e6b680b034565a32e8f9b6b91a09c7483847c5c9d126d8f00a
+
+AUDIT CLAIM DISPOSITION
+-----------------------
+1. Four-bot host-level namespace collision: CONFIRMED and fixed in the
+   deployment layer. The old packages reused family-wide Compose names,
+   images, paths, users, locks, units and ports.
+
+2. Old Oracle capacity claims of 4 OCPUs/24 GB, and old single-bot plans using
+   1 OCPU/6 GB, are not suitable for this four-bot design. Current official
+   Always Free allowance is treated as 2 OCPUs/12 GB aggregate. This package
+   requires at least 2 CPUs, 11,264 MiB reported physical memory, 3,800 MiB
+   swap and 80 GiB free disk.
+
+3. Binance user-data-stream compact expiry reason eR: CURRENTLY UNRESOLVED IN
+   THE BINANA PROTECTED EXECUTION CORE. Current official Binance Spot
+   documentation defines eR on executionReport. The present Binana core reads
+   REST-style expiryReason but not compact eR. This was not changed because
+   execution safety core is protected.
+
+4. MAX_NUM_ORDER_LISTS scope: CURRENTLY UNRESOLVED IN THE BINANA PROTECTED
+   FILTER CORE. Official Binance documentation defines MAX_NUM_ORDER_LISTS per
+   symbol and EXCHANGE_MAX_NUM_ORDER_LISTS exchange-wide. Current Binana code
+   counts all open lists for MAX_NUM_ORDER_LISTS. This was not changed because
+   the filter/execution core is protected.
+
+5. Binana simulation set_size fidelity: CURRENTLY UNRESOLVED IN PROTECTED
+   simulation/execution code. submit still uses deterministic price=100,
+   quantity=1 independently of trade_size_usdt. This does not place real
+   orders, but simulation sizing is not proof of configured real sizing.
+
+6. LIVE evidence:
+   - Bitcoin current code binds and re-verifies the backtest artifact.
+   - Binana current protected live-evidence code validates a declared
+     artifact_sha256 format but does not itself reopen and hash the referenced
+     backtest bytes. No protected-core change was made.
+
+7. Sharia source registry: an empty committed registry is a deliberate
+   fail-closed starting state. Current Binana code has automatic CoinGecko
+   discovery with CoinMarketCap fallback, weekly refresh, 90-day archive and
+   owner_verified=false/trade_permission=false for discovered records.
+   Discovery does not self-authorise a coin.
+
+8. CoinGecko/CoinMarketCap: the free APIs remain supported. Their exact
+   per-key limits must be taken from each provider dashboard/key-info response.
+   Reusing one key across independent bot budgets can exhaust the shared quota.
+   The runbook therefore requires separate legal keys or an operator-verified
+   combined budget. Provider failure remains fail-safe/advisory, but can reduce
+   availability of Sharia source discovery.
+
+9. Old audit main SHAs, file counts, validation dates and one-bot Oracle
+   commands are historical evidence, not current deployment instructions.
+
+10. Real authenticated TestNet, Oracle recovery/soak, Telegram delivery,
+    replacement-host and fee/slippage performance evidence remain external
+    gates. Source tests cannot manufacture those facts.
+
+CO-HOST ALLOCATION
+------------------
+Instance         Compose/image       App root              Private root
+Binana TestNet   binana-testnet      /opt/binana-testnet   /etc/binana-testnet
+Bitcoin TestNet  bitcoin-testnet     /opt/bitcoin-testnet  /etc/bitcoin-testnet
+Binana LIVE      binana-live         /opt/binana-live      /etc/binana-live
+Bitcoin LIVE     bitcoin-live        /opt/bitcoin-live     /etc/bitcoin-live
+
+Instance         Persistent root              Monitor
+Binana TestNet   /var/lib/binana-testnet       127.0.0.1:8090
+Bitcoin TestNet  /var/lib/bitcoin-testnet      127.0.0.1:8091
+Binana LIVE      /var/lib/binana-live          127.0.0.1:8092
+Bitcoin LIVE     /var/lib/bitcoin-live         127.0.0.1:8093
+
+Each instance also has unique:
+- runtime and monitor users;
+- systemd prefixes;
+- deployment inboxes and wrappers;
+- install, backup and Actions locks;
+- Docker image names;
+- monitoring and audit paths;
+- Object Storage prefixes;
+- GitHub runner labels where applicable.
+
+IMPLEMENTED NON-CORE HARDENING
+------------------------------
+- Added deploy/instance_identity.sh with immutable, non-secret identity.
+- Added deploy/four_bot_host_contract.json, byte-identical across all four
+  repositories.
+- Added scripts/verify_four_bot_cohost.py, byte-identical across all four.
+- Added tests/test_four_bot_cohosting.py.
+- Added FOUR_BOT_ORACLE_RUNBOOK.md.
+- Namespaced Compose projects and service images.
+- Added per-service CPU limits; all four stacks reconcile to 1.80 CPUs and
+  5,140 MiB configured container memory.
+- Raised bootstrap gates for the shared four-bot host and made all scripts use
+  one safely validated shared swap file.
+- Namespaced application, secret, state, log, backup, inbox, wrapper, lock,
+  systemd, monitoring and workflow paths.
+- Removed host-name mutation and opposite-repository shutdown behaviour.
+- Added release-controlled rendering of generic source systemd templates into
+  instance-specific installed units.
+- Corrected Bitcoin strict installed-systemd verification so it checks rendered
+  instance units and current instance paths.
+- Corrected a cross-repository packaging mismatch: Bitcoin LIVE now ships,
+  installs, enables and validates the state-backup service/timer required by
+  the shared host contract. A four-repository regression prevents recurrence.
+- Added fail-closed rejection of legacy generic roots and Compose projects.
+- Added host validation for CPUs, RAM, swap, disk, current-release symlinks,
+  users, wrappers, exact running Compose projects/services and required timers.
+- Added cross-instance credential checks without printing values or hashes:
+  trading Telegram tokens, monitor bearer tokens, enabled monitor Telegram
+  tokens, all signal/command HMAC keys, and Binance keys for every active
+  non-simulation instance must not collide.
+- Simulation instances must not retain Binance credentials.
+- LIVE packages remain simulation by default. No LIVE-money interlock was
+  removed or weakened.
+
+CREDENTIAL RULES
+----------------
+- Four distinct trading Telegram bot tokens.
+- Distinct monitor tokens; distinct monitor Telegram tokens when reports are
+  enabled.
+- Distinct signal and command HMAC keys across every bus and instance.
+- Distinct Binance TestNet keys for the two active TestNet bots.
+- Distinct production subaccounts and keys for the two LIVE bots.
+- Withdrawals disabled; production keys restricted to the Oracle public IP.
+- Real secrets stay only in four root-owned /etc/<instance>/.env files.
+- CoinGecko and CoinMarketCap keys may be used on free plans, subject to the
+  actual key dashboard quota and the combined request budget.
+
+PROTECTED CORE EVIDENCE
+-----------------------
+No tracked file under services/, freqtrade/, legacy_core/ or shared/ was
+changed by this co-host work.
+
+Binana TestNet and LIVE protected hashes remain:
+- strategy:
+  9f6bafc78c8cd0d9b9cbde615ddce89e304ab09738584b88d05bfdf92ff4e830
+- legacy core:
+  70b1d67cc0092b5b8db4a68b343cf893641bde1aae580e9ef51e2adec1062459
+- Sharia V19 Python:
+  5eb9fd5338d80fcaf0d39bb3f4935a75b57dd91136c72a83a7551b659b04d865
+- Sharia V19.1 production JSON:
+  07106bb8bfc1924d8d0c6f61ced4e0c51c2ac2054988423f42c1fd67f3b2ba78
+
+Bitcoin TestNet and LIVE strategy remains:
+  023d5f9a09c3a9057986ec1a79fe74cc987b79dd52c3453683d09d023f08e340
+
+LOCAL VALIDATION EVIDENCE
+-------------------------
+Complete Python suites after the co-host changes:
+- Binana TestNet: 614 passed, 10 skipped, 317 subtests passed.
+- Binana LIVE: 606 passed, 11 skipped, 317 subtests passed.
+- Bitcoin TestNet: 424 passed, 2 skipped.
+- Bitcoin LIVE: 415 passed, 2 skipped.
+
+The complete release gate passed in all four repositories. Ruff critical
+correctness checks, Bandit high-severity/high-confidence checks, current-tree
+and full-history secret scans, both dependency-lock vulnerability audits,
+manifest verification, audit-ledger parity, shell syntax and structural YAML
+validation also passed locally. No known dependency vulnerabilities were found.
+
+Measured branch coverage passes each repository's existing non-regression
+floor, but remains below the aspirational 85% target: 69.56% for both Binana
+packages, 62.99% for Bitcoin TestNet and 62.89% for Bitcoin LIVE. The target is
+therefore still PENDING and no certification is claimed. A Starlette/httpx
+deprecation warning also remains non-fatal.
+
+Docker and systemd were unavailable on this Windows validation host, so real
+container builds, installed-unit execution and the four-stack host validator
+remain Oracle gates. Exact-head GitHub CI also remains pending until publication.
+
+ACCEPTANCE BOUNDARY
+-------------------
+This change makes the repository deployment identities collision-resistant and
+provides a fail-closed shared-host validator. It does not prove continuous
+24/7 performance on a particular VM. Before LIVE money:
+
+1. Install all four with LIVE packages in simulation.
+2. Run sudo python3 scripts/verify_four_bot_cohost.py --host.
+3. Prove both TestNet order lifecycles, including partial fill/cancel/restart
+   reconciliation and no duplicate orders.
+4. Run reboot, network-loss, disk-pressure, restore and all-four soak drills.
+5. Prove Telegram delivery and monitor authentication.
+6. Resolve or explicitly accept the protected Binana eR, order-list-scope,
+   simulation-fidelity and live-evidence gaps.
+7. Pass fee/slippage-aware performance gates. Bitcoin's recorded canonical
+   backtest remains loss-making, so source readiness is not LIVE-money approval.
+
+OFFICIAL REFERENCES
+-------------------
+Oracle:
+https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm
+https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier.htm
+
+Binance:
+https://github.com/binance/binance-spot-api-docs/blob/master/user-data-stream.md
+https://github.com/binance/binance-spot-api-docs/blob/master/filters.md
+
+FINAL CLASSIFICATION
+--------------------
+Repository co-host source hardening: implemented locally and test-verified.
+Protected core: unchanged.
+GitHub publication: pending exact-head CI/merge evidence.
+Oracle host: not yet validated.
+Authenticated TestNet: not yet validated.
+LIVE-money trading: NOT CERTIFIED.

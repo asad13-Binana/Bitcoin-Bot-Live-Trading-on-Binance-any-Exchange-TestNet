@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Immutable, non-secret host identity for this repository package.
+# Keep this file release-controlled; real credentials remain in PRIVATE_ROOT/.env.
+readonly INSTANCE_SLUG=bitcoin-testnet
+readonly INSTANCE_MODE=testnet
+readonly COMPOSE_PROJECT_NAME=bitcoin-testnet
+readonly SERVICE_IMAGE=bitcoin-testnet-services
+readonly APP_ROOT=/opt/bitcoin-testnet
+readonly RELEASES=/opt/bitcoin-testnet/releases
+readonly CURRENT=/opt/bitcoin-testnet/current
+readonly PRIVATE_ROOT=/etc/bitcoin-testnet
+readonly BOT_ENV_FILE=/etc/bitcoin-testnet/.env
+readonly APPROVED_DIGEST=/etc/bitcoin-testnet/approved-artifact.sha256
+readonly CONSUMED_DIGEST=/etc/bitcoin-testnet/last-consumed-artifact.sha256
+readonly PERSIST_PARENT=/var/lib/bitcoin-testnet
+readonly PERSIST=/var/lib/bitcoin-testnet/shared
+readonly CONFIG_ROOT=/var/lib/bitcoin-testnet/config-snapshots
+readonly ROOT_INCOMING=/var/lib/bitcoin-testnet/root-incoming
+readonly MONITOR_LOG_DIR=/var/log/bitcoin-testnet/monitor
+readonly MONITOR_LOG_PARENT=/var/log/bitcoin-testnet
+readonly DEPLOY_INBOX=/var/lib/bitcoin-testnet/incoming
+readonly ROOT_LIBEXEC=/usr/local/libexec/bitcoin-testnet
+readonly ROOT_WRAPPER=/usr/local/sbin/bitcoin-testnet-deploy
+readonly ORACLE_VALIDATE_BIN=/usr/local/sbin/bitcoin-testnet-oracle-validate
+readonly BACKUP_ROOT=/var/backups/bitcoin-testnet
+readonly INSTALL_LOCK=/var/lock/bitcoin-testnet.install.lock
+readonly BACKUP_LOCK=/var/lock/bitcoin-testnet.backup.lock
+readonly OFFHOST_BACKUP_LOCK=/var/lock/bitcoin-testnet.offhost-backup.lock
+readonly ACTIONS_LOCK=/var/lock/bitcoin-testnet.actions-deploy.lock
+readonly BOT_USER=bitcointn
+readonly MONITOR_USER=bitcointnmon
+readonly ACTIONS_RUNNER_USER=ghabtcntn
+readonly SYSTEMD_PREFIX=bitcoin-testnet
+readonly EXPECTED_MONITOR_PORT=8091
+readonly OCI_OBJECT_PREFIX=bitcoin-testnet
+readonly GITHUB_RUNNER_LABEL=oracle-bitcoin-testnet
+readonly SUDOERS_FILE=/etc/sudoers.d/bitcoin-testnet-actions

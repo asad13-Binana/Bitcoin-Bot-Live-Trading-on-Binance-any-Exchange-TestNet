@@ -75,9 +75,9 @@ def test_systemd_orders_local_then_offhost_and_offhost_requires_explicit_enable(
     assert "Persistent=true" in local_timer
     assert "After=docker.service bitcoin-bot-state-backup.service network-online.target" in offhost_service
     assert "Persistent=true" in offhost_timer
-    assert "enable --now bitcoin-bot-resource-guard.timer" in setup
-    assert "bitcoin-bot-state-backup.timer" in setup
-    assert "enable --now bitcoin-bot-offhost-backup.timer" not in setup
+    assert 'enable --now "${SYSTEMD_PREFIX}-resource-guard.timer"' in setup
+    assert '"${SYSTEMD_PREFIX}-state-backup.timer"' in setup
+    assert 'enable --now "${SYSTEMD_PREFIX}-offhost-backup.timer"' not in setup
 
 
 def test_external_alarm_uses_oracles_grouped_absence_query_and_no_instance_auth():

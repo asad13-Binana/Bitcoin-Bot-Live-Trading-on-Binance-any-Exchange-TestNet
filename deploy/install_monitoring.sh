@@ -1,16 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+load_instance_identity(){
+  local identity_file=$1 raw key value
+  [[ -f "$identity_file" && ! -L "$identity_file" ]] || {
+    echo "ERROR: immutable instance identity is missing: $identity_file" >&2
+    return 1
+  }
+  while IFS= read -r raw || [[ -n "$raw" ]]; do
+    [[ -z "$raw" || "$raw" == \#* ]] && continue
+    if [[ "$raw" =~ ^readonly[[:space:]]+([A-Z][A-Z0-9_]*)=([/A-Za-z0-9._-]+)$ ]]; then
+      key=${BASH_REMATCH[1]}
+      value=${BASH_REMATCH[2]}
+      readonly "$key=$value"
+    else
+      echo "ERROR: invalid immutable instance identity line" >&2
+      return 1
+    fi
+  done <"$identity_file"
+}
+load_instance_identity "$SCRIPT_DIR/instance_identity.sh"
 RELEASE_DIR=${1:?usage: install_monitoring.sh RELEASE_DIR MODE RELEASE_HASH}
 MODE=${2:?usage: install_monitoring.sh RELEASE_DIR MODE RELEASE_HASH}
 RELEASE_HASH=${3:?usage: install_monitoring.sh RELEASE_DIR MODE RELEASE_HASH}
-APP_ROOT=/opt/bitcoin-bot
-PRIVATE=/etc/bitcoin-bot
-PERSIST=/var/lib/bitcoin-bot/shared
-MONITOR_LOG_DIR=/var/log/bitcoin-bot/monitor
+PRIVATE=$PRIVATE_ROOT
 KEEP_MONITOR_VENVS=${KEEP_MONITOR_VENVS:-4}
 
 fail(){ echo "ERROR: $*" >&2; exit 1; }
+
+case "$MODE" in
+  simulation|testnet) ;;
+  *) fail 'Bitcoin TestNet monitoring mode must be simulation or testnet' ;;
+esac
 
 # >>> BEGIN INLINED deploy/lib/envfile.sh (do not edit; see that file) >>>
 # Strict, non-evaluating reader for KEY=VALUE environment files.
@@ -242,34 +264,29 @@ env_file_load() {
 }
 # <<< END INLINED deploy/lib/envfile.sh <<<
 [[ $EUID -eq 0 ]] || fail 'install_monitoring.sh must run as root'
-[[ "$MODE" == simulation || "$MODE" == testnet || "$MODE" == live ]] || \
-  fail 'MODE must be simulation, testnet, or live'
 [[ "$RELEASE_HASH" =~ ^[0-9a-f]{64}$ ]] || fail 'invalid release hash'
 [[ "$KEEP_MONITOR_VENVS" =~ ^[1-9][0-9]*$ ]] || fail 'KEEP_MONITOR_VENVS must be a positive integer'
 RELEASE_DIR=$(readlink -f "$RELEASE_DIR")
 [[ -d "$RELEASE_DIR/monitoring" ]] || fail 'monitoring source missing from release'
-case "$(<"$RELEASE_DIR/RELEASE_MODE")" in
-live|testnet) ;;
-*) fail 'monitoring requires a live or testnet Bitcoin release' ;;
-esac
+PACKAGE_MODE=$(<"$RELEASE_DIR/RELEASE_MODE")
+[[ "$PACKAGE_MODE" == "$INSTANCE_MODE" ]] || \
+  fail "release mode $PACKAGE_MODE does not match instance mode $INSTANCE_MODE"
 [[ -d "$PERSIST/runtime" ]] || fail 'persistent runtime directory was not prepared'
 
-if ! id botmon >/dev/null 2>&1; then
-  useradd --system --home-dir /nonexistent --shell /usr/sbin/nologin botmon
-fi
+id "$MONITOR_USER" >/dev/null 2>&1 || fail "monitor identity is missing; rerun oracle_setup.sh: $MONITOR_USER"
 for forbidden_group in docker sudo adm lxd disk root; do
-  if id -nG botmon | tr ' ' '\n' | grep -Fxq "$forbidden_group"; then
-    fail "botmon unexpectedly belongs to privileged group: $forbidden_group"
+  if id -nG "$MONITOR_USER" | tr ' ' '\n' | grep -Fxq "$forbidden_group"; then
+    fail "$MONITOR_USER unexpectedly belongs to privileged group: $forbidden_group"
   fi
 done
 install -d -m 0755 -o root -g root "$APP_ROOT/monitoring-venvs" /usr/local/libexec
-install -d -m 0750 -o botmon -g botmon "$MONITOR_LOG_DIR"
+install -d -m 0750 -o "$MONITOR_USER" -g "$MONITOR_USER" "$MONITOR_LOG_DIR"
 
 # Never chown or chmod the bot's runtime tree here. Trading services own that
 # state; monitoring is a read-only consumer and must fail visibly if host
 # permissions were configured incorrectly.
-runuser -u botmon -- test -x "$PERSIST" || fail 'botmon cannot traverse the persistent shared directory'
-runuser -u botmon -- test ! -w "$PERSIST/runtime" || fail 'botmon must not be able to write runtime state'
+runuser -u "$MONITOR_USER" -- test -x "$PERSIST" || fail "$MONITOR_USER cannot traverse the persistent shared directory"
+runuser -u "$MONITOR_USER" -- test ! -w "$PERSIST/runtime" || fail "$MONITOR_USER must not be able to write runtime state"
 
 VENV_ROOT="$APP_ROOT/monitoring-venvs"
 VENV_TARGET="$VENV_ROOT/$RELEASE_HASH"
@@ -298,18 +315,18 @@ mv -Tf "$APP_ROOT/monitoring-current.new" "$APP_ROOT/monitoring-current"
 # Remove the obsolete privileged monitoring helper from earlier releases.
 # Container status now comes only from the root-owned resource guard installed
 # by oracle_setup.sh; no monitoring component receives Docker access.
-rm -f /usr/local/libexec/bitcoin-bot-monitor-snapshot
+rm -f "/usr/local/libexec/${INSTANCE_SLUG}-monitor-snapshot"
 
 ENV_FILE="$PRIVATE/${MODE}-monitor.env"
 TEMPLATE="$RELEASE_DIR/monitoring/.env.monitor.${MODE}.example"
 if [[ ! -f "$ENV_FILE" ]]; then
-  install -m 0640 -o root -g botmon "$TEMPLATE" "$ENV_FILE"
+  install -m 0640 -o root -g "$MONITOR_USER" "$TEMPLATE" "$ENV_FILE"
 fi
 if grep -Eq '^MONITOR_TOKEN=(replace_on_oracle_only|changeme|)$' "$ENV_FILE"; then
   TOKEN=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
   sed -i "s/^MONITOR_TOKEN=.*/MONITOR_TOKEN=${TOKEN}/" "$ENV_FILE"
 fi
-chown root:botmon "$ENV_FILE"
+chown "root:$MONITOR_USER" "$ENV_FILE"
 chmod 0640 "$ENV_FILE"
 # Parsed as literal data; see deploy/lib/envfile.sh.
 env_file_require_trusted "$ENV_FILE" || \
@@ -323,18 +340,37 @@ monitor_token_upper=${monitor_token_upper^^}
   fail 'MONITOR_TOKEN still contains a public placeholder'
 
 UNIT_DIR="$RELEASE_DIR/monitoring/systemd"
-install -m 0644 -o root -g root \
-  "$UNIT_DIR/bitcoin-bot-monitor-${MODE}.service" \
-  "$UNIT_DIR/bitcoin-bot-monitor-report-${MODE}.service" \
-  "$UNIT_DIR/bitcoin-bot-monitor-report-${MODE}.timer" \
-  "$UNIT_DIR/bitcoin-bot-monitor-snapshot.service" \
-  "$UNIT_DIR/bitcoin-bot-monitor-snapshot.timer" \
-  /etc/systemd/system/
+RENDERED=$(mktemp -d "/run/${INSTANCE_SLUG}-monitor-units.XXXXXX")
+render_unit(){
+  local source=$1 base target
+  base=$(basename -- "$source")
+  target="$RENDERED/${SYSTEMD_PREFIX}-${base#bitcoin-bot-}"
+  sed \
+    -e "s#/opt/bitcoin-bot#$APP_ROOT#g" \
+    -e "s#/etc/bitcoin-bot#$PRIVATE_ROOT#g" \
+    -e "s#/var/lib/bitcoin-bot#$PERSIST_PARENT#g" \
+    -e "s#/var/log/bitcoin-bot/monitor#$MONITOR_LOG_DIR#g" \
+    -e "s#bitcoin-bot-#${SYSTEMD_PREFIX}-#g" \
+    -e "s#User=botmon#User=$MONITOR_USER#g" \
+    -e "s#Group=botmon#Group=$MONITOR_USER#g" \
+    "$source" >"$target"
+  grep -Eq '/(opt|etc|var/lib)/bitcoin-bot|/var/log/bitcoin-bot' "$target" && \
+    fail "unrendered legacy path in $base"
+  install -m 0644 -o root -g root "$target" "/etc/systemd/system/$(basename -- "$target")"
+}
+for unit in \
+  "bitcoin-bot-monitor-${MODE}.service" \
+  "bitcoin-bot-monitor-report-${MODE}.service" \
+  "bitcoin-bot-monitor-report-${MODE}.timer" \
+  bitcoin-bot-monitor-snapshot.service bitcoin-bot-monitor-snapshot.timer; do
+  render_unit "$UNIT_DIR/$unit"
+done
+rm -rf -- "$RENDERED"
 
 for other in simulation testnet live; do
   [[ "$other" == "$MODE" ]] && continue
-  systemctl disable --now "bitcoin-bot-monitor-${other}.service" \
-    "bitcoin-bot-monitor-report-${other}.timer" >/dev/null 2>&1 || true
+  systemctl disable --now "${SYSTEMD_PREFIX}-monitor-${other}.service" \
+    "${SYSTEMD_PREFIX}-monitor-report-${other}.timer" >/dev/null 2>&1 || true
 done
 systemctl daemon-reload
 
@@ -342,10 +378,12 @@ monitor_enabled=${MONITOR_ENABLED:-false}
 reports_enabled=${TELEGRAM_REPORTS_ENABLED:-false}
 [[ "$monitor_enabled" == true || "$monitor_enabled" == false ]] || fail 'MONITOR_ENABLED must be true or false'
 [[ "$reports_enabled" == true || "$reports_enabled" == false ]] || fail 'TELEGRAM_REPORTS_ENABLED must be true or false'
-MONITOR_PORT=${MONITOR_PORT:-8091}
+MONITOR_PORT=${MONITOR_PORT:-$EXPECTED_MONITOR_PORT}
 MONITOR_BIND_HOST=${MONITOR_BIND_HOST:-127.0.0.1}
 [[ "$MONITOR_PORT" =~ ^[0-9]+$ && "$MONITOR_PORT" -ge 1 && "$MONITOR_PORT" -le 65535 ]] || \
   fail 'MONITOR_PORT must be an integer from 1 through 65535'
+[[ "$MONITOR_PORT" == "$EXPECTED_MONITOR_PORT" ]] || \
+  fail "MONITOR_PORT must equal the collision-free instance port $EXPECTED_MONITOR_PORT"
 case "$MONITOR_BIND_HOST" in
   127.0.0.1|::1|localhost) ;;
   *) fail 'MONITOR_BIND_HOST must be loopback' ;;
@@ -363,7 +401,7 @@ if [[ "$monitor_enabled" == true ]]; then
   # mistaken for a collision. The immediate bind probe fails clearly when the
   # Bitcoin default (8091) or a configured loopback port belongs to anything
   # else. The service starts directly after the probe to minimise the race.
-  systemctl stop "bitcoin-bot-monitor-${MODE}.service" >/dev/null 2>&1 || true
+  systemctl stop "${SYSTEMD_PREFIX}-monitor-${MODE}.service" >/dev/null 2>&1 || true
   MONITOR_BIND_HOST="$MONITOR_BIND_HOST" MONITOR_PORT="$MONITOR_PORT" python3 - <<'PY' || \
     fail "monitor port ${MONITOR_BIND_HOST}:${MONITOR_PORT} is already occupied"
 import os
@@ -376,35 +414,35 @@ with socket.socket(family, socket.SOCK_STREAM) as probe:
     probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
     probe.bind((host, port))
 PY
-  systemctl enable bitcoin-bot-monitor-snapshot.timer >/dev/null
-  systemctl restart bitcoin-bot-monitor-snapshot.timer
-  systemctl start bitcoin-bot-resource-guard.service || \
+  systemctl enable "${SYSTEMD_PREFIX}-monitor-snapshot.timer" >/dev/null
+  systemctl restart "${SYSTEMD_PREFIX}-monitor-snapshot.timer"
+  systemctl start "${SYSTEMD_PREFIX}-resource-guard.service" || \
     fail 'resource guard refused the host before monitoring start'
-  systemctl start bitcoin-bot-monitor-snapshot.service
-  [[ $(systemctl show -p Result --value bitcoin-bot-monitor-snapshot.service) == success ]] || \
+  systemctl start "${SYSTEMD_PREFIX}-monitor-snapshot.service"
+  [[ $(systemctl show -p Result --value "${SYSTEMD_PREFIX}-monitor-snapshot.service") == success ]] || \
     fail 'initial container snapshot did not complete successfully'
-  systemctl enable "bitcoin-bot-monitor-${MODE}.service" >/dev/null
-  systemctl restart "bitcoin-bot-monitor-${MODE}.service"
+  systemctl enable "${SYSTEMD_PREFIX}-monitor-${MODE}.service" >/dev/null
+  systemctl restart "${SYSTEMD_PREFIX}-monitor-${MODE}.service"
 else
-  systemctl disable --now "bitcoin-bot-monitor-${MODE}.service" \
-    bitcoin-bot-monitor-snapshot.timer >/dev/null 2>&1 || true
+  systemctl disable --now "${SYSTEMD_PREFIX}-monitor-${MODE}.service" \
+    "${SYSTEMD_PREFIX}-monitor-snapshot.timer" >/dev/null 2>&1 || true
 fi
 if [[ "$reports_enabled" == true ]]; then
-  systemctl enable "bitcoin-bot-monitor-report-${MODE}.timer" >/dev/null
-  systemctl restart "bitcoin-bot-monitor-report-${MODE}.timer"
+  systemctl enable "${SYSTEMD_PREFIX}-monitor-report-${MODE}.timer" >/dev/null
+  systemctl restart "${SYSTEMD_PREFIX}-monitor-report-${MODE}.timer"
 else
-  systemctl disable --now "bitcoin-bot-monitor-report-${MODE}.timer" >/dev/null 2>&1 || true
+  systemctl disable --now "${SYSTEMD_PREFIX}-monitor-report-${MODE}.timer" >/dev/null 2>&1 || true
 fi
 
 # Post-install state is part of deployment health, not a best-effort step.
 if [[ "$monitor_enabled" == true ]]; then
   for _ in $(seq 1 20); do
-    systemctl is-active --quiet "bitcoin-bot-monitor-${MODE}.service" && break
+    systemctl is-active --quiet "${SYSTEMD_PREFIX}-monitor-${MODE}.service" && break
     sleep 1
   done
-  systemctl is-active --quiet "bitcoin-bot-monitor-${MODE}.service" || \
+  systemctl is-active --quiet "${SYSTEMD_PREFIX}-monitor-${MODE}.service" || \
     fail "monitor API service did not become active for $MODE"
-  systemctl is-active --quiet bitcoin-bot-monitor-snapshot.timer || \
+  systemctl is-active --quiet "${SYSTEMD_PREFIX}-monitor-snapshot.timer" || \
     fail 'monitor snapshot timer is not active'
   [[ -n "${MONITOR_TOKEN:-}" && -n "${MONITOR_PORT:-}" ]] || fail 'monitor token/port missing after install'
   probe_host=${MONITOR_BIND_HOST:-127.0.0.1}
@@ -433,11 +471,11 @@ PY
   done
   [[ "$api_ok" == true ]] || fail 'authenticated monitor health endpoint did not respond'
 else
-  ! systemctl is-active --quiet "bitcoin-bot-monitor-${MODE}.service" || \
+  ! systemctl is-active --quiet "${SYSTEMD_PREFIX}-monitor-${MODE}.service" || \
     fail 'monitor API is active despite MONITOR_ENABLED=false'
 fi
 if [[ "$reports_enabled" == true ]]; then
-  systemctl is-active --quiet "bitcoin-bot-monitor-report-${MODE}.timer" || \
+  systemctl is-active --quiet "${SYSTEMD_PREFIX}-monitor-report-${MODE}.timer" || \
     fail 'monitor report timer is not active'
 fi
 
@@ -451,10 +489,10 @@ for readable in \
   "$PERSIST/runtime/container_status.json" \
   "$PERSIST/runtime/deployment_status.json"; do
   [[ -f "$readable" ]] || fail "monitoring input missing after stack health: $readable"
-  runuser -u botmon -- test -r "$readable" || fail "botmon cannot read monitoring input: $readable"
-  runuser -u botmon -- test ! -w "$readable" || fail "botmon can unexpectedly write: $readable"
+  runuser -u "$MONITOR_USER" -- test -r "$readable" || fail "$MONITOR_USER cannot read monitoring input: $readable"
+  runuser -u "$MONITOR_USER" -- test ! -w "$readable" || fail "$MONITOR_USER can unexpectedly write: $readable"
 done
-runuser -u botmon -- test ! -r /var/run/docker.sock || fail 'botmon must not read the Docker socket'
+runuser -u "$MONITOR_USER" -- test ! -r /var/run/docker.sock || fail "$MONITOR_USER must not read the Docker socket"
 
 # The current release plus three rollback generations is sufficient for the
 # default retention policy. Only complete, direct hash-named venvs are eligible

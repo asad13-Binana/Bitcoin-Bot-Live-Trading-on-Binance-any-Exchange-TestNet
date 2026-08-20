@@ -7,6 +7,11 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
+RELEASE_MODE = (ROOT / "RELEASE_MODE").read_text(encoding="utf-8").strip()
+INSTANCE = {
+    "testnet": {"slug": "bitcoin-testnet", "port": 8091, "modes": ("simulation", "testnet")},
+    "live": {"slug": "bitcoin-live", "port": 8093, "modes": ("simulation", "live")},
+}[RELEASE_MODE]
 
 
 def text(path: str) -> str:
@@ -25,7 +30,9 @@ def test_oracle_target_is_ubuntu_2404_arm64_by_default():
     assert "REQUIRED_UBUNTU_VERSION=${REQUIRED_UBUNTU_VERSION:-24.04}" in setup
     assert "REQUIRE_ARM64=${REQUIRE_ARM64:-true}" in setup
     assert "Oracle A1 target requires arm64" in setup
-    assert "PHYSICAL_MEMORY_MIB >= 1400" in setup
+    assert "PHYSICAL_MEMORY_MIB >= 11264" in setup
+    assert "MIN_TOTAL_MEMORY_MIB=${MIN_TOTAL_MEMORY_MIB:-14336}" in setup
+    assert "MIN_FREE_DISK_GIB=${MIN_FREE_DISK_GIB:-80}" in setup
 
 
 def test_docker_uses_current_official_repository_without_convenience_script():
@@ -74,23 +81,21 @@ def test_monitoring_defaults_to_unique_loopback_port_and_detects_collision():
     config = text("monitoring/api/configuration.py")
     installer = text("deploy/install_monitoring.sh")
     assert '_int("MONITOR_PORT", 8091, 1, 65535)' in config
-    assert "MONITOR_PORT=${MONITOR_PORT:-8091}" in installer
+    assert "MONITOR_PORT=${MONITOR_PORT:-$EXPECTED_MONITOR_PORT}" in installer
     assert "MONITOR_BIND_HOST must be loopback" in installer
     assert "monitor port ${MONITOR_BIND_HOST}:${MONITOR_PORT} is already occupied" in installer
-    for example in (
-        "monitoring/.env.monitor.simulation.example",
-        "monitoring/.env.monitor.testnet.example",
-        "monitoring/.env.monitor.live.example",
-    ):
+    for mode in INSTANCE["modes"]:
+        example = f"monitoring/.env.monitor.{mode}.example"
         payload = text(example)
-        assert "MONITOR_PORT=8091" in payload
-        assert "MONITOR_URL=http://127.0.0.1:8091" in payload
+        assert f"MONITOR_PORT={INSTANCE['port']}" in payload
+        assert f"MONITOR_URL=http://127.0.0.1:{INSTANCE['port']}" in payload
+        assert f"/opt/{INSTANCE['slug']}/current" in payload
 
 
 def test_compose_has_bounded_resources_logs_and_no_public_ports_or_socket():
     raw = text("docker-compose.yml")
     compose = yaml.safe_load(raw)
-    assert compose["name"] == "bitcoin-bot"
+    assert compose["name"] == INSTANCE["slug"]
     assert set(compose["services"]) == {
         "moneyflow", "freqtrade", "execution-sidecar", "telegram-broker"
     }
@@ -123,7 +128,7 @@ def test_resource_guard_is_root_only_bounded_and_project_scoped():
 def test_monitoring_runtime_has_no_docker_socket_or_cli_access():
     installer = text("deploy/install_monitoring.sh")
     unit = text("monitoring/systemd/bitcoin-bot-monitor-snapshot.service")
-    assert "rm -f /usr/local/libexec/bitcoin-bot-monitor-snapshot" in installer
+    assert 'rm -f "/usr/local/libexec/${INSTANCE_SLUG}-monitor-snapshot"' in installer
     assert "User=botmon" in unit
     assert "ExecStart=/usr/bin/test -r" in unit
     assert "docker.sock" not in unit

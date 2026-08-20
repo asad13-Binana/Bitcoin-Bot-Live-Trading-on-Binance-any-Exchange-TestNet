@@ -4,8 +4,10 @@ set -euo pipefail
 
 [[ $EUID -eq 0 ]] || { echo 'ERROR: resource_guard.sh must run as root' >&2; exit 1; }
 
-PROJECT=bitcoin-bot
-PERSIST=/var/lib/bitcoin-bot/shared
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=deploy/instance_identity.sh
+source "$SCRIPT_DIR/instance_identity.sh"
+PROJECT=$COMPOSE_PROJECT_NAME
 STATUS_FILE=$PERSIST/runtime/resource_guard.json
 CONTAINER_STATUS_FILE=$PERSIST/runtime/container_status.json
 DISK_WARN_PERCENT=${DISK_WARN_PERCENT:-85}

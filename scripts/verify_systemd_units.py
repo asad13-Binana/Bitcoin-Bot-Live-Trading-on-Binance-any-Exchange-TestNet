@@ -43,6 +43,32 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_UNIT_DIR = ROOT / "monitoring/systemd"
 UNIT_DIR = DEFAULT_UNIT_DIR
 HOST_UNIT_DIR = ROOT / "deploy/systemd"
+INSTALLED_UNIT_DIR = Path("/etc/systemd/system")
+
+
+def load_instance_identity() -> dict[str, str]:
+    """Read the release-controlled literal identity without evaluating shell."""
+    identity: dict[str, str] = {}
+    pattern = re.compile(r"^readonly ([A-Z][A-Z0-9_]*)=([^\s#]+)$")
+    for raw in (ROOT / "deploy/instance_identity.sh").read_text(
+        encoding="utf-8"
+    ).splitlines():
+        match = pattern.fullmatch(raw.strip())
+        if match:
+            identity[match.group(1)] = match.group(2)
+    required = {
+        "INSTANCE_SLUG", "APP_ROOT", "PRIVATE_ROOT", "PERSIST_PARENT",
+        "MONITOR_LOG_PARENT", "ROOT_LIBEXEC", "SYSTEMD_PREFIX",
+    }
+    missing = sorted(required - identity.keys())
+    if missing:
+        raise RuntimeError(
+            f"instance identity is missing literal keys: {', '.join(missing)}"
+        )
+    return identity
+
+
+IDENTITY = load_instance_identity()
 
 # Absolute paths this project owns and that the Oracle installer creates. Only
 # these may be reported absent in source mode.
@@ -53,6 +79,12 @@ INSTALL_CREATED_PREFIXES = (
     "/etc/bitcoin-bot/",
     "/var/lib/bitcoin-bot/",
     "/var/log/bitcoin-bot/",
+    f"{IDENTITY['APP_ROOT']}/",
+    f"{IDENTITY['ROOT_LIBEXEC']}-",
+    f"{IDENTITY['ROOT_LIBEXEC']}/",
+    f"{IDENTITY['PRIVATE_ROOT']}/",
+    f"{IDENTITY['PERSIST_PARENT']}/",
+    f"{IDENTITY['MONITOR_LOG_PARENT']}/",
 )
 
 # External units that are documented as unavailable in a source-validation
@@ -97,7 +129,7 @@ def fail(message: str) -> None:
 def resolve_context() -> str:
     context = os.environ.get("SYSTEMD_VERIFY_CONTEXT", "auto").strip() or "auto"
     if context == "auto":
-        interpreter = Path("/opt/bitcoin-bot/monitoring-current/bin/python")
+        interpreter = Path(IDENTITY["APP_ROOT"]) / "monitoring-current/bin/python"
         context = "installed" if os.access(interpreter, os.X_OK) else "source"
     if context not in {"source", "installed"}:
         print(
@@ -129,6 +161,19 @@ def unit_files() -> list[Path]:
         units.extend(sorted(directory.glob("*.timer")))
     if not units:
         fail(f"no systemd units found under {display_path(UNIT_DIR)}")
+    return units
+
+
+def installed_unit_files() -> list[Path]:
+    """Select only this instance's root-installed, rendered systemd units."""
+    prefix = IDENTITY["SYSTEMD_PREFIX"]
+    units = sorted(INSTALLED_UNIT_DIR.glob(f"{prefix}-*.service"))
+    units.extend(sorted(INSTALLED_UNIT_DIR.glob(f"{prefix}-*.timer")))
+    if not units:
+        fail(
+            f"no installed systemd units found for {prefix!r} under "
+            f"{INSTALLED_UNIT_DIR}"
+        )
     return units
 
 
@@ -245,7 +290,7 @@ def run_analyze(units: list[Path]) -> subprocess.CompletedProcess[str]:
 
 def main() -> int:
     context = resolve_context()
-    units = unit_files()
+    units = installed_unit_files() if context == "installed" else unit_files()
     check_hardening(units)
 
     if shutil.which("systemd-analyze") is None:

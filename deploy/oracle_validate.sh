@@ -2,13 +2,12 @@
 # Redacted Oracle A1 deployment diagnostic. It never prints secret values.
 set -uo pipefail
 
-APP_ROOT=/opt/bitcoin-bot
-CURRENT=$APP_ROOT/current
-ENV_FILE=/etc/bitcoin-bot/.env
-PERSIST=/var/lib/bitcoin-bot/shared
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=deploy/instance_identity.sh
+source "$SCRIPT_DIR/instance_identity.sh"
+ENV_FILE=$BOT_ENV_FILE
 TIMING_TARGET=https://testnet.binance.vision/api/v3/time
 TIMING_SAMPLES=${TIMING_SAMPLES:-10}
-COMPOSE_PROJECT_NAME=bitcoin-bot
 
 section(){ printf '\n== %s ==\n' "$1"; }
 line(){ printf '%-30s %s\n' "$1" "$2"; }
@@ -100,9 +99,9 @@ command_value UTC-date date -u +%Y-%m-%dT%H:%M:%SZ
 section 'Services'
 for unit in \
   docker.service chrony.service unattended-upgrades.service \
-  bitcoin-bot-resource-guard.timer bitcoin-bot-state-backup.timer \
-  bitcoin-bot-offhost-backup.timer bitcoin-bot-monitor-testnet.service \
-  bitcoin-bot-monitor-snapshot.timer bitcoin-bot-monitor-report-testnet.timer; do
+  "${SYSTEMD_PREFIX}-resource-guard.timer" "${SYSTEMD_PREFIX}-state-backup.timer" \
+  "${SYSTEMD_PREFIX}-offhost-backup.timer" "${SYSTEMD_PREFIX}-monitor-testnet.service" \
+  "${SYSTEMD_PREFIX}-monitor-snapshot.timer" "${SYSTEMD_PREFIX}-monitor-report-testnet.timer"; do
   state=$(systemctl is-active "$unit" 2>/dev/null || true)
   line "$unit" "${state:-not-installed}"
 done

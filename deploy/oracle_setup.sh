@@ -2,27 +2,20 @@
 # Prepare an Ubuntu Oracle Cloud VM for the immutable Bitcoin Bot artifact.
 set -euo pipefail
 
-APP_ROOT=/opt/bitcoin-bot
-PERSIST_PARENT=/var/lib/bitcoin-bot
-PERSIST=/var/lib/bitcoin-bot/shared
-INCOMING=/var/lib/bitcoin-bot/incoming
-ROOT_INCOMING=/var/lib/bitcoin-bot/root-incoming
-PRIVATE=/etc/bitcoin-bot
-APPROVED_DIGEST=$PRIVATE/approved-artifact.sha256
-ROOT_LIBEXEC=/usr/local/libexec/bitcoin-bot
-ROOT_WRAPPER=/usr/local/sbin/bitcoin-bot-deploy
-ACTIONS_RUNNER_USER=gha-runner
-MONITOR_LOG_PARENT=/var/log/bitcoin-bot
-MONITOR_LOG_DIR=/var/log/bitcoin-bot/monitor
-CONFIG_ROOT=/var/lib/bitcoin-bot/config-snapshots
-SWAP_FILE=/swapfile-bitcoin-bot
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=deploy/instance_identity.sh
+source "$SCRIPT_DIR/instance_identity.sh"
+readonly INCOMING=$DEPLOY_INBOX
+readonly PRIVATE=$PRIVATE_ROOT
+SWAP_FILE=/swapfile-oracle-trading-bots
 SWAP_MIN_MIB=${SWAP_MIN_MIB:-3800}
+MIN_TOTAL_MEMORY_MIB=${MIN_TOTAL_MEMORY_MIB:-14336}
+MIN_FREE_DISK_GIB=${MIN_FREE_DISK_GIB:-80}
 REQUIRED_UBUNTU_VERSION=${REQUIRED_UBUNTU_VERSION:-24.04}
 REQUIRE_ARM64=${REQUIRE_ARM64:-true}
 ENABLE_GITHUB_RUNNER=${ENABLE_GITHUB_RUNNER:-false}
 DOCKER_VERSION=${DOCKER_VERSION:-}
 CHRONY_MAX_OFFSET_SECONDS=${CHRONY_MAX_OFFSET_SECONDS:-0.5}
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 
 fail(){ echo "ERROR: $*" >&2; exit 1; }
 as_root(){
@@ -55,8 +48,19 @@ if [[ "$REQUIRE_ARM64" == true && "$HOST_ARCH" != arm64 ]]; then
   fail "Oracle A1 target requires arm64, found $HOST_ARCH"
 fi
 PHYSICAL_MEMORY_MIB=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
-(( PHYSICAL_MEMORY_MIB >= 1400 )) || \
-  fail "physical memory ${PHYSICAL_MEMORY_MIB} MiB is below the required 1400 MiB; use Ampere A1 Flex rather than E2.1.Micro"
+(( PHYSICAL_MEMORY_MIB >= 11264 )) || \
+  fail "physical memory ${PHYSICAL_MEMORY_MIB} MiB is below the required 11264 MiB for the shared four-bot A1 Flex host"
+FREE_DISK_GIB=$(df -Pk / | awk 'NR==2{print int($4/1024/1024)}')
+(( FREE_DISK_GIB >= MIN_FREE_DISK_GIB )) || \
+  fail "root filesystem has ${FREE_DISK_GIB} GiB free; require at least ${MIN_FREE_DISK_GIB} GiB for four bots"
+
+[[ ! -e /opt/bitcoin-bot/current ]] || \
+  fail 'legacy /opt/bitcoin-bot deployment detected; back it up and migrate it explicitly'
+if command -v docker >/dev/null 2>&1; then
+  legacy_containers=$(docker ps -aq --filter 'label=com.docker.compose.project=bitcoin-bot' 2>/dev/null || true)
+  [[ -z "$legacy_containers" ]] || \
+    fail 'legacy bitcoin-bot Compose project detected; reconcile it before bootstrap'
+fi
 
 as_root apt-get update
 as_root apt-get install -y \
@@ -166,13 +170,15 @@ if (( swap_mib < SWAP_MIN_MIB )); then
     printf '%s none swap sw 0 0\n' "$SWAP_FILE" | as_root tee -a /etc/fstab >/dev/null
   fi
 fi
-as_root tee /etc/sysctl.d/99-bitcoin-bot.conf >/dev/null <<'EOF'
+as_root tee "/etc/sysctl.d/99-${INSTANCE_SLUG}.conf" >/dev/null <<'EOF'
 vm.swappiness=10
 EOF
 as_root sysctl --system >/dev/null
 
 swap_mib=$(awk '/SwapTotal/{print int($2/1024)}' /proc/meminfo)
 (( swap_mib >= SWAP_MIN_MIB )) || fail "swap setup incomplete: ${swap_mib} MiB"
+(( PHYSICAL_MEMORY_MIB + swap_mib >= MIN_TOTAL_MEMORY_MIB )) || \
+  fail "RAM+swap is below the required ${MIN_TOTAL_MEMORY_MIB} MiB"
 systemctl is-active --quiet chrony || fail 'chrony is not active'
 chronyc tracking >/dev/null || fail 'chrony cannot report clock status'
 chronyc waitsync 30 "$CHRONY_MAX_OFFSET_SECONDS" >/dev/null || \
@@ -184,7 +190,7 @@ as_root docker info >/dev/null || fail 'Docker daemon information is unavailable
 # Ubuntu security updates remain automatic, but an operating bot is never
 # rebooted without an explicit maintenance decision. Docker's third-party
 # repository is not added to unattended-upgrades.
-as_root tee /etc/apt/apt.conf.d/52bitcoin-bot-unattended-upgrades >/dev/null <<'EOF'
+as_root tee "/etc/apt/apt.conf.d/52${INSTANCE_SLUG}-unattended-upgrades" >/dev/null <<'EOF'
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 Unattended-Upgrade::Automatic-Reboot "false";
@@ -194,8 +200,8 @@ as_root systemctl enable --now unattended-upgrades.service >/dev/null
 # Bound host-side bot logs without deleting current audit or reconciliation
 # files. SQLite and JSONL evidence are protected by their own retention and
 # backup mechanisms and are intentionally not listed here.
-as_root tee /etc/logrotate.d/bitcoin-bot >/dev/null <<'EOF'
-/var/lib/bitcoin-bot/shared/freqtrade/logs/*.log /var/log/bitcoin-bot/monitor/*.log {
+as_root tee "/etc/logrotate.d/${INSTANCE_SLUG}" >/dev/null <<EOF
+$PERSIST/freqtrade/logs/*.log $MONITOR_LOG_DIR/*.log {
     size 10M
     rotate 7
     daily
@@ -206,16 +212,21 @@ as_root tee /etc/logrotate.d/bitcoin-bot >/dev/null <<'EOF'
     copytruncate
 }
 EOF
-as_root logrotate --debug /etc/logrotate.d/bitcoin-bot >/dev/null 2>&1 || \
-  fail 'bitcoin-bot logrotate policy is invalid'
+as_root logrotate --debug "/etc/logrotate.d/${INSTANCE_SLUG}" >/dev/null 2>&1 || \
+  fail "$INSTANCE_SLUG logrotate policy is invalid"
 
-if ! id botmon >/dev/null 2>&1; then
-  as_root useradd --system --home-dir /nonexistent --shell /usr/sbin/nologin botmon
+if ! id "$BOT_USER" >/dev/null 2>&1; then
+  as_root useradd --system --user-group --home-dir "$PERSIST_PARENT" --shell /usr/sbin/nologin "$BOT_USER"
 fi
-as_root usermod -aG "$DEPLOY_GROUP" botmon
+BOT_GROUP=$(id -gn "$BOT_USER")
+if ! id "$MONITOR_USER" >/dev/null 2>&1; then
+  as_root useradd --system --user-group --home-dir /nonexistent --shell /usr/sbin/nologin "$MONITOR_USER"
+fi
+as_root usermod -aG "$BOT_GROUP" "$MONITOR_USER"
 for forbidden_group in docker sudo adm lxd disk root; do
-  if id -nG botmon | tr ' ' '\n' | grep -Fxq "$forbidden_group"; then
-    fail "botmon unexpectedly belongs to privileged group: $forbidden_group"
+  if id -nG "$BOT_USER" | tr ' ' '\n' | grep -Fxq "$forbidden_group" \
+     || id -nG "$MONITOR_USER" | tr ' ' '\n' | grep -Fxq "$forbidden_group"; then
+    fail "instance runtime identity unexpectedly belongs to privileged group: $forbidden_group"
   fi
 done
 
@@ -279,7 +290,7 @@ for protected in "${PROTECTED_PATHS[@]}"; do
 done
 as_root chown root:root "$APP_ROOT"
 as_root chown root:root "$PERSIST_PARENT"
-as_root chown root:"$DEPLOY_GROUP" "$PRIVATE"
+as_root chown root:"$BOT_GROUP" "$PRIVATE"
 as_root chown root:root "$MONITOR_LOG_PARENT"
 as_root chmod 0755 "$APP_ROOT" "$PERSIST_PARENT" "$MONITOR_LOG_PARENT"
 as_root chown "$ACTIONS_RUNNER_USER:$ACTIONS_RUNNER_USER" "$INCOMING"
@@ -287,7 +298,7 @@ as_root chmod 0700 "$INCOMING"
 as_root chown root:root "$ROOT_INCOMING"
 as_root chmod 0700 "$ROOT_INCOMING"
 as_root chmod 0750 "$PRIVATE"
-as_root chown -R --one-file-system "$DEPLOY_USER:$DEPLOY_GROUP" \
+as_root chown -R --one-file-system "$BOT_USER:$BOT_GROUP" \
   "$APP_ROOT/releases" "$PERSIST" "$CONFIG_ROOT"
 as_root chmod 0755 "$APP_ROOT/releases"
 as_root chmod 0700 "$CONFIG_ROOT"
@@ -308,7 +319,7 @@ as_root chmod 0750 \
   "$PERSIST/runtime/sidecar" "$PERSIST/runtime/sidecar/backtests" \
   "$PERSIST/runtime/telegram" "$PERSIST/signals" \
   "$PERSIST/signals/inbox" "$PERSIST/signals/processed" "$PERSIST/signals/rejected"
-as_root chown botmon:botmon "$MONITOR_LOG_DIR"
+as_root chown "$MONITOR_USER:$MONITOR_USER" "$MONITOR_LOG_DIR"
 as_root chmod 0750 "$MONITOR_LOG_DIR"
 
 if [[ ! -f "$PRIVATE/.env" ]]; then
@@ -356,6 +367,8 @@ done
    && -f "$SCRIPT_DIR/systemd/bitcoin-bot-offhost-backup.timer" ]] || \
   fail 'resource guard or backup systemd units are missing'
 as_root install -m 0755 -o root -g root -d "$ROOT_LIBEXEC"
+as_root install -m 0644 -o root -g root \
+  "$SCRIPT_DIR/instance_identity.sh" "$ROOT_LIBEXEC/instance_identity.sh"
 as_root install -m 0755 -o root -g root \
   "$SCRIPT_DIR/install_artifact.sh" "$ROOT_LIBEXEC/install_artifact.sh"
 as_root install -m 0755 -o root -g root \
@@ -373,63 +386,62 @@ as_root install -m 0755 -o root -g root \
 as_root install -m 0755 -o root -g root \
   "$SCRIPT_DIR/bitcoin-bot-deploy" "$ROOT_WRAPPER"
 as_root install -m 0755 -o root -g root \
-  "$SCRIPT_DIR/oracle_validate.sh" /usr/local/sbin/bitcoin-bot-oracle-validate
-as_root install -m 0644 -o root -g root \
-  "$SCRIPT_DIR/systemd/bitcoin-bot-resource-guard.service" \
-  "$SCRIPT_DIR/systemd/bitcoin-bot-resource-guard.timer" \
-  "$SCRIPT_DIR/systemd/bitcoin-bot-state-backup.service" \
-  "$SCRIPT_DIR/systemd/bitcoin-bot-state-backup.timer" \
-  "$SCRIPT_DIR/systemd/bitcoin-bot-offhost-backup.service" \
-  "$SCRIPT_DIR/systemd/bitcoin-bot-offhost-backup.timer" \
-  /etc/systemd/system/
+  "$SCRIPT_DIR/oracle_validate.sh" "$ORACLE_VALIDATE_BIN"
+RENDERED_UNITS=$(mktemp -d "/run/${INSTANCE_SLUG}-deploy-units.XXXXXX")
+for source_unit in "$SCRIPT_DIR"/systemd/bitcoin-bot-*.service "$SCRIPT_DIR"/systemd/bitcoin-bot-*.timer; do
+  [[ -f "$source_unit" && ! -L "$source_unit" ]] || fail "invalid systemd source: $source_unit"
+  unit_name=$(basename -- "$source_unit")
+  target_unit="$RENDERED_UNITS/${SYSTEMD_PREFIX}-${unit_name#bitcoin-bot-}"
+  sed \
+    -e "s#/usr/local/libexec/bitcoin-bot#$ROOT_LIBEXEC#g" \
+    -e "s#/etc/bitcoin-bot#$PRIVATE_ROOT#g" \
+    -e "s#/var/lib/bitcoin-bot#$PERSIST_PARENT#g" \
+    -e "s#/var/backups/bitcoin-bot#$BACKUP_ROOT#g" \
+    -e "s#bitcoin-bot-#${SYSTEMD_PREFIX}-#g" \
+    "$source_unit" >"$target_unit"
+  grep -Eq '/(var/lib|etc)/bitcoin-bot|/usr/local/libexec/bitcoin-bot' "$target_unit" && \
+    fail "unrendered legacy path in $unit_name"
+  as_root install -m 0644 -o root -g root "$target_unit" "/etc/systemd/system/$(basename -- "$target_unit")"
+done
+rm -rf -- "$RENDERED_UNITS"
 as_root systemctl daemon-reload
-as_root systemctl enable --now bitcoin-bot-resource-guard.timer \
-  bitcoin-bot-state-backup.timer >/dev/null
-as_root install -m 0700 -o root -g root -d /var/backups/bitcoin-bot
-BACKUP_LOCK_FILE=/var/lock/bitcoin-bot.backup.lock
-as_root touch "$BACKUP_LOCK_FILE"
-as_root chown root:root "$BACKUP_LOCK_FILE"
-as_root chmod 0600 "$BACKUP_LOCK_FILE"
-OFFHOST_BACKUP_LOCK_FILE=/var/lock/bitcoin-bot.offhost-backup.lock
-as_root touch "$OFFHOST_BACKUP_LOCK_FILE"
-as_root chown root:root "$OFFHOST_BACKUP_LOCK_FILE"
-as_root chmod 0600 "$OFFHOST_BACKUP_LOCK_FILE"
+as_root systemctl enable --now "${SYSTEMD_PREFIX}-resource-guard.timer" \
+  "${SYSTEMD_PREFIX}-state-backup.timer" >/dev/null
+as_root install -m 0700 -o root -g root -d "$BACKUP_ROOT"
+as_root touch "$BACKUP_LOCK" "$OFFHOST_BACKUP_LOCK"
+as_root chown root:root "$BACKUP_LOCK" "$OFFHOST_BACKUP_LOCK"
+as_root chmod 0600 "$BACKUP_LOCK" "$OFFHOST_BACKUP_LOCK"
 
 SUDOERS_TMP=$(mktemp)
 cleanup_sudoers(){ rm -f -- "$SUDOERS_TMP"; }
 trap cleanup_sudoers EXIT
 if [[ "$ENABLE_GITHUB_RUNNER" == true ]]; then
-cat > "$SUDOERS_TMP" <<'EOF'
-gha-runner ALL=(root) NOPASSWD: /usr/local/sbin/bitcoin-bot-deploy preflight
-gha-runner ALL=(root) NOPASSWD: /usr/local/sbin/bitcoin-bot-deploy simulation
-gha-runner ALL=(root) NOPASSWD: /usr/local/sbin/bitcoin-bot-deploy verify
+cat > "$SUDOERS_TMP" <<EOF
+$ACTIONS_RUNNER_USER ALL=(root) NOPASSWD: $ROOT_WRAPPER preflight
+$ACTIONS_RUNNER_USER ALL=(root) NOPASSWD: $ROOT_WRAPPER simulation
+$ACTIONS_RUNNER_USER ALL=(root) NOPASSWD: $ROOT_WRAPPER verify
 EOF
   chmod 0600 "$SUDOERS_TMP"
   as_root visudo -cf "$SUDOERS_TMP"
   as_root install -m 0440 -o root -g root "$SUDOERS_TMP" \
-    /etc/sudoers.d/bitcoin-bot-actions
+    "$SUDOERS_FILE"
 else
-  as_root rm -f /etc/sudoers.d/bitcoin-bot-actions
+  as_root rm -f "$SUDOERS_FILE"
 fi
 cleanup_sudoers
 trap - EXIT
 
-LOCK_FILE=/var/lock/bitcoin-bot.install.lock
-as_root touch "$LOCK_FILE"
-as_root chown root:root "$LOCK_FILE"
-as_root chmod 0600 "$LOCK_FILE"
-
-ACTIONS_LOCK_FILE=/var/lock/bitcoin-bot.actions-deploy.lock
-as_root touch "$ACTIONS_LOCK_FILE"
-as_root chown root:root "$ACTIONS_LOCK_FILE"
-as_root chmod 0600 "$ACTIONS_LOCK_FILE"
+as_root touch "$INSTALL_LOCK" "$ACTIONS_LOCK"
+as_root chown root:root "$INSTALL_LOCK" "$ACTIONS_LOCK"
+as_root chmod 0600 "$INSTALL_LOCK" "$ACTIONS_LOCK"
 
 echo "Oracle host prepared for $DEPLOY_USER without Docker-group membership."
 if [[ "$ENABLE_GITHUB_RUNNER" == true ]]; then
-  echo "Optional runner enabled: register $ACTIONS_RUNNER_USER with label oracle-sim."
+  echo "Optional runner enabled: register $ACTIONS_RUNNER_USER with label $GITHUB_RUNNER_LABEL."
   echo "$ACTIONS_RUNNER_USER has no Docker group and only three exact root-wrapper commands."
 else
   echo 'GitHub self-hosted runner disabled by default; use manual immutable-artifact transfer.'
 fi
 echo 'Keep execution mode at simulation first. Binance keys must have Spot permission only, withdrawals disabled, and Oracle-IP restriction enabled.'
 echo 'Monitoring receives no trading credentials and no Docker-socket access.'
+echo "Set BOT_UID=$(id -u "$BOT_USER") and BOT_GID=$(id -g "$BOT_USER") in $BOT_ENV_FILE."
