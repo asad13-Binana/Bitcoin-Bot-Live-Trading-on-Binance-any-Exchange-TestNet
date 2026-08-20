@@ -103,7 +103,7 @@ PY
 SYSTEMD_VERIFY_CONTEXT="${SYSTEMD_VERIFY_CONTEXT:-auto}"
 case "$SYSTEMD_VERIFY_CONTEXT" in
 auto)
-  if [[ -x /opt/bitcoin-bot/monitoring-current/bin/python ]]; then
+  if [[ -x /opt/bitcoin-testnet/monitoring-current/bin/python ]]; then
     SYSTEMD_VERIFY_CONTEXT=installed
   else
     SYSTEMD_VERIFY_CONTEXT=source

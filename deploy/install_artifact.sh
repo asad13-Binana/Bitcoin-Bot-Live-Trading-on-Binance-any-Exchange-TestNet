@@ -2,24 +2,37 @@
 # Verify, install and health-gate one immutable Bitcoin Bot release artifact.
 set -Eeuo pipefail
 
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+load_instance_identity(){
+  local identity_file=$1 raw key value
+  [[ -f "$identity_file" && ! -L "$identity_file" ]] || {
+    echo "ERROR: immutable instance identity is missing: $identity_file" >&2
+    return 1
+  }
+  while IFS= read -r raw || [[ -n "$raw" ]]; do
+    [[ -z "$raw" || "$raw" == \#* ]] && continue
+    if [[ "$raw" =~ ^readonly[[:space:]]+([A-Z][A-Z0-9_]*)=([/A-Za-z0-9._-]+)$ ]]; then
+      key=${BASH_REMATCH[1]}
+      value=${BASH_REMATCH[2]}
+      readonly "$key=$value"
+    else
+      echo "ERROR: invalid immutable instance identity line" >&2
+      return 1
+    fi
+  done <"$identity_file"
+}
+load_instance_identity "$SCRIPT_DIR/instance_identity.sh"
+ENV_FILE=$BOT_ENV_FILE
 ARTIFACT=${1:?usage: install_artifact.sh RELEASE.tar.gz RELEASE.tar.gz.sha256}
 CHECKSUM=${2:?usage: install_artifact.sh RELEASE.tar.gz RELEASE.tar.gz.sha256}
-APP_ROOT=/opt/bitcoin-bot
-RELEASES=$APP_ROOT/releases
-CURRENT=$APP_ROOT/current
-PERSIST_PARENT=/var/lib/bitcoin-bot
-PERSIST=/var/lib/bitcoin-bot/shared
-CONFIG_ROOT=/var/lib/bitcoin-bot/config-snapshots
-PRIVATE_ROOT=/etc/bitcoin-bot
-ENV_FILE=$PRIVATE_ROOT/.env
 KEEP_RELEASES=${KEEP_RELEASES:-3}
-MIN_PHYSICAL_MEMORY_MIB=${MIN_PHYSICAL_MEMORY_MIB:-1400}
+MIN_PHYSICAL_MEMORY_MIB=${MIN_PHYSICAL_MEMORY_MIB:-11264}
 MIN_SWAP_MEMORY_MIB=${MIN_SWAP_MEMORY_MIB:-3800}
 MAX_ARCHIVE_CONTENT_MIB=${MAX_ARCHIVE_CONTENT_MIB:-1024}
 LIVE_PREFLIGHT_MARGIN_SECONDS=3600
 LIVE_ACTIVATION_MARGIN_SECONDS=300
 EXPECTED_SERVICES=(moneyflow freqtrade execution-sidecar telegram-broker)
-export COMPOSE_PROJECT_NAME=bitcoin-bot
+export COMPOSE_PROJECT_NAME
 
 fail(){ echo "ERROR: $*" >&2; exit 1; }
 as_root(){ if [[ $EUID -eq 0 ]]; then "$@"; else sudo -n "$@"; fi; }
@@ -301,11 +314,10 @@ CHECKSUM=$(readlink -f "$CHECKSUM" 2>/dev/null || true)
 [[ -f "$ENV_FILE" ]] || fail "private env missing: $ENV_FILE"
 [[ $(stat -c '%a' "$ENV_FILE") == 600 ]] || fail "$ENV_FILE must be mode 600"
 
-# A single fixed Compose project plus an exclusive host lock prevents two
-# releases from concurrently owning the same Binance account.
-LOCK_FILE=/var/lock/bitcoin-bot.install.lock
-exec 9>"$LOCK_FILE" || fail "cannot open deployment lock $LOCK_FILE; run oracle_setup.sh first"
-flock -n 9 || fail "another install holds $LOCK_FILE"
+# A repository-specific Compose project and lock isolate this instance from
+# the other three bots on the shared Oracle host.
+exec 9>"$INSTALL_LOCK" || fail "cannot open deployment lock $INSTALL_LOCK; run oracle_setup.sh first"
+flock -n 9 || fail "another install holds $INSTALL_LOCK"
 
 # Parsed as literal data. `source` would execute every value as shell
 # code with root privileges; see deploy/lib/envfile.sh.
@@ -399,13 +411,11 @@ if [[ $EUID -ne 0 ]]; then
   sudo -n true || fail 'passwordless sudo is required before the transactional cutover'
 fi
 
-BOT_UID=${BOT_UID:-$(id -u)}
-BOT_GID=${BOT_GID:-$(id -g)}
+EXPECTED_BOT_UID=$(id -u "$BOT_USER")
+EXPECTED_BOT_GID=$(id -g "$BOT_USER")
 [[ "$BOT_UID" =~ ^[0-9]+$ && "$BOT_GID" =~ ^[0-9]+$ ]] || fail 'BOT_UID/BOT_GID must be numeric'
-if [[ $EUID -ne 0 ]]; then
-  [[ $(id -u) == "$BOT_UID" && $(id -g) == "$BOT_GID" ]] || \
-    fail 'unprivileged installer UID/GID must exactly match BOT_UID/BOT_GID'
-fi
+[[ "$BOT_UID" == "$EXPECTED_BOT_UID" && "$BOT_GID" == "$EXPECTED_BOT_GID" ]] || \
+  fail "BOT_UID/BOT_GID must identify the dedicated $BOT_USER account"
 require_canonical_dir "$APP_ROOT" 0 0 755
 require_canonical_dir "$PERSIST_PARENT" 0 0 755
 require_canonical_dir "$RELEASES" "$BOT_UID" "$BOT_GID" 755
@@ -553,8 +563,8 @@ cleanup(){
   fi
   if [[ "$CONFIG_COMMITTED" != true && "$PRESERVE_FAILED_RELEASE" != true \
      && -n "$NEW_TAG" ]]; then
-    image_users=$(docker ps -aq --filter "ancestor=bitcoin-bot-services:$NEW_TAG" 2>/dev/null || true)
-    [[ -n "$image_users" ]] || docker image rm "bitcoin-bot-services:$NEW_TAG" >/dev/null 2>&1 || true
+    image_users=$(docker ps -aq --filter "ancestor=$SERVICE_IMAGE:$NEW_TAG" 2>/dev/null || true)
+    [[ -n "$image_users" ]] || docker image rm "$SERVICE_IMAGE:$NEW_TAG" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
@@ -1162,9 +1172,9 @@ rollback(){
     fi
   else
     clear_current
-    as_root systemctl disable --now "bitcoin-bot-monitor-${MONITOR_MODE}.service" \
-      "bitcoin-bot-monitor-report-${MONITOR_MODE}.timer" \
-      bitcoin-bot-monitor-snapshot.timer >/dev/null 2>&1
+    as_root systemctl disable --now "${SYSTEMD_PREFIX}-monitor-${MONITOR_MODE}.service" \
+      "${SYSTEMD_PREFIX}-monitor-report-${MONITOR_MODE}.timer" \
+      "${SYSTEMD_PREFIX}-monitor-snapshot.timer" >/dev/null 2>&1
   fi
   write_release_validation "$rollback_status" "$active_hash" "$active_path" \
     "$active_mode" "$NEW_CONTAINER_GATE" failed || true
@@ -1309,7 +1319,7 @@ while IFS= read -r candidate; do
   }
   [[ ! -L "$snapshot" && ! -L "$marker" ]] && rm -f -- "$snapshot" "$marker"
   if [[ "$candidate_hash" =~ ^[0-9a-f]{64}$ && "$candidate_hash" != "$RELEASE_HASH" ]]; then
-    docker image rm "bitcoin-bot-services:bitcoin-${candidate_hash:0:16}" >/dev/null 2>&1 || true
+    docker image rm "$SERVICE_IMAGE:bitcoin-${candidate_hash:0:16}" >/dev/null 2>&1 || true
   fi
 done < <(find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | \
   sort -nr | cut -d' ' -f2-)

@@ -5,11 +5,11 @@ umask 077
 
 [[ $EUID -eq 0 ]] || { echo 'ERROR: backup_state.sh must run as root' >&2; exit 1; }
 
-BACKUP_ROOT=/var/backups/bitcoin-bot
-PERSIST_ROOT=/var/lib/bitcoin-bot
-SHARED=$PERSIST_ROOT/shared
-CONFIG_ROOT=$PERSIST_ROOT/config-snapshots
-LOCK_FILE=/var/lock/bitcoin-bot.backup.lock
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=deploy/instance_identity.sh
+source "$SCRIPT_DIR/instance_identity.sh"
+SHARED=$PERSIST
+LOCK_FILE=$BACKUP_LOCK
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 DEST=$BACKUP_ROOT/$STAMP
 

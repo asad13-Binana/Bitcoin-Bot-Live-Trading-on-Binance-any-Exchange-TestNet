@@ -1,4 +1,4 @@
-name: bitcoin-bot
+name: bitcoin-testnet
 
 x-logging: &default-logging
   driver: json-file
@@ -24,7 +24,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.services
-    image: bitcoin-bot-services:${RELEASE_TAG:-local}
+    image: bitcoin-testnet-services:${RELEASE_TAG:-local}
     command: python -m services.moneyflow.service
     environment:
       BOT_PRODUCT: ${BOT_PRODUCT:-BITCOIN-BOT}
@@ -70,7 +70,7 @@ services:
       - ${SHARED_HOST_PATH:-./shared}/runtime/moneyflow:/app/shared/runtime/moneyflow
       - ${SHARED_HOST_PATH:-./shared}/audit:/app/shared/audit
     mem_limit: 180m
-    cpus: 0.15
+    cpus: 0.08
     pids_limit: 128
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import json,time;d=json.load(open('/app/shared/runtime/moneyflow/moneyflow_health.json'));assert d.get('ok') is True and time.time()-float(d['ts'])<60\""]
@@ -121,7 +121,7 @@ services:
       --config /freqtrade/shared/pair/freqtrade-active.json
       --strategy IctSmcStrategy
     mem_limit: 520m
-    cpus: 0.45
+    cpus: 0.17
     pids_limit: 256
     stop_grace_period: 2m
     security_opt:
@@ -138,7 +138,7 @@ services:
 
   execution-sidecar:
     <<: *service-hardening
-    image: bitcoin-bot-services:${RELEASE_TAG:-local}
+    image: bitcoin-testnet-services:${RELEASE_TAG:-local}
     command: python -m services.execution_sidecar.main
     depends_on:
       moneyflow:
@@ -230,7 +230,7 @@ services:
       - ${SHARED_HOST_PATH:-./shared}/runtime/sidecar:/app/shared/runtime/sidecar
       - ${SHARED_HOST_PATH:-./shared}/audit:/app/shared/audit
     mem_limit: 360m
-    cpus: 0.25
+    cpus: 0.14
     pids_limit: 128
     stop_grace_period: 2m
     healthcheck:
@@ -242,7 +242,7 @@ services:
 
   telegram-broker:
     <<: *service-hardening
-    image: bitcoin-bot-services:${RELEASE_TAG:-local}
+    image: bitcoin-testnet-services:${RELEASE_TAG:-local}
     command: python -m services.telegram_broker.bot
     depends_on:
       execution-sidecar:
@@ -291,7 +291,7 @@ services:
       - ${SHARED_HOST_PATH:-./shared}/runtime:/app/shared/runtime-readonly:ro
       - ${SHARED_HOST_PATH:-./shared}/audit:/app/shared/audit
     mem_limit: 140m
-    cpus: 0.10
+    cpus: 0.06
     pids_limit: 96
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import json,time;d=json.load(open('/app/shared/runtime/telegram/telegram_health.json'));assert d['ok'] and time.time()-float(d['ts'])<150\""]

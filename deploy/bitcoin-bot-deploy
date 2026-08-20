@@ -10,22 +10,19 @@ unset BASH_ENV ENV CDPATH GLOBIGNORE \
   PYTHONBREAKPOINT PYTHONPYCACHEPREFIX
 umask 077
 
-RUNNER_USER=gha-runner
-APP_ROOT=/opt/bitcoin-bot
-RELEASES=$APP_ROOT/releases
-CURRENT=$APP_ROOT/current
-PERSIST_PARENT=/var/lib/bitcoin-bot
-PERSIST=$PERSIST_PARENT/shared
-INCOMING=$PERSIST_PARENT/incoming
-ROOT_INCOMING=$PERSIST_PARENT/root-incoming
-PRIVATE_ROOT=/etc/bitcoin-bot
-ENV_FILE=$PRIVATE_ROOT/.env
-APPROVED_DIGEST=$PRIVATE_ROOT/approved-artifact.sha256
-CONSUMED_DIGEST=$PRIVATE_ROOT/last-consumed-artifact.sha256
-INSTALLER=/usr/local/libexec/bitcoin-bot/install_artifact.sh
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+IDENTITY_FILE=$SCRIPT_DIR/instance_identity.sh
+[[ -f "$IDENTITY_FILE" ]] || IDENTITY_FILE=/usr/local/libexec/bitcoin-testnet/instance_identity.sh
+[[ -f "$IDENTITY_FILE" && ! -L "$IDENTITY_FILE" ]] || { echo 'ERROR: bitcoin-testnet identity is missing' >&2; exit 1; }
+# shellcheck source=deploy/instance_identity.sh
+source "$IDENTITY_FILE"
+ENV_FILE=$BOT_ENV_FILE
+RUNNER_USER=$ACTIONS_RUNNER_USER
+INCOMING=$DEPLOY_INBOX
+INSTALLER=$ROOT_LIBEXEC/install_artifact.sh
 INCOMING_ARTIFACT=$INCOMING/bitcoin-bot-release.tar.gz
 INCOMING_CHECKSUM=$INCOMING/bitcoin-bot-release.tar.gz.sha256
-ACTION_LOCK=/var/lock/bitcoin-bot.actions-deploy.lock
+ACTION_LOCK=$ACTIONS_LOCK
 MAX_ARCHIVE_CONTENT_MIB=1024
 
 fail(){ echo "ERROR: $*" >&2; exit 1; }
@@ -131,8 +128,8 @@ for name in ("LIVE_TRADING_ENABLED", "AUTO_CONFIRM", "AUTO_PROTECTION_ENABLED"):
         raise SystemExit(f"{name} must be false for self-hosted simulation deployment")
 if values.get("BINANCE_API_KEY", "") or values.get("BINANCE_API_SECRET", ""):
     raise SystemExit("self-hosted simulation deployment requires empty Binance credentials")
-if values.get("SHARED_HOST_PATH") != "/var/lib/bitcoin-bot/shared":
-    raise SystemExit("SHARED_HOST_PATH must equal /var/lib/bitcoin-bot/shared")
+if values.get("SHARED_HOST_PATH") != str(persist):
+    raise SystemExit(f"SHARED_HOST_PATH must equal {persist}")
 
 signal_key = require("SIGNAL_HMAC_KEY", 32)
 command_key = require("COMMAND_HMAC_KEY", 32)
@@ -325,7 +322,7 @@ verify_runtime(){
   env -i "PATH=$PATH" "HOME=/root" \
     "RELEASE_TAG=$release_tag" "ENVELOPE_RELEASE_HASH=$release_hash" \
     "SIDECAR_RELEASE_HASH=$release_hash" "DEPLOYED_RELEASE_HASH=$release_hash" \
-    "DEPLOYED_CONFIG_SHA256=$config_hash" "COMPOSE_PROJECT_NAME=bitcoin-bot" \
+    "DEPLOYED_CONFIG_SHA256=$config_hash" "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" \
     python3 "$release/deploy/verify_stack_identity.py" \
       --release-dir "$release" \
       --releases-dir "$RELEASES" \
@@ -333,7 +330,7 @@ verify_runtime(){
       --config "$config" \
       --config-root "$PERSIST_PARENT/config-snapshots" \
       --config-sha256 "$config_hash" \
-      --project bitcoin-bot
+      --project "$COMPOSE_PROJECT_NAME"
   python3 - "$PERSIST" "$release" "$release_hash" <<'PY'
 import json
 from pathlib import Path
@@ -413,7 +410,7 @@ PY
 }
 
 [[ $EUID -eq 0 ]] || fail "this wrapper must run as root through its exact sudo rule"
-[[ $# == 1 ]] || fail "usage: bitcoin-bot-deploy preflight|simulation|verify"
+[[ $# == 1 ]] || fail "usage: $INSTANCE_SLUG-deploy preflight|simulation|verify"
 case "$1" in
   preflight|simulation|verify) ;;
   *) fail "only preflight, simulation, or verify is permitted" ;;

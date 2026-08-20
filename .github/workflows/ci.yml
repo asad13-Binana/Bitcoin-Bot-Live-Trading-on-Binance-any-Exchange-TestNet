@@ -227,7 +227,7 @@ jobs:
           export DEPLOYED_CONFIG_SHA256='1111111111111111111111111111111111111111111111111111111111111111'
           make compose
           docker compose --env-file .env.example build moneyflow
-          docker run --rm --entrypoint python bitcoin-bot-services:local -c \
+          docker run --rm --entrypoint python bitcoin-testnet-services:local -c \
             "from pathlib import Path; p=Path('/app/freqtrade/user_data/strategies/IctSmcStrategy.py'); assert p.is_file() and p.stat().st_size > 0"
           bash freqtrade/scripts/verify.sh
           docker compose -f freqtrade/docker-compose.yml --profile offline-audit run --rm \
@@ -254,7 +254,7 @@ jobs:
       inputs.confirmation == 'SIMULATION_ONLY' &&
       vars.ORACLE_DEPLOY_ENABLED == 'true'
     needs: artifact
-    runs-on: [self-hosted, linux, oracle-sim]
+    runs-on: [self-hosted, linux, oracle-bitcoin-testnet]
     timeout-minutes: 45
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -274,17 +274,17 @@ jobs:
           checksum="${archives[0]}.sha256"
           [[ -f "$checksum" && ! -L "$checksum" ]]
           install -m 0600 "${archives[0]}" \
-            /var/lib/bitcoin-bot/incoming/bitcoin-bot-release.tar.gz
+            /var/lib/bitcoin-testnet/incoming/bitcoin-bot-release.tar.gz
           install -m 0600 "$checksum" \
-            /var/lib/bitcoin-bot/incoming/bitcoin-bot-release.tar.gz.sha256
+            /var/lib/bitcoin-testnet/incoming/bitcoin-bot-release.tar.gz.sha256
       - name: Root-approved simulation preflight
         shell: bash
-        run: sudo /usr/local/sbin/bitcoin-bot-deploy preflight
+        run: sudo /usr/local/sbin/bitcoin-testnet-deploy preflight
       - name: Atomic simulation install
         shell: bash
-        run: sudo /usr/local/sbin/bitcoin-bot-deploy simulation
+        run: sudo /usr/local/sbin/bitcoin-testnet-deploy simulation
       - name: Verify exact four-service simulation
         shell: bash
         run: |
           set -Eeuo pipefail
-          sudo /usr/local/sbin/bitcoin-bot-deploy verify
+          sudo /usr/local/sbin/bitcoin-testnet-deploy verify

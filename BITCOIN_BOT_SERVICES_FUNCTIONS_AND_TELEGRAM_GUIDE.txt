@@ -203,68 +203,71 @@ Total prompt/send call sites: 57
   line 715: send: send("Confirmation rejected: " + reason, chat)
 
 8. COMPLETE NON-TEST PYTHON AND BASH FUNCTION INVENTORY
-Total callable declarations: 680
-Kinds: function=611, shell_function=69
+Total callable declarations: 696
+Kinds: function=624, shell_function=72
 This section is generated from docs/audit/FUNCTION_PARITY_MATRIX.csv. Python rows carry an exact function source hash. Bash rows carry the exact containing-file hash; the release manifest independently binds every byte of every file.
 
 FILE: deploy/backup_state.sh (1 callable(s))
-line 21 | shell_function | cleanup | PRESERVE_AND_REGRESSION_TEST | sha256=026b30faacab207585194d11f14384ac8e171bb52f3bdc0fecb28b77dc860c9f
+line 21 | shell_function | cleanup | PRESERVE_AND_REGRESSION_TEST | sha256=ac2cdd3d8f19a591cd086bf4b3ec9f95938531839c20a76ffcf67f7933141829
 
 FILE: deploy/bitcoin-bot-deploy (10 callable(s))
-line 31 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=5ce8c82e7858289f22a615f86fb2233bac9c697a14a15aa3ecb3e4c895c7ae5d
-line 33 | shell_function | require_canonical_dir | PRESERVE_AND_REGRESSION_TEST | sha256=5ce8c82e7858289f22a615f86fb2233bac9c697a14a15aa3ecb3e4c895c7ae5d
-line 44 | shell_function | require_canonical_file | PRESERVE_AND_REGRESSION_TEST | sha256=5ce8c82e7858289f22a615f86fb2233bac9c697a14a15aa3ecb3e4c895c7ae5d
-line 56 | shell_function | approved_digest | PRESERVE_AND_REGRESSION_TEST | sha256=5ce8c82e7858289f22a615f86fb2233bac9c697a14a15aa3ecb3e4c895c7ae5d
-line 68 | shell_function | simulation_env_preflight | PRESERVE_AND_REGRESSION_TEST | sha256=5ce8c82e7858289f22a615f86fb2233bac9c697a14a15aa3ecb3e4c895c7ae5d
-line 173 | shell_function | prepare_approved_artifact | PRESERVE_AND_REGRESSION_TEST | sha256=5ce8c82e7858289f22a615f86fb2233bac9c697a14a15aa3ecb3e4c895c7ae5d
-line 205 | shell_function | verify_approved_archive | PRESERVE_AND_REGRESSION_TEST | sha256=5ce8c82e7858289f22a615f86fb2233bac9c697a14a15aa3ecb3e4c895c7ae5d
-line 293 | shell_function | consume_approval | PRESERVE_AND_REGRESSION_TEST | sha256=5ce8c82e7858289f22a615f86fb2233bac9c697a14a15aa3ecb3e4c895c7ae5d
-line 308 | shell_function | verify_runtime | PRESERVE_AND_REGRESSION_TEST | sha256=5ce8c82e7858289f22a615f86fb2233bac9c697a14a15aa3ecb3e4c895c7ae5d
-line 430 | shell_function | cleanup | PRESERVE_AND_REGRESSION_TEST | sha256=5ce8c82e7858289f22a615f86fb2233bac9c697a14a15aa3ecb3e4c895c7ae5d
+line 28 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=a705a9f9c5286cec6fd1ad38fd7054e0a5474acc31d7c4fa77a379b270c55be0
+line 30 | shell_function | require_canonical_dir | PRESERVE_AND_REGRESSION_TEST | sha256=a705a9f9c5286cec6fd1ad38fd7054e0a5474acc31d7c4fa77a379b270c55be0
+line 41 | shell_function | require_canonical_file | PRESERVE_AND_REGRESSION_TEST | sha256=a705a9f9c5286cec6fd1ad38fd7054e0a5474acc31d7c4fa77a379b270c55be0
+line 53 | shell_function | approved_digest | PRESERVE_AND_REGRESSION_TEST | sha256=a705a9f9c5286cec6fd1ad38fd7054e0a5474acc31d7c4fa77a379b270c55be0
+line 65 | shell_function | simulation_env_preflight | PRESERVE_AND_REGRESSION_TEST | sha256=a705a9f9c5286cec6fd1ad38fd7054e0a5474acc31d7c4fa77a379b270c55be0
+line 170 | shell_function | prepare_approved_artifact | PRESERVE_AND_REGRESSION_TEST | sha256=a705a9f9c5286cec6fd1ad38fd7054e0a5474acc31d7c4fa77a379b270c55be0
+line 202 | shell_function | verify_approved_archive | PRESERVE_AND_REGRESSION_TEST | sha256=a705a9f9c5286cec6fd1ad38fd7054e0a5474acc31d7c4fa77a379b270c55be0
+line 290 | shell_function | consume_approval | PRESERVE_AND_REGRESSION_TEST | sha256=a705a9f9c5286cec6fd1ad38fd7054e0a5474acc31d7c4fa77a379b270c55be0
+line 305 | shell_function | verify_runtime | PRESERVE_AND_REGRESSION_TEST | sha256=a705a9f9c5286cec6fd1ad38fd7054e0a5474acc31d7c4fa77a379b270c55be0
+line 427 | shell_function | cleanup | PRESERVE_AND_REGRESSION_TEST | sha256=a705a9f9c5286cec6fd1ad38fd7054e0a5474acc31d7c4fa77a379b270c55be0
 
 FILE: deploy/create_oci_host_loss_alarm.sh (1 callable(s))
 line 5 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=03ee979bff8fe813e0c462db0d81784db65d5e94445a41ed71546b782df91e8f
 
-FILE: deploy/install_artifact.sh (29 callable(s))
-line 24 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 25 | shell_function | as_root | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 58 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 64 | shell_function | env_file_key_allowed | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 117 | shell_function | env_file_require_trusted | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 139 | shell_function | _env_file_unquote | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 161 | shell_function | env_file_get | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 200 | shell_function | env_file_pairs | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 230 | shell_function | env_file_load | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 256 | shell_function | require_canonical_dir | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 265 | shell_function | is_timestamp_release_dir | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 274 | shell_function | require_release_config | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 285 | shell_function | project_empty | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 290 | shell_function | switch_current | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 295 | shell_function | clear_current | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 316 | shell_function | placeholder | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 321 | shell_function | require_secret | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 369 | shell_function | bounded_provider_cap | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 530 | shell_function | cleanup | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 681 | shell_function | verify_live_candidate | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 715 | shell_function | activate_live_evidence | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 758 | shell_function | compose_for | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 850 | shell_function | submit_old_command | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 901 | shell_function | stack_healthy | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 925 | shell_function | write_deployment_status | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 971 | shell_function | write_release_validation | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 1026 | shell_function | mark_release_success | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 1064 | shell_function | rollback | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
-line 1176 | shell_function | on_cutover_failure | PRESERVE_AND_REGRESSION_TEST | sha256=194ca483108590a4c863afd36637d736da9300dc507183269412e25939663399
+FILE: deploy/install_artifact.sh (30 callable(s))
+line 6 | shell_function | load_instance_identity | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 37 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 38 | shell_function | as_root | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 71 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 77 | shell_function | env_file_key_allowed | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 130 | shell_function | env_file_require_trusted | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 152 | shell_function | _env_file_unquote | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 174 | shell_function | env_file_get | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 213 | shell_function | env_file_pairs | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 243 | shell_function | env_file_load | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 269 | shell_function | require_canonical_dir | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 278 | shell_function | is_timestamp_release_dir | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 287 | shell_function | require_release_config | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 298 | shell_function | project_empty | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 303 | shell_function | switch_current | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 308 | shell_function | clear_current | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 328 | shell_function | placeholder | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 333 | shell_function | require_secret | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 381 | shell_function | bounded_provider_cap | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 540 | shell_function | cleanup | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 691 | shell_function | verify_live_candidate | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 725 | shell_function | activate_live_evidence | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 768 | shell_function | compose_for | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 860 | shell_function | submit_old_command | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 911 | shell_function | stack_healthy | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 935 | shell_function | write_deployment_status | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 981 | shell_function | write_release_validation | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 1036 | shell_function | mark_release_success | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 1074 | shell_function | rollback | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
+line 1186 | shell_function | on_cutover_failure | PRESERVE_AND_REGRESSION_TEST | sha256=48c4a00d49f3b4acf4f8ffe9edab2de391730563a07aab1f5247ad8ad14ad3e1
 
-FILE: deploy/install_monitoring.sh (8 callable(s))
-line 13 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=5eea000563383f4a2f5c66e7af3941b9700172046312dc7f0b11dbf1ac30d3f6
-line 46 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=5eea000563383f4a2f5c66e7af3941b9700172046312dc7f0b11dbf1ac30d3f6
-line 52 | shell_function | env_file_key_allowed | PRESERVE_AND_REGRESSION_TEST | sha256=5eea000563383f4a2f5c66e7af3941b9700172046312dc7f0b11dbf1ac30d3f6
-line 105 | shell_function | env_file_require_trusted | PRESERVE_AND_REGRESSION_TEST | sha256=5eea000563383f4a2f5c66e7af3941b9700172046312dc7f0b11dbf1ac30d3f6
-line 127 | shell_function | _env_file_unquote | PRESERVE_AND_REGRESSION_TEST | sha256=5eea000563383f4a2f5c66e7af3941b9700172046312dc7f0b11dbf1ac30d3f6
-line 149 | shell_function | env_file_get | PRESERVE_AND_REGRESSION_TEST | sha256=5eea000563383f4a2f5c66e7af3941b9700172046312dc7f0b11dbf1ac30d3f6
-line 188 | shell_function | env_file_pairs | PRESERVE_AND_REGRESSION_TEST | sha256=5eea000563383f4a2f5c66e7af3941b9700172046312dc7f0b11dbf1ac30d3f6
-line 218 | shell_function | env_file_load | PRESERVE_AND_REGRESSION_TEST | sha256=5eea000563383f4a2f5c66e7af3941b9700172046312dc7f0b11dbf1ac30d3f6
+FILE: deploy/install_monitoring.sh (10 callable(s))
+line 5 | shell_function | load_instance_identity | PRESERVE_AND_REGRESSION_TEST | sha256=f2229193c78000b35992dcbb68918c37664c285d69fac02f895406766f853eb5
+line 30 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=f2229193c78000b35992dcbb68918c37664c285d69fac02f895406766f853eb5
+line 68 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=f2229193c78000b35992dcbb68918c37664c285d69fac02f895406766f853eb5
+line 74 | shell_function | env_file_key_allowed | PRESERVE_AND_REGRESSION_TEST | sha256=f2229193c78000b35992dcbb68918c37664c285d69fac02f895406766f853eb5
+line 127 | shell_function | env_file_require_trusted | PRESERVE_AND_REGRESSION_TEST | sha256=f2229193c78000b35992dcbb68918c37664c285d69fac02f895406766f853eb5
+line 149 | shell_function | _env_file_unquote | PRESERVE_AND_REGRESSION_TEST | sha256=f2229193c78000b35992dcbb68918c37664c285d69fac02f895406766f853eb5
+line 171 | shell_function | env_file_get | PRESERVE_AND_REGRESSION_TEST | sha256=f2229193c78000b35992dcbb68918c37664c285d69fac02f895406766f853eb5
+line 210 | shell_function | env_file_pairs | PRESERVE_AND_REGRESSION_TEST | sha256=f2229193c78000b35992dcbb68918c37664c285d69fac02f895406766f853eb5
+line 240 | shell_function | env_file_load | PRESERVE_AND_REGRESSION_TEST | sha256=f2229193c78000b35992dcbb68918c37664c285d69fac02f895406766f853eb5
+line 344 | shell_function | render_unit | PRESERVE_AND_REGRESSION_TEST | sha256=f2229193c78000b35992dcbb68918c37664c285d69fac02f895406766f853eb5
 
 FILE: deploy/lib/envfile.sh (7 callable(s))
 line 32 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=6022fe02fd0cd719961b9fcb4885c4166bebac23d2dda1b7ae00f49b207e1651
@@ -276,27 +279,27 @@ line 174 | shell_function | env_file_pairs | PRESERVE_AND_REGRESSION_TEST | sha2
 line 204 | shell_function | env_file_load | PRESERVE_AND_REGRESSION_TEST | sha256=6022fe02fd0cd719961b9fcb4885c4166bebac23d2dda1b7ae00f49b207e1651
 
 FILE: deploy/offhost_backup.sh (3 callable(s))
-line 15 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=b881390d0d3ceae66cd189bdb822ec7e4ad9faa03e3ea194a01f6a879cbc3b32
-line 21 | shell_function | on_exit | PRESERVE_AND_REGRESSION_TEST | sha256=b881390d0d3ceae66cd189bdb822ec7e4ad9faa03e3ea194a01f6a879cbc3b32
-line 91 | shell_function | run_oci | PRESERVE_AND_REGRESSION_TEST | sha256=b881390d0d3ceae66cd189bdb822ec7e4ad9faa03e3ea194a01f6a879cbc3b32
+line 17 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=7fd272b5687772180be5a3c18bef75fa780c169031b50f00f95a9f0d851d38fa
+line 23 | shell_function | on_exit | PRESERVE_AND_REGRESSION_TEST | sha256=7fd272b5687772180be5a3c18bef75fa780c169031b50f00f95a9f0d851d38fa
+line 93 | shell_function | run_oci | PRESERVE_AND_REGRESSION_TEST | sha256=7fd272b5687772180be5a3c18bef75fa780c169031b50f00f95a9f0d851d38fa
 
 FILE: deploy/oracle_setup.sh (4 callable(s))
-line 27 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=98d19d0b1a1189bc3a20f925b048200de7db2e35fe750657134713abf47fc9a4
-line 28 | shell_function | as_root | PRESERVE_AND_REGRESSION_TEST | sha256=98d19d0b1a1189bc3a20f925b048200de7db2e35fe750657134713abf47fc9a4
-line 85 | shell_function | cleanup_docker_repo | PRESERVE_AND_REGRESSION_TEST | sha256=98d19d0b1a1189bc3a20f925b048200de7db2e35fe750657134713abf47fc9a4
-line 399 | shell_function | cleanup_sudoers | PRESERVE_AND_REGRESSION_TEST | sha256=98d19d0b1a1189bc3a20f925b048200de7db2e35fe750657134713abf47fc9a4
+line 20 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=fb7bd3f2945f1025fe977ed9b1c4e1e386bd6a48486f1ca08c24ad565c19a3ab
+line 21 | shell_function | as_root | PRESERVE_AND_REGRESSION_TEST | sha256=fb7bd3f2945f1025fe977ed9b1c4e1e386bd6a48486f1ca08c24ad565c19a3ab
+line 89 | shell_function | cleanup_docker_repo | PRESERVE_AND_REGRESSION_TEST | sha256=fb7bd3f2945f1025fe977ed9b1c4e1e386bd6a48486f1ca08c24ad565c19a3ab
+line 416 | shell_function | cleanup_sudoers | PRESERVE_AND_REGRESSION_TEST | sha256=fb7bd3f2945f1025fe977ed9b1c4e1e386bd6a48486f1ca08c24ad565c19a3ab
 
 FILE: deploy/oracle_validate.sh (4 callable(s))
-line 13 | shell_function | section | PRESERVE_AND_REGRESSION_TEST | sha256=17dce10c7274ee7fbb4db3bd177901bd2c52504ffb8e867cfcc1ae3147e93f32
-line 14 | shell_function | line | PRESERVE_AND_REGRESSION_TEST | sha256=17dce10c7274ee7fbb4db3bd177901bd2c52504ffb8e867cfcc1ae3147e93f32
-line 15 | shell_function | command_value | PRESERVE_AND_REGRESSION_TEST | sha256=17dce10c7274ee7fbb4db3bd177901bd2c52504ffb8e867cfcc1ae3147e93f32
-line 22 | shell_function | http_status | PRESERVE_AND_REGRESSION_TEST | sha256=17dce10c7274ee7fbb4db3bd177901bd2c52504ffb8e867cfcc1ae3147e93f32
+line 12 | shell_function | section | PRESERVE_AND_REGRESSION_TEST | sha256=3cbebe19b5762a9c6e6b97b5ebd35fc3fe0eb4b909ed27845102ccc36de67de7
+line 13 | shell_function | line | PRESERVE_AND_REGRESSION_TEST | sha256=3cbebe19b5762a9c6e6b97b5ebd35fc3fe0eb4b909ed27845102ccc36de67de7
+line 14 | shell_function | command_value | PRESERVE_AND_REGRESSION_TEST | sha256=3cbebe19b5762a9c6e6b97b5ebd35fc3fe0eb4b909ed27845102ccc36de67de7
+line 21 | shell_function | http_status | PRESERVE_AND_REGRESSION_TEST | sha256=3cbebe19b5762a9c6e6b97b5ebd35fc3fe0eb4b909ed27845102ccc36de67de7
 
 FILE: deploy/resource_guard.sh (1 callable(s))
-line 18 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=78292945076bad6bc93bd2025e3d1e006d211b70d920430dd7733817792887f4
+line 20 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=885cd166e9a773bbe025154b6e9502341f9435aef8ae95d908f29e378d441feb
 
 FILE: deploy/stage_offhost_restore.sh (1 callable(s))
-line 12 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=658a2e56e7eb693876a190b157528574592c2f33963bd5251b606d3938f5c06b
+line 14 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=6b79c7a975d84d969d9db295500c27007bc435c44cbc5d83d73ce15a654fe3ed
 
 FILE: deploy/verify_stack_identity.py (7 callable(s))
 line 28-33 | function | file_sha256 | PRESERVE_AND_REGRESSION_TEST | sha256=847e6a61274a87cef079878e55b0213bab33a2dfca5cce72010e4697cf66c27f
@@ -537,6 +540,19 @@ line 53-63 | function | _walk_keys | PRESERVE_AND_REGRESSION_TEST | sha256=2b5c6
 line 66-114 | function | validate | PRESERVE_AND_REGRESSION_TEST | sha256=f4f8135ae4d85687ad48f6161ca50029a0f5c5800e0754c90677d7779d8d4d3f
 line 117-140 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=02d8a562c9cbc4215936d3b2020bc52bae2647473981f2ba6e2ae8c499c5460e
 
+FILE: scripts/verify_four_bot_cohost.py (11 callable(s))
+line 59-66 | function | load_contract | PRESERVE_AND_REGRESSION_TEST | sha256=861290775b24a2aa45be90ee0cd40d201a377805b6e55ef9b31cc2993d804d20
+line 69-80 | function | parse_identity | PRESERVE_AND_REGRESSION_TEST | sha256=a4caddf4d27cc5d4fcd7f4eeab7804b8992b79ed407ff3d524cdac29c57c66f5
+line 83-97 | function | parse_env | PRESERVE_AND_REGRESSION_TEST | sha256=55afe453ca1e4f11035648c9b5f83da241701810c95bd557623c4b2c631979dd
+line 100-105 | function | local_instance | PRESERVE_AND_REGRESSION_TEST | sha256=0bc6fff51c10e3bdd79050d5cc086d8d3babc090310d5718fc38101d9e764ad8
+line 108-123 | function | check_uniqueness | PRESERVE_AND_REGRESSION_TEST | sha256=05ab4628ba3bee887cd30b2aa775c915575ea4e64a4d2befe0dbd4cc71da745d
+line 126-128 | function | memory_to_mib | PRESERVE_AND_REGRESSION_TEST | sha256=eb93636103f7c0e1ac5a5a334da4c97e670426ea2cc6fef12740654bc8931b72
+line 131-198 | function | check_local_static | PRESERVE_AND_REGRESSION_TEST | sha256=5546640e8fa7011eb07c6f33f403aa58aae6ffd8d55149345b08801e219e5f39
+line 201-206 | function | read_meminfo | PRESERVE_AND_REGRESSION_TEST | sha256=ff137271857d74fdc2885e3cb1edddd9a0602222686042be9730b8a99c86e468
+line 209-210 | function | canonical_directory | PRESERVE_AND_REGRESSION_TEST | sha256=0db85e66072c91cc803846ffcaa9dde241bb44e9dcedf4dac55f738f2dd61b87
+line 213-418 | function | check_host | PRESERVE_AND_REGRESSION_TEST | sha256=e12c611beb247c36320053e03731e56575b52cf1e3a176dc3156816bf9024335
+line 421-441 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=a3bc098549afeac2a7534f1e2a916f9e693764a974720bedd267c0bd8e512278
+
 FILE: scripts/verify_live_evidence.py (1 callable(s))
 line 22-53 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=f7f8a60072ee6a469f92578744706143d20f99ef0ae6d1d2550ef5b73ca1c9b3
 
@@ -545,19 +561,21 @@ line 10-11 | function | sha | PRESERVE_AND_REGRESSION_TEST | sha256=35b5b3454a88
 line 14-25 | function | current_release_files | PRESERVE_AND_REGRESSION_TEST | sha256=8f8538fbc97341a5d35d746a3ad0753e0885617434c7e3bb81c9648b21dbf0d8
 line 28-90 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=60082163664f2cf2f04ce54322074b4b89e4fc0be8c1ffff65125140b4e66bde
 
-FILE: scripts/verify_systemd_units.py (12 callable(s))
-line 92-94 | function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=ba1c66310c4cb448eb5d6f9c112ab9edbfe933261fc3b7cee850c8e614e9bf82
-line 97-108 | function | resolve_context | PRESERVE_AND_REGRESSION_TEST | sha256=ee12ee9458c63e2999f1ef07cf37521efcbee704d50b51f76eb975f24724737b
-line 111-117 | function | display_path | PRESERVE_AND_REGRESSION_TEST | sha256=c0844bf340c591d17d872e3d475e21b8387f78d7f07f7d431dd11c9c44a80c8f
-line 120-132 | function | unit_files | PRESERVE_AND_REGRESSION_TEST | sha256=826834adce4820c7c1d8dde673a1ae0565c5843b535e15a54e8c528dd97e7551
-line 135-136 | function | project_owned | PRESERVE_AND_REGRESSION_TEST | sha256=a856d060d46ec0ca5c4b9dd882eaeaaabd4726f5f985e2e9404698048c96fedb
-line 139-141 | function | strip_exec_prefixes | PRESERVE_AND_REGRESSION_TEST | sha256=ece36a0d656a000964858ce686319e3173733f3a030e7aaf0b4143e305aeef1d
-line 144-149 | function | command_path | PRESERVE_AND_REGRESSION_TEST | sha256=439f3216e6426774e2186def829dcce184f3d7e5854f0329f9183195d7299b6d
-line 152-169 | function | check_hardening | PRESERVE_AND_REGRESSION_TEST | sha256=69f50936edd59ed15fd4762cb8643b758d00f2dd7a7977c098533e4adbae6991
-line 172-207 | function | check_installed_paths | PRESERVE_AND_REGRESSION_TEST | sha256=8574bda6dd4963cb12b6b7726c8935a1036968a8c704c6ba3af66e0d37fcf3a8
-line 210-233 | function | classify_source_line | PRESERVE_AND_REGRESSION_TEST | sha256=7381733d2a101c28969b109e488c04ade408e860ee24f3b86345088adad8f1da
-line 236-243 | function | run_analyze | PRESERVE_AND_REGRESSION_TEST | sha256=f9d44d526eb0b36777cc7005745bc403d9d257c945304d35fe6f70953931f95c
-line 246-298 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=374489d2c47dd90b07aebeb17ad1f296e32f5850b2a4e9a2e30601a63107472f
+FILE: scripts/verify_systemd_units.py (14 callable(s))
+line 49-68 | function | load_instance_identity | PRESERVE_AND_REGRESSION_TEST | sha256=2255f5045f09813983fa92e9e459be654ea9da841a09e016d489702862462844
+line 124-126 | function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=ba1c66310c4cb448eb5d6f9c112ab9edbfe933261fc3b7cee850c8e614e9bf82
+line 129-140 | function | resolve_context | PRESERVE_AND_REGRESSION_TEST | sha256=060cccfeada524e687b9bfcf6572aa5d368c33b5ace4ed464a237440f40b0681
+line 143-149 | function | display_path | PRESERVE_AND_REGRESSION_TEST | sha256=c0844bf340c591d17d872e3d475e21b8387f78d7f07f7d431dd11c9c44a80c8f
+line 152-164 | function | unit_files | PRESERVE_AND_REGRESSION_TEST | sha256=826834adce4820c7c1d8dde673a1ae0565c5843b535e15a54e8c528dd97e7551
+line 167-177 | function | installed_unit_files | PRESERVE_AND_REGRESSION_TEST | sha256=fd026b5aff2526d436374047a4ef5965b06ffebf316e540d97b9c9a77851a3e0
+line 180-181 | function | project_owned | PRESERVE_AND_REGRESSION_TEST | sha256=a856d060d46ec0ca5c4b9dd882eaeaaabd4726f5f985e2e9404698048c96fedb
+line 184-186 | function | strip_exec_prefixes | PRESERVE_AND_REGRESSION_TEST | sha256=ece36a0d656a000964858ce686319e3173733f3a030e7aaf0b4143e305aeef1d
+line 189-194 | function | command_path | PRESERVE_AND_REGRESSION_TEST | sha256=439f3216e6426774e2186def829dcce184f3d7e5854f0329f9183195d7299b6d
+line 197-214 | function | check_hardening | PRESERVE_AND_REGRESSION_TEST | sha256=69f50936edd59ed15fd4762cb8643b758d00f2dd7a7977c098533e4adbae6991
+line 217-252 | function | check_installed_paths | PRESERVE_AND_REGRESSION_TEST | sha256=8574bda6dd4963cb12b6b7726c8935a1036968a8c704c6ba3af66e0d37fcf3a8
+line 255-278 | function | classify_source_line | PRESERVE_AND_REGRESSION_TEST | sha256=7381733d2a101c28969b109e488c04ade408e860ee24f3b86345088adad8f1da
+line 281-288 | function | run_analyze | PRESERVE_AND_REGRESSION_TEST | sha256=f9d44d526eb0b36777cc7005745bc403d9d257c945304d35fe6f70953931f95c
+line 291-343 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=f7bce294dc2a935795facdc33580f980db68402621ed058625dc4e3bbc5c3e52
 
 FILE: services/common/atomic.py (3 callable(s))
 line 7-19 | function | _fsync_parent_directory | PRESERVE_AND_REGRESSION_TEST | sha256=338e145ef11ce980e062d290125df9d062b95c3ca0a5bcd9d5d4a28145986086

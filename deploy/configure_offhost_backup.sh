@@ -2,7 +2,10 @@
 # Pull the digest-pinned OCI CLI image, prove IAM/bucket access, then enable the timer.
 set -Eeuo pipefail
 [[ $EUID -eq 0 ]] || { echo 'ERROR: configure_offhost_backup.sh must run as root' >&2; exit 1; }
-SCRIPT=/usr/local/libexec/bitcoin-bot/offhost_backup.sh
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=deploy/instance_identity.sh
+source "$SCRIPT_DIR/instance_identity.sh"
+SCRIPT=$ROOT_LIBEXEC/offhost_backup.sh
 [[ -f "$SCRIPT" && ! -L "$SCRIPT" ]] || { echo 'ERROR: installed off-host backup script is unavailable' >&2; exit 1; }
 case $(dpkg --print-architecture) in
   arm64) image='ghcr.io/oracle/oci-cli:sha-45aa4a4@sha256:efaeca93e2adc0411151bcde39a9c945bc6245cbf8d3117fa7c526653492eb19' ;;
@@ -13,7 +16,6 @@ docker pull "$image"
 docker image inspect "$image" >/dev/null
 "$SCRIPT" --preflight
 systemctl daemon-reload
-systemctl enable --now bitcoin-bot-offhost-backup.timer
+systemctl enable --now "${SYSTEMD_PREFIX}-offhost-backup.timer"
 echo 'off-host backup enabled; run the service once now and verify its status before relying on it'
-
 

@@ -11,7 +11,9 @@ set -Eeuo pipefail
 }
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
-ENV_FILE=${BITCOIN_BOT_ENV_FILE:-/etc/bitcoin-bot/.env}
+# shellcheck source=deploy/instance_identity.sh
+source "$ROOT/deploy/instance_identity.sh"
+ENV_FILE=${BITCOIN_BOT_ENV_FILE:-$BOT_ENV_FILE}
 # shellcheck source=deploy/lib/envfile.sh
 source "$ROOT/deploy/lib/envfile.sh"
 env_file_require_trusted "$ENV_FILE"

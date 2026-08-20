@@ -43,6 +43,21 @@ from services.telegram_broker.callbacks import CallbackStore
 
 
 ROOT = Path(__file__).resolve().parents[1]
+RELEASE_MODE = (ROOT / "RELEASE_MODE").read_text(encoding="utf-8").strip()
+INSTANCE = {
+    "testnet": {
+        "slug": "bitcoin-testnet",
+        "runner": "oracle-bitcoin-testnet",
+        "wrapper": "/usr/local/sbin/bitcoin-testnet-deploy",
+        "runner_user": "ghabtcntn",
+    },
+    "live": {
+        "slug": "bitcoin-live",
+        "runner": "oracle-bitcoin-live",
+        "wrapper": "/usr/local/sbin/bitcoin-live-deploy",
+        "runner_user": "ghabtclive",
+    },
+}[RELEASE_MODE]
 STRATEGY_PATH = ROOT / "freqtrade/user_data/strategies/IctSmcStrategy.py"
 
 
@@ -826,13 +841,13 @@ def test_oracle_workflow_uses_only_root_approved_self_hosted_simulation():
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     wrapper = (ROOT / "deploy/bitcoin-bot-deploy").read_text(encoding="utf-8")
     setup = (ROOT / "deploy/oracle_setup.sh").read_text(encoding="utf-8")
-    assert "runs-on: [self-hosted, linux, oracle-sim]" in workflow
+    assert f"runs-on: [self-hosted, linux, {INSTANCE['runner']}]" in workflow
     assert "inputs.execution_mode == 'simulation'" in workflow
     assert "inputs.confirmation == 'SIMULATION_ONLY'" in workflow
     assert "vars.ORACLE_DEPLOY_ENABLED == 'true'" in workflow
-    assert "sudo /usr/local/sbin/bitcoin-bot-deploy preflight" in workflow
-    assert "sudo /usr/local/sbin/bitcoin-bot-deploy simulation" in workflow
-    assert "sudo /usr/local/sbin/bitcoin-bot-deploy verify" in workflow
+    assert f"sudo {INSTANCE['wrapper']} preflight" in workflow
+    assert f"sudo {INSTANCE['wrapper']} simulation" in workflow
+    assert f"sudo {INSTANCE['wrapper']} verify" in workflow
     for forbidden in ("ORACLE_SSH_PRIVATE_KEY", "ORACLE_HOST", "scp -P", "ssh -p"):
         assert forbidden not in workflow
     assert "options: [simulation]" in workflow
@@ -843,8 +858,11 @@ def test_oracle_workflow_uses_only_root_approved_self_hosted_simulation():
     assert "PYTHONPATH PYTHONHOME PYTHONSTARTUP PYTHONINSPECT" in wrapper
     assert "root-approved SHA-256" in wrapper
     assert "requires empty Binance credentials" in wrapper
-    assert "approved-artifact.sha256" in setup
-    assert "gha-runner ALL=(root) NOPASSWD: /usr/local/sbin/bitcoin-bot-deploy preflight" in setup
+    identity = (ROOT / "deploy/instance_identity.sh").read_text(encoding="utf-8")
+    assert f"readonly APPROVED_DIGEST=/etc/{INSTANCE['slug']}/approved-artifact.sha256" in identity
+    assert f"readonly ACTIONS_RUNNER_USER={INSTANCE['runner_user']}" in identity
+    assert f"readonly ROOT_WRAPPER={INSTANCE['wrapper']}" in identity
+    assert "$ACTIONS_RUNNER_USER ALL=(root) NOPASSWD: $ROOT_WRAPPER preflight" in setup
     assert 'usermod -aG docker "$ACTIONS_RUNNER_USER"' not in setup
 
 

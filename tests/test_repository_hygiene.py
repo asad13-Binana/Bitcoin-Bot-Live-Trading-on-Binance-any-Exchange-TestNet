@@ -21,6 +21,8 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
+RELEASE_MODE = (ROOT / "RELEASE_MODE").read_text(encoding="utf-8").strip()
+INSTANCE_SLUG = f"bitcoin-{RELEASE_MODE}"
 GITATTRIBUTES = ROOT / ".gitattributes"
 VERIFY_RELEASE = ROOT / "deploy/verify_release.sh"
 UNIT_VERIFIER = ROOT / "scripts/verify_systemd_units.py"
@@ -248,7 +250,7 @@ def test_source_context_passes_on_this_uninstalled_tree():
 def test_installed_context_requires_systemd_analyze_or_real_paths():
     """Installed mode must never pass on a machine where the bot is absent."""
     result = run_verifier("installed")
-    interpreter = Path("/opt/bitcoin-bot/monitoring-current/bin/python")
+    interpreter = Path(f"/opt/{INSTANCE_SLUG}/monitoring-current/bin/python")
     if os.access(interpreter, os.X_OK):
         pytest.skip("the bot is installed on this host; strict mode is expected to pass")
     assert result.returncode == 1, (
@@ -304,6 +306,7 @@ def test_real_defects_are_rejected_in_source_mode(verifier, line):
 
 def test_project_owned_prefixes_do_not_cover_arbitrary_paths(verifier):
     assert verifier.project_owned("/opt/bitcoin-bot/monitoring-current/bin/python")
+    assert verifier.project_owned(f"/opt/{INSTANCE_SLUG}/monitoring-current/bin/python")
     assert not verifier.project_owned("/usr/bin/python3")
     assert not verifier.project_owned("/usr/local/libexec/other-tool")
     assert not verifier.project_owned("/opt/something-else/bin/python")
@@ -409,6 +412,7 @@ def test_every_shipped_shell_script_is_covered():
         "deploy/create_oci_host_loss_alarm.sh",
         "deploy/install_artifact.sh",
         "deploy/install_monitoring.sh",
+        "deploy/instance_identity.sh",
         "deploy/lib/envfile.sh",
         "deploy/oracle_validate.sh",
         "deploy/oracle_setup.sh",

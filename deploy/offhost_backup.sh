@@ -4,11 +4,13 @@
 set -Eeuo pipefail
 umask 077
 
-CONFIG=/etc/bitcoin-bot/offhost-backup.env
-BACKUP_ROOT=/var/backups/bitcoin-bot
-VALIDATOR=/usr/local/libexec/bitcoin-bot/verify_backup.sh
-STATUS=/var/lib/bitcoin-bot/shared/runtime/offhost_backup_status.json
-LOCK=/var/lock/bitcoin-bot.offhost-backup.lock
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=deploy/instance_identity.sh
+source "$SCRIPT_DIR/instance_identity.sh"
+CONFIG=$PRIVATE_ROOT/offhost-backup.env
+VALIDATOR=$ROOT_LIBEXEC/verify_backup.sh
+STATUS=$PERSIST/runtime/offhost_backup_status.json
+LOCK=$OFFHOST_BACKUP_LOCK
 OCI_IMAGE_ARM64='ghcr.io/oracle/oci-cli:sha-45aa4a4@sha256:efaeca93e2adc0411151bcde39a9c945bc6245cbf8d3117fa7c526653492eb19'
 OCI_IMAGE_AMD64='ghcr.io/oracle/oci-cli:sha-45aa4a4@sha256:e781329f06b345e1322260a5594d365a088dac77cef2b0bb394a5acf40804cea'
 

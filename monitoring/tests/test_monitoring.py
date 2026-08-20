@@ -15,6 +15,11 @@ from fastapi.testclient import TestClient
 
 
 ROOT = Path(__file__).resolve().parents[2]
+RELEASE_MODE = (ROOT / "RELEASE_MODE").read_text(encoding="utf-8").strip()
+INSTANCE = {
+    "testnet": {"slug": "bitcoin-testnet", "port": 8091, "modes": ("simulation", "testnet")},
+    "live": {"slug": "bitcoin-live", "port": 8093, "modes": ("simulation", "live")},
+}[RELEASE_MODE]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -443,12 +448,13 @@ def test_mode_templates_have_correct_topology_ports_and_isolation(monkeypatch):
     simulation = (ROOT / "monitoring/.env.monitor.simulation.example").read_text(encoding="utf-8")
     testnet = (ROOT / "monitoring/.env.monitor.testnet.example").read_text(encoding="utf-8")
     live = (ROOT / "monitoring/.env.monitor.live.example").read_text(encoding="utf-8")
-    assert all("/opt/bitcoin-bot/current" in text for text in (simulation, testnet, live))
+    templates = {"simulation": simulation, "testnet": testnet, "live": live}
+    for mode in INSTANCE["modes"]:
+        assert f"/opt/{INSTANCE['slug']}/current" in templates[mode]
+        assert f"/var/lib/{INSTANCE['slug']}/shared" in templates[mode]
+        assert f"MONITOR_URL=http://127.0.0.1:{INSTANCE['port']}" in templates[mode]
     assert "BOT_MODE=simulation" in simulation
     assert "BINANCE_REST_BASE=https://api.binance.com" in simulation
-    assert "MONITOR_URL=http://127.0.0.1:8091" in simulation
-    assert "MONITOR_URL=http://127.0.0.1:8091" in testnet
-    assert "MONITOR_URL=http://127.0.0.1:8091" in live
     assert "simulation-audit.jsonl" in simulation
     assert "testnet-audit.jsonl" in testnet and "live-audit.jsonl" in live
     assert "MONITOR_ENABLED=false" in live
