@@ -113,6 +113,238 @@ def _replacement(price: str, *, side: str = "SELL") -> dict:
     }
 
 
+def _order_list_replacement() -> dict:
+    return {
+        "symbol": "BTCUSDT",
+        "side": "SELL",
+        "quantity": "0.1000",
+        "aboveType": "LIMIT_MAKER",
+        "abovePrice": "110.0",
+        "belowType": "STOP_LOSS_LIMIT",
+        "belowPrice": "90.0",
+        "belowStopPrice": "90.0",
+    }
+
+
+class _FilterScopePublic(_RulePublic):
+    def __init__(self, *, symbol_filters=(), exchange_filters=()):
+        super().__init__()
+        self.symbol_filters = [dict(item) for item in symbol_filters]
+        self.exchange_filters = [dict(item) for item in exchange_filters]
+
+    def exchange_info(self, symbol):
+        assert symbol == "BTCUSDT"
+        row = _symbol_row()
+        row["filters"] = [*row["filters"], *self.symbol_filters]
+        return {
+            "exchangeFilters": list(self.exchange_filters),
+            "symbols": [row],
+        }
+
+
+def test_max_num_order_lists_counts_only_lists_on_the_requested_symbol():
+    public = _FilterScopePublic(symbol_filters=[{
+        "filterType": "MAX_NUM_ORDER_LISTS",
+        "maxNumOrderLists": 2,
+    }])
+    summary = SpotFilterValidator(public).validate_replacement(
+        "BTCUSDT",
+        "orderList/oco",
+        _order_list_replacement(),
+        open_order_lists_provider=lambda: [
+            {"symbol": "BTCUSDT", "orderListId": 101},
+            {"symbol": "ETHUSDT", "orderListId": 202},
+        ],
+    )
+    assert "MAX_NUM_ORDER_LISTS" in summary["filters_checked"]
+
+
+def test_max_position_counts_base_balance_open_buys_and_incoming_buy():
+    public = _FilterScopePublic(symbol_filters=[{
+        "filterType": "MAX_POSITION",
+        "maxPosition": "1.0000",
+    }])
+    with pytest.raises(FilterViolation, match="MAX_POSITION 1.0000"):
+        SpotFilterValidator(public).validate_replacement(
+            "BTCUSDT",
+            "order",
+            _replacement("100.0", side="BUY"),
+            open_orders_provider=lambda _symbol: [{
+                "symbol": "BTCUSDT",
+                "orderId": 101,
+                "side": "BUY",
+                "type": "LIMIT",
+                "origQty": "0.0500",
+                "executedQty": "0",
+            }],
+            account_provider=lambda: {"balances": [{
+                "asset": "BTC",
+                "free": "0.8500",
+                "locked": "0.0500",
+            }]},
+        )
+
+
+def test_max_position_allows_an_incoming_buy_at_the_exact_boundary():
+    public = _FilterScopePublic(symbol_filters=[{
+        "filterType": "MAX_POSITION",
+        "maxPosition": "1.0000",
+    }])
+    summary = SpotFilterValidator(public).validate_replacement(
+        "BTCUSDT",
+        "order",
+        _replacement("100.0", side="BUY"),
+        open_orders_provider=lambda _symbol: [{
+            "symbol": "BTCUSDT",
+            "orderId": 101,
+            "side": "BUY",
+            "type": "LIMIT",
+            "origQty": "0.0500",
+            "executedQty": "0",
+        }],
+        account_provider=lambda: {"balances": [{
+            "asset": "BTC",
+            "free": "0.8000",
+            "locked": "0.0500",
+        }]},
+    )
+    assert "MAX_POSITION" in summary["filters_checked"]
+
+
+def test_exchange_max_num_orders_uses_account_wide_open_orders():
+    public = _FilterScopePublic(exchange_filters=[{
+        "filterType": "EXCHANGE_MAX_NUM_ORDERS",
+        "maxNumOrders": 1,
+    }])
+    with pytest.raises(FilterViolation, match="EXCHANGE_MAX_NUM_ORDERS 1"):
+        SpotFilterValidator(public).validate_replacement(
+            "BTCUSDT",
+            "order",
+            _replacement("100.0"),
+            all_open_orders_provider=lambda: [{
+                "symbol": "ETHUSDT",
+                "orderId": 202,
+                "side": "SELL",
+                "type": "LIMIT",
+                "origQty": "1",
+            }],
+        )
+
+
+def test_exchange_max_num_algo_orders_uses_account_wide_open_orders():
+    public = _FilterScopePublic(exchange_filters=[{
+        "filterType": "EXCHANGE_MAX_NUM_ORDERS",
+        "maxNumOrders": 10,
+    }, {
+        "filterType": "EXCHANGE_MAX_NUM_ALGO_ORDERS",
+        "maxNumAlgoOrders": 1,
+    }])
+    with pytest.raises(FilterViolation, match="EXCHANGE_MAX_NUM_ALGO_ORDERS 1"):
+        SpotFilterValidator(public).validate_replacement(
+            "BTCUSDT",
+            "order",
+            _replacement("100.0"),
+            all_open_orders_provider=lambda: [{
+                "symbol": "ETHUSDT",
+                "orderId": 202,
+                "side": "SELL",
+                "type": "STOP_LOSS_LIMIT",
+                "origQty": "1",
+            }],
+        )
+
+
+def test_exchange_max_num_order_lists_counts_lists_across_all_symbols():
+    public = _FilterScopePublic(exchange_filters=[{
+        "filterType": "EXCHANGE_MAX_NUM_ORDER_LISTS",
+        "maxNumOrderLists": 2,
+    }])
+    with pytest.raises(FilterViolation, match="EXCHANGE_MAX_NUM_ORDER_LISTS 2"):
+        SpotFilterValidator(public).validate_replacement(
+            "BTCUSDT",
+            "orderList/oco",
+            _order_list_replacement(),
+            open_order_lists_provider=lambda: [
+                {"symbol": "BTCUSDT", "orderListId": 101},
+                {"symbol": "ETHUSDT", "orderListId": 202},
+            ],
+        )
+
+
+def test_exchange_order_filter_without_account_wide_provider_fails_closed():
+    public = _FilterScopePublic(exchange_filters=[{
+        "filterType": "EXCHANGE_MAX_NUM_ORDERS",
+        "maxNumOrders": 10,
+    }])
+    with pytest.raises(FilterDataUnavailable, match="account-wide open-order"):
+        SpotFilterValidator(public).validate_replacement(
+            "BTCUSDT", "order", _replacement("100.0")
+        )
+
+
+def test_symbol_and_exchange_capacity_filters_share_one_account_wide_snapshot():
+    public = _FilterScopePublic(
+        symbol_filters=[{
+            "filterType": "MAX_NUM_ORDERS",
+            "maxNumOrders": 4,
+        }, {
+            "filterType": "MAX_NUM_ALGO_ORDERS",
+            "maxNumAlgoOrders": 2,
+        }],
+        exchange_filters=[{
+            "filterType": "EXCHANGE_MAX_NUM_ORDERS",
+            "maxNumOrders": 5,
+        }, {
+            "filterType": "EXCHANGE_MAX_NUM_ALGO_ORDERS",
+            "maxNumAlgoOrders": 3,
+        }, {
+            "filterType": "EXCHANGE_MAX_NUM_ORDER_LISTS",
+            "maxNumOrderLists": 3,
+        }],
+    )
+    calls = []
+
+    def all_open_orders():
+        calls.append("all")
+        return [{
+            "symbol": "BTCUSDT",
+            "orderId": 101,
+            "side": "SELL",
+            "type": "STOP_LOSS_LIMIT",
+            "origQty": "0.1",
+        }, {
+            "symbol": "ETHUSDT",
+            "orderId": 202,
+            "side": "SELL",
+            "type": "LIMIT",
+            "origQty": "1",
+        }]
+
+    summary = SpotFilterValidator(public).validate_replacement(
+        "BTCUSDT",
+        "orderList/oco",
+        _order_list_replacement(),
+        open_orders_provider=lambda _symbol: pytest.fail(
+            "symbol endpoint must not be called when one account snapshot exists"
+        ),
+        all_open_orders_provider=all_open_orders,
+        open_order_lists_provider=lambda: [
+            {"symbol": "BTCUSDT", "orderListId": 301},
+            {"symbol": "ETHUSDT", "orderListId": 302},
+        ],
+        replacing_order_ids=(101,),
+        replacing_order_list=True,
+    )
+    assert calls == ["all"]
+    assert {
+        "MAX_NUM_ORDERS",
+        "MAX_NUM_ALGO_ORDERS",
+        "EXCHANGE_MAX_NUM_ORDERS",
+        "EXCHANGE_MAX_NUM_ALGO_ORDERS",
+        "EXCHANGE_MAX_NUM_ORDER_LISTS",
+    }.issubset(summary["filters_checked"])
+
+
 def test_public_client_queries_execution_rules_for_one_exact_btc_symbol(monkeypatch):
     client = BinancePublicClient(base="https://example.invalid", max_attempts=1)
     calls = []

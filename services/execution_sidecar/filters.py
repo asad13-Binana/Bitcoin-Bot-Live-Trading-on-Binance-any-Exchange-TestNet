@@ -4,28 +4,33 @@ from __future__ import annotations
 The previous replacement prevalidation checked only quantity/step, tick
 multiples, minimum notional and trailing-delta bounds. Binance can reject an
 order for PRICE_FILTER min/max, PERCENT_PRICE(_BY_SIDE) reference-price bands,
-NOTIONAL maximum, or MAX_NUM_ORDERS / MAX_NUM_ALGO_ORDERS /
-MAX_NUM_ORDER_LISTS capacity — none of which were checked before the active
-protection was cancelled. A rejected replacement after cancellation leaves the
-position unprotected.
+NOTIONAL maximum, MAX_POSITION, or symbol/exchange order and order-list
+capacity — none of which were checked completely before the active protection
+was cancelled. A rejected replacement after cancellation leaves the position
+unprotected.
 
-This module fetches the symbol's complete current filter set (public
-exchangeInfo), current execution rules and reference price, and — through
-caller-supplied authenticated callables — the open order / order-list counts,
-then validates every leg of the intended replacement BEFORE anything is
-cancelled.
+This module fetches the symbol's complete current filter set and root exchange
+filters (public exchangeInfo), current execution rules and reference price,
+and — through caller-supplied authenticated callables — symbol/account-wide
+open orders, order lists and account balances, then validates every leg of the
+intended replacement BEFORE anything is cancelled.
 
 Fail-closed rule: if the filter data cannot be fetched or is stale, the
 conversion is refused before cancellation.
 """
 import time
 from dataclasses import dataclass, field
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from services.common.audit import audit
 from services.common.binance_public import BinancePublicClient
 from services.common.config_bounds import env_int
 from services.common.market_policy import allowed_quotes_from_env
+
+
+ALGO_ORDER_TYPES = frozenset({
+    'STOP_LOSS', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT', 'TAKE_PROFIT_LIMIT',
+})
 
 
 class FilterDataUnavailable(RuntimeError):
@@ -47,9 +52,7 @@ class OrderLeg:
     is_algo: bool = field(init=False, default=False)
 
     def __post_init__(self):
-        self.is_algo = self.order_type.upper() in {
-            'STOP_LOSS', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT', 'TAKE_PROFIT_LIMIT'
-        }
+        self.is_algo = self.order_type.upper() in ALGO_ORDER_TYPES
 
 
 def legs_from_request(endpoint: str, params: dict) -> list[OrderLeg]:
@@ -113,24 +116,47 @@ class SpotFilterValidator:
         self.public = public_client or BinancePublicClient()
         self.max_age = max_age_seconds if max_age_seconds is not None else env_int(
             'SPOT_FILTER_MAX_AGE_SECONDS', 300, 10, 3600)
-        self._cache: dict[str, tuple[float, dict]] = {}
+        self._cache: dict[str, tuple[float, dict, tuple[dict, ...]]] = {}
 
     # ---- data acquisition (fail closed) ----
-    def _symbol_entry(self, symbol: str) -> dict:
+    def _exchange_snapshot(self, symbol: str) -> tuple[dict, tuple[dict, ...]]:
         cached = self._cache.get(symbol)
         if cached and time.time() - cached[0] <= self.max_age:
-            return cached[1]
+            return cached[1], cached[2]
         try:
             info = self.public.exchange_info(symbol)
-            entry = next(s for s in info.get('symbols', []) if s.get('symbol') == symbol)
+            if not isinstance(info, dict):
+                raise TypeError('exchangeInfo response is not an object')
+            rows = info.get('symbols')
+            if not isinstance(rows, list):
+                raise TypeError('exchangeInfo response has no symbols list')
+            matching = [
+                row for row in rows
+                if isinstance(row, dict)
+                and str(row.get('symbol', '')).upper() == symbol.upper()
+            ]
+            if len(matching) != 1:
+                raise ValueError(
+                    f'exchangeInfo returned {len(matching)} exact {symbol} rows')
+            entry = matching[0]
+            exchange_rows = info.get('exchangeFilters', [])
+            if exchange_rows is None:
+                exchange_rows = []
+            if not isinstance(exchange_rows, list) or any(
+                    not isinstance(row, dict) for row in exchange_rows):
+                raise TypeError('exchangeInfo exchangeFilters is malformed')
+            exchange_filters = tuple(dict(row) for row in exchange_rows)
         except Exception as exc:
             if cached:
                 raise FilterDataUnavailable(
                     f'current exchange filters for {symbol} are stale and refresh failed: {exc}') from exc
             raise FilterDataUnavailable(
                 f'current exchange filters for {symbol} unavailable: {exc}') from exc
-        self._cache[symbol] = (time.time(), entry)
-        return entry
+        self._cache[symbol] = (time.time(), entry, exchange_filters)
+        return entry, exchange_filters
+
+    def _symbol_entry(self, symbol: str) -> dict:
+        return self._exchange_snapshot(symbol)[0]
 
     def _reference_price(self, symbol: str, filters: dict) -> Decimal:
         """Use current referencePrice, with Binance's documented fallback."""
@@ -255,15 +281,105 @@ class SpotFilterValidator:
             return None
         return Decimal(str(value))
 
+    @staticmethod
+    def _filter_map(rows, *, scope: str) -> dict[str, dict]:
+        if not isinstance(rows, (list, tuple)):
+            raise FilterDataUnavailable(f'{scope} filter collection is malformed')
+        out: dict[str, dict] = {}
+        for row in rows:
+            if not isinstance(row, dict):
+                raise FilterDataUnavailable(f'{scope} filter row is malformed')
+            name = str(row.get('filterType', '')).strip().upper()
+            if not name:
+                raise FilterDataUnavailable(f'{scope} filter row lacks filterType')
+            if name in out:
+                raise FilterDataUnavailable(f'{scope} contains duplicate {name}')
+            out[name] = row
+        return out
+
+    @staticmethod
+    def _positive_limit(filter_row: dict | None, key: str, name: str) -> int:
+        if not filter_row:
+            return 0
+        try:
+            value = int(filter_row[key])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise FilterDataUnavailable(f'{name} limit is missing or malformed') from exc
+        if value <= 0:
+            raise FilterDataUnavailable(f'{name} limit must be positive')
+        return value
+
+    @staticmethod
+    def _open_order_rows(provider, *, description: str) -> list[dict]:
+        try:
+            rows = provider()
+        except Exception as exc:
+            raise FilterDataUnavailable(f'{description} enumeration failed: {exc}') from exc
+        if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+            raise FilterDataUnavailable(f'{description} enumeration is malformed')
+        for row in rows:
+            try:
+                order_id = int(row.get('orderId', 0) or 0)
+            except (TypeError, ValueError) as exc:
+                raise FilterDataUnavailable(f'{description} contains malformed orderId') from exc
+            if order_id <= 0 or not str(row.get('symbol', '')).strip():
+                raise FilterDataUnavailable(
+                    f'{description} contains an order without orderId or symbol')
+        return rows
+
+    @staticmethod
+    def _open_order_list_rows(provider) -> list[dict]:
+        try:
+            rows = provider()
+        except Exception as exc:
+            raise FilterDataUnavailable(f'open order-list enumeration failed: {exc}') from exc
+        if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+            raise FilterDataUnavailable('open order-list enumeration is malformed')
+        return rows
+
+    @staticmethod
+    def _algo_order_count(rows: list[dict], *, description: str) -> int:
+        count = 0
+        for row in rows:
+            order_type = str(row.get('type', '')).strip().upper()
+            if not order_type:
+                raise FilterDataUnavailable(
+                    f'{description} contains an order without type')
+            if order_type in ALGO_ORDER_TYPES:
+                count += 1
+        return count
+
+    @staticmethod
+    def _base_balance(account: dict, asset: str) -> Decimal:
+        rows = account.get('balances') if isinstance(account, dict) else None
+        if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+            raise FilterDataUnavailable('account balance response is malformed')
+        matching = [
+            row for row in rows
+            if str(row.get('asset', '')).upper() == asset.upper()
+        ]
+        if len(matching) != 1:
+            raise FilterDataUnavailable(
+                f'account balance response returned {len(matching)} {asset} rows')
+        try:
+            free = Decimal(str(matching[0]['free']))
+            locked = Decimal(str(matching[0]['locked']))
+        except (InvalidOperation, KeyError, TypeError, ValueError) as exc:
+            raise FilterDataUnavailable(f'{asset} account balance is malformed') from exc
+        if not free.is_finite() or not locked.is_finite() or free < 0 or locked < 0:
+            raise FilterDataUnavailable(f'{asset} account balance is invalid')
+        return free + locked
+
     def validate_replacement(self, symbol: str, endpoint: str, params: dict, *,
-                             open_orders_provider=None, open_order_lists_provider=None,
+                             open_orders_provider=None, all_open_orders_provider=None,
+                             open_order_lists_provider=None, account_provider=None,
                              replacing_order_ids=(), replacing_order_list: bool = False) -> dict:
         """Validate every leg against the complete current filter set.
 
         Raises FilterViolation / FilterDataUnavailable. Returns a summary dict
         with the validated filter names for the audit trail.
         """
-        entry = self._symbol_entry(symbol)
+        entry, exchange_filter_rows = self._exchange_snapshot(symbol)
         if entry.get('status') != 'TRADING':
             raise FilterViolation(f'{symbol} status is {entry.get("status")!r}, not TRADING')
         if entry.get('isSpotTradingAllowed') is not True:
@@ -285,6 +401,8 @@ class SpotFilterValidator:
         if endpoint == 'orderList/oco' and entry.get('ocoAllowed') is not True:
             raise FilterViolation(f'{symbol} does not currently allow OCO order lists')
         filters = {f.get('filterType'): f for f in entry.get('filters', [])}
+        exchange_filters = self._filter_map(
+            exchange_filter_rows, scope='exchangeInfo exchangeFilters')
         legs = legs_from_request(endpoint, params)
         checked: list[str] = []
 
@@ -396,48 +514,188 @@ class SpotFilterValidator:
         if price_range is not None:
             checked.append('PRICE_RANGE')
 
-        # Order/list count capacity. The caller supplies authenticated
-        # enumeration callables; a failed enumeration is fail-closed because a
-        # capacity rejection after cancellation would leave the position naked.
+        # Symbol/exchange order capacity and MAX_POSITION. Account-wide order
+        # enumeration has high API weight, so it is performed only when a root
+        # exchange filter is actually published and replaces the symbol-only
+        # enumeration for that preflight.
         new_orders = len(legs)
-        if open_orders_provider is not None:
-            max_orders_filter = filters.get('MAX_NUM_ORDERS') or {}
-            max_algo_filter = filters.get('MAX_NUM_ALGO_ORDERS') or {}
-            try:
-                open_orders = open_orders_provider(symbol)
-            except Exception as exc:
-                raise FilterDataUnavailable(f'open-order enumeration failed for {symbol}: {exc}') from exc
-            replaced = {int(value) for value in replacing_order_ids if value not in (None, '', 0, '0')}
-            effective_orders = [item for item in open_orders if int(item.get('orderId', 0) or 0) not in replaced]
-            limit = int(max_orders_filter.get('maxNumOrders', 0) or 0)
-            if limit and len(effective_orders) + new_orders > limit:
+        new_algo = sum(1 for leg in legs if leg.is_algo)
+        incoming_buy = sum(
+            (leg.qty for leg in legs if leg.side.upper() == 'BUY'), Decimal(0))
+        max_orders_filter = filters.get('MAX_NUM_ORDERS')
+        max_algo_filter = filters.get('MAX_NUM_ALGO_ORDERS')
+        max_position_filter = filters.get('MAX_POSITION')
+        exchange_orders_filter = exchange_filters.get('EXCHANGE_MAX_NUM_ORDERS')
+        exchange_algo_filter = exchange_filters.get('EXCHANGE_MAX_NUM_ALGO_ORDERS')
+        needs_symbol_orders = bool(
+            max_orders_filter or max_algo_filter
+            or (max_position_filter and incoming_buy > 0)
+        )
+        needs_exchange_orders = bool(exchange_orders_filter or exchange_algo_filter)
+        all_open_orders: list[dict] = []
+        symbol_open_orders: list[dict] = []
+        if needs_exchange_orders:
+            if all_open_orders_provider is None:
+                raise FilterDataUnavailable(
+                    'account-wide open-order provider is required for exchange filters')
+            all_open_orders = self._open_order_rows(
+                all_open_orders_provider, description='account-wide open-order')
+            symbol_open_orders = [
+                row for row in all_open_orders
+                if str(row.get('symbol', '')).upper() == symbol.upper()
+            ]
+        elif needs_symbol_orders:
+            if open_orders_provider is None:
+                raise FilterDataUnavailable(
+                    f'symbol open-order provider is required for {symbol} filters')
+            symbol_open_orders = self._open_order_rows(
+                lambda: open_orders_provider(symbol),
+                description=f'{symbol} open-order',
+            )
+            if any(str(row.get('symbol', '')).upper() != symbol.upper()
+                   for row in symbol_open_orders):
+                raise FilterDataUnavailable(
+                    f'{symbol} open-order enumeration returned another symbol')
+
+        try:
+            replaced = {
+                int(value) for value in replacing_order_ids
+                if value not in (None, '', 0, '0')
+            }
+        except (TypeError, ValueError) as exc:
+            raise FilterDataUnavailable('replacement order IDs are malformed') from exc
+        effective_symbol_orders = [
+            row for row in symbol_open_orders
+            if int(row.get('orderId', 0) or 0) not in replaced
+        ]
+        effective_all_orders = [
+            row for row in all_open_orders
+            if int(row.get('orderId', 0) or 0) not in replaced
+        ]
+
+        limit = self._positive_limit(
+            max_orders_filter, 'maxNumOrders', 'MAX_NUM_ORDERS')
+        if limit:
+            if len(effective_symbol_orders) + new_orders > limit:
                 raise FilterViolation(
                     f'{symbol} would exceed MAX_NUM_ORDERS {limit} '
-                    f'({len(effective_orders)} effective open + {new_orders} new)')
-            algo_limit = int(max_algo_filter.get('maxNumAlgoOrders', 0) or 0)
-            if algo_limit:
-                open_algo = sum(1 for o in effective_orders if str(o.get('type', '')).upper() in {
-                    'STOP_LOSS', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT', 'TAKE_PROFIT_LIMIT'})
-                new_algo = sum(1 for leg in legs if leg.is_algo)
-                if open_algo + new_algo > algo_limit:
-                    raise FilterViolation(
-                        f'{symbol} would exceed MAX_NUM_ALGO_ORDERS {algo_limit} '
-                        f'({open_algo} open + {new_algo} new)')
-            checked.extend(['MAX_NUM_ORDERS', 'MAX_NUM_ALGO_ORDERS'])
-        if endpoint.startswith('orderList/') and open_order_lists_provider is not None:
-            list_filter = filters.get('MAX_NUM_ORDER_LISTS') or {}
-            limit = int(list_filter.get('maxNumOrderLists', 0) or 0)
-            if limit:
+                    f'({len(effective_symbol_orders)} effective open + {new_orders} new)')
+            checked.append('MAX_NUM_ORDERS')
+
+        algo_limit = self._positive_limit(
+            max_algo_filter, 'maxNumAlgoOrders', 'MAX_NUM_ALGO_ORDERS')
+        if algo_limit:
+            open_algo = self._algo_order_count(
+                effective_symbol_orders, description=f'{symbol} open-order')
+            if open_algo + new_algo > algo_limit:
+                raise FilterViolation(
+                    f'{symbol} would exceed MAX_NUM_ALGO_ORDERS {algo_limit} '
+                    f'({open_algo} open + {new_algo} new)')
+            checked.append('MAX_NUM_ALGO_ORDERS')
+
+        if max_position_filter and incoming_buy > 0:
+            try:
+                max_position = Decimal(str(max_position_filter['maxPosition']))
+            except (InvalidOperation, KeyError, TypeError, ValueError) as exc:
+                raise FilterDataUnavailable(
+                    f'{symbol} MAX_POSITION maximum is missing or malformed') from exc
+            if not max_position.is_finite() or max_position <= 0:
+                raise FilterDataUnavailable(f'{symbol} MAX_POSITION maximum is invalid')
+            if account_provider is None:
+                raise FilterDataUnavailable(
+                    f'account provider is required for {symbol} MAX_POSITION')
+            try:
+                account = account_provider()
+            except Exception as exc:
+                raise FilterDataUnavailable(
+                    f'account balance enumeration failed for {symbol}: {exc}') from exc
+            base_balance = self._base_balance(account, str(entry.get('baseAsset', '')))
+            open_buy = Decimal(0)
+            for row in effective_symbol_orders:
+                side = str(row.get('side', '')).strip().upper()
+                if side not in {'BUY', 'SELL'}:
+                    raise FilterDataUnavailable(
+                        f'{symbol} open order has missing or invalid side')
+                if side != 'BUY':
+                    continue
                 try:
-                    open_lists = open_order_lists_provider()
-                except Exception as exc:
-                    raise FilterDataUnavailable(f'open order-list enumeration failed: {exc}') from exc
-                effective_lists = max(0, len(open_lists) - (1 if replacing_order_list else 0))
-                if effective_lists + 1 > limit:
-                    raise FilterViolation(
-                        f'account would exceed MAX_NUM_ORDER_LISTS {limit} '
-                        f'({effective_lists} effective open + 1 new)')
-            checked.append('MAX_NUM_ORDER_LISTS')
+                    qty = Decimal(str(row['origQty']))
+                except (InvalidOperation, KeyError, TypeError, ValueError) as exc:
+                    raise FilterDataUnavailable(
+                        f'{symbol} open BUY quantity is malformed') from exc
+                if not qty.is_finite() or qty < 0:
+                    raise FilterDataUnavailable(
+                        f'{symbol} open BUY quantity is invalid')
+                open_buy += qty
+            position_after = base_balance + open_buy + incoming_buy
+            if position_after > max_position:
+                raise FilterViolation(
+                    f'{symbol} would exceed MAX_POSITION {max_position} '
+                    f'({base_balance} balance + {open_buy} open BUY + '
+                    f'{incoming_buy} new BUY)')
+            checked.append('MAX_POSITION')
+
+        exchange_limit = self._positive_limit(
+            exchange_orders_filter, 'maxNumOrders', 'EXCHANGE_MAX_NUM_ORDERS')
+        if exchange_limit:
+            if len(effective_all_orders) + new_orders > exchange_limit:
+                raise FilterViolation(
+                    f'account would exceed EXCHANGE_MAX_NUM_ORDERS {exchange_limit} '
+                    f'({len(effective_all_orders)} effective open + {new_orders} new)')
+            checked.append('EXCHANGE_MAX_NUM_ORDERS')
+
+        exchange_algo_limit = self._positive_limit(
+            exchange_algo_filter, 'maxNumAlgoOrders',
+            'EXCHANGE_MAX_NUM_ALGO_ORDERS')
+        if exchange_algo_limit:
+            open_algo = self._algo_order_count(
+                effective_all_orders, description='account-wide open-order')
+            if open_algo + new_algo > exchange_algo_limit:
+                raise FilterViolation(
+                    f'account would exceed EXCHANGE_MAX_NUM_ALGO_ORDERS '
+                    f'{exchange_algo_limit} ({open_algo} open + {new_algo} new)')
+            checked.append('EXCHANGE_MAX_NUM_ALGO_ORDERS')
+
+        if endpoint.startswith('orderList/'):
+            list_filter = filters.get('MAX_NUM_ORDER_LISTS')
+            exchange_list_filter = exchange_filters.get(
+                'EXCHANGE_MAX_NUM_ORDER_LISTS')
+            symbol_list_limit = self._positive_limit(
+                list_filter, 'maxNumOrderLists', 'MAX_NUM_ORDER_LISTS')
+            exchange_list_limit = self._positive_limit(
+                exchange_list_filter, 'maxNumOrderLists',
+                'EXCHANGE_MAX_NUM_ORDER_LISTS')
+            if symbol_list_limit or exchange_list_limit:
+                if open_order_lists_provider is None:
+                    raise FilterDataUnavailable(
+                        'open order-list provider is required for order-list filters')
+                open_lists = self._open_order_list_rows(open_order_lists_provider)
+                if symbol_list_limit:
+                    for row in open_lists:
+                        if not str(row.get('symbol', '')).strip():
+                            raise FilterDataUnavailable(
+                                'open order-list row lacks symbol for symbol-scoped filter')
+                    symbol_lists = [
+                        row for row in open_lists
+                        if str(row.get('symbol', '')).upper() == symbol.upper()
+                    ]
+                    effective_symbol_lists = max(
+                        0, len(symbol_lists) - (1 if replacing_order_list else 0))
+                    if effective_symbol_lists + 1 > symbol_list_limit:
+                        raise FilterViolation(
+                            f'{symbol} would exceed MAX_NUM_ORDER_LISTS '
+                            f'{symbol_list_limit} ({effective_symbol_lists} '
+                            f'effective open + 1 new)')
+                    checked.append('MAX_NUM_ORDER_LISTS')
+                if exchange_list_limit:
+                    effective_exchange_lists = max(
+                        0, len(open_lists) - (1 if replacing_order_list else 0))
+                    if effective_exchange_lists + 1 > exchange_list_limit:
+                        raise FilterViolation(
+                            f'account would exceed EXCHANGE_MAX_NUM_ORDER_LISTS '
+                            f'{exchange_list_limit} ({effective_exchange_lists} '
+                            f'effective open + 1 new)')
+                    checked.append('EXCHANGE_MAX_NUM_ORDER_LISTS')
 
         summary = {'symbol': symbol, 'endpoint': endpoint, 'legs': len(legs),
                    'reference_price': str(reference) if reference is not None else None,

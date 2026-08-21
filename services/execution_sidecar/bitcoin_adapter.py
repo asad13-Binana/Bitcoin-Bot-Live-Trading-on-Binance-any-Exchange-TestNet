@@ -297,7 +297,9 @@ class BitcoinSpotAdapter:
         return self.filter_validator.validate_replacement(
             rules.symbol, endpoint, params,
             open_orders_provider=lambda symbol: self.gateway.open_orders(symbol),
+            all_open_orders_provider=lambda: self.gateway.open_orders(),
             open_order_lists_provider=self.gateway.open_order_lists,
+            account_provider=self.gateway.account,
             replacing_order_ids=replacing_order_ids,
             replacing_order_list=replacing_order_list,
         )

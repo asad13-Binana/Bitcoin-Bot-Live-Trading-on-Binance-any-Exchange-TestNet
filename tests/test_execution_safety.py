@@ -551,6 +551,31 @@ def make_live_adapter(tmp_path, *, gateway=None, validator=None, pair="BTC/USDT"
     return adapter, store, guard, controller, gateway, validator
 
 
+def test_adapter_preflight_supplies_symbol_exchange_and_balance_providers(tmp_path):
+    gateway = FakeGateway()
+    validator = RecordingValidator()
+    adapter, _store, _guard, _controller, _gateway, _validator = make_live_adapter(
+        tmp_path, gateway=gateway, validator=validator
+    )
+    gateway.orders = [
+        {"symbol": "BTCUSDT", "orderId": 1},
+        {"symbol": "ETHUSDT", "orderId": 2},
+    ]
+    rules = adapter._rules("BTC/USDT")
+    adapter._preflight(rules, "order", {
+        "symbol": "BTCUSDT",
+        "side": "SELL",
+        "type": "STOP_LOSS_LIMIT",
+        "quantity": "0.1000",
+        "price": "100.0",
+        "stopPrice": "100.0",
+    })
+    kwargs = validator.calls[0][3]
+    assert kwargs["open_orders_provider"]("BTCUSDT") == [gateway.orders[0]]
+    assert kwargs["all_open_orders_provider"]() == gateway.orders
+    assert kwargs["account_provider"]() == gateway.account()
+
+
 def test_startup_reconciliation_preserves_restored_global_risk_pause(tmp_path):
     controller, pair_state = make_pair_controller(tmp_path)
     store = make_store(tmp_path)
