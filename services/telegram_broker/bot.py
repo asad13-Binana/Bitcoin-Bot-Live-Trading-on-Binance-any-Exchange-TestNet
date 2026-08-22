@@ -386,7 +386,10 @@ def _settings():
                 else os.getenv("ALLOWED_STABLE_QUOTES", "")
             ),
             "require_flow_context": os.getenv("REQUIRE_FLOW_CONTEXT", "false"),
-            "require_matching_futures": os.getenv("REQUIRE_MATCHING_FUTURES", "false"),
+            "market_context_mode": "spot_only",
+            "require_external_confluence": os.getenv(
+                "REQUIRE_EXTERNAL_CONFLUENCE", "false"
+            ),
             "telegram_owner_configured": bool(OWNER),
             "freqtrade_api_password_configured": bool(FT_PASS),
         }}, indent=2)

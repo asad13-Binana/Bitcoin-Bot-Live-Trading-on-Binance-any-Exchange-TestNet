@@ -25,9 +25,9 @@ Routes: `health`, `status`, `performance`, `trades`, `errors`, `crashes`,
 `latency`, `system`, `deployment`, `pair`, `moneyflow`, and `report`.
 
 The money-flow response is bounded to the active BTC/quote pair. It reports
-Spot pressure, matching USD-M futures context when that exact symbol exists,
-and the 1m/5m/15m/1h/2h/4h/1d trend summary. A missing matching futures market
-is reported explicitly and is never silently replaced by a different quote.
+rolling Spot pressure, depth/liquidity, the 1m/5m/15m/1h/2h/4h/1d trend
+summary, and fixed-BTC CoinGecko/CoinMarketCap confluence status when enabled.
+No futures market-data host or derivative metric is used.
 
 Simulation, testnet and live monitoring default to loopback port 8091 so this
 Bitcoin Bot cannot collide with the separate Binana bot's port 8090. Live is programmatically disabled

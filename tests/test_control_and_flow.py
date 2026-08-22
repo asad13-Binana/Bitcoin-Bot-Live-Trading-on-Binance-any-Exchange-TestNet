@@ -12,10 +12,9 @@ import hashlib
 import hmac
 import inspect
 import json
-import math
+import time
 from pathlib import Path
 from types import SimpleNamespace
-import time
 
 import pytest
 import yaml
@@ -40,7 +39,6 @@ from services.moneyflow.service import TIMEFRAMES, collect
 from services.telegram_broker import authorization
 from services.telegram_broker import bot as telegram_bot
 from services.telegram_broker.callbacks import CallbackStore
-
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_MODE = (ROOT / "RELEASE_MODE").read_text(encoding="utf-8").strip()
@@ -313,17 +311,13 @@ def test_timeframe_context_uses_only_closed_candles_and_rejects_bad_series():
         timeframe_context(_klines(bad=True))
 
 
-def test_classification_requires_spot_pressure_futures_confirmation_and_higher_context():
+def test_classification_requires_spot_pressure_higher_context_and_optional_external_confluence():
     bullish = {
         "spot": {
             "trades": {"taker_buy_ratio": 0.60},
             "depth": {"imbalance": 0.10},
         },
-        "futures": {
-            "available": True,
-            "depth": {"imbalance": 0.01},
-            "taker": {"buySellRatio": "1.1"},
-        },
+        "external_context": {"confluence": {"confirmed": True}},
         "timeframes": {
             "1m": {"direction": "mixed"},
             "5m": {"direction": "mixed"},
@@ -335,14 +329,15 @@ def test_classification_requires_spot_pressure_futures_confirmation_and_higher_c
         },
     }
     assert classify(bullish)["decision"] == "BULLISH"
-    bearish_futures = json.loads(json.dumps(bullish))
-    bearish_futures["futures"]["taker"]["buySellRatio"] = "0.9"
-    assert classify(bearish_futures)["bullish"] is False
-    no_futures = json.loads(json.dumps(bullish))
-    no_futures["futures"] = {"available": False}
-    result = classify(no_futures)
-    assert result["bullish"] is True
-    assert result["futures_confirmation"] is None
+    assert classify(
+        bullish, require_external_confluence=True
+    )["external_confluence_confirmed"] is True
+    missing_external = json.loads(json.dumps(bullish))
+    missing_external["external_context"]["confluence"]["confirmed"] = False
+    assert classify(missing_external)["bullish"] is True
+    assert classify(
+        missing_external, require_external_confluence=True
+    )["bullish"] is False
     only_two_higher = json.loads(json.dumps(bullish))
     only_two_higher["timeframes"]["4h"]["direction"] = "mixed"
     assert classify(only_two_higher)["higher_timeframe_bullish"] is False
@@ -350,8 +345,7 @@ def test_classification_requires_spot_pressure_futures_confirmation_and_higher_c
 
 
 class FakeFlowClient:
-    def __init__(self, *, futures_available=True, bad_timeframe=None):
-        self.futures_available = futures_available
+    def __init__(self, *, bad_timeframe=None):
         self.bad_timeframe = bad_timeframe
         self.calls = []
 
@@ -371,37 +365,20 @@ class FakeFlowClient:
         self.calls.append(("klines", symbol, interval, limit))
         return [] if interval == self.bad_timeframe else _klines()
 
-    def futures_exchange_symbol(self, symbol):
-        self.calls.append(("futures_exchange_symbol", symbol))
-        if not self.futures_available:
-            return None
-        return {"symbol": symbol, "status": "TRADING", "contractType": "PERPETUAL"}
 
-    def futures_depth(self, symbol, limit):
-        self.calls.append(("futures_depth", symbol, limit))
-        return {"bids": [["100.00", "5"]], "asks": [["100.01", "1"]]}
-
-    def futures_taker(self, symbol):
-        self.calls.append(("futures_taker", symbol))
-        return {"buySellRatio": "1.2"}
-
-    def futures_open_interest(self, symbol):
-        self.calls.append(("futures_open_interest", symbol))
-        return {"openInterest": "123"}
-
-    def futures_premium(self, symbol):
-        self.calls.append(("futures_premium", symbol))
-        return {"markPrice": "100.5"}
-
-
-def test_collect_requests_all_seven_timeframes_and_exact_same_symbol_usdm():
+def test_collect_requests_all_seven_timeframes_and_is_spot_only():
     assert TIMEFRAMES == ("1m", "5m", "15m", "1h", "2h", "4h", "1d")
-    client = FakeFlowClient(futures_available=True)
+    client = FakeFlowClient()
     snapshot = collect(client, _pair_state())
     assert snapshot["ok"] is True
     assert tuple(snapshot["timeframes"]) == TIMEFRAMES
-    assert snapshot["futures"]["available"] is True
-    assert snapshot["futures"]["same_symbol"] == "BTCUSDT"
+    assert snapshot["market_context_mode"] == "spot_only"
+    assert snapshot["futures"] == {
+        "available": False,
+        "disabled": True,
+        "reason": "spot_only_policy",
+    }
+    assert not any(call[0].startswith("futures") for call in client.calls)
     symbol_calls = [call for call in client.calls if len(call) > 1 and
                     call[0] not in {"klines"}]
     assert all(call[1] == "BTCUSDT" for call in symbol_calls)
@@ -411,36 +388,26 @@ def test_collect_requests_all_seven_timeframes_and_exact_same_symbol_usdm():
     ]
 
 
-def test_collect_marks_missing_exact_usdm_unavailable_without_querying_futures_data():
-    client = FakeFlowClient(futures_available=False)
+def test_collect_any_approved_btc_quote_remains_spot_only():
+    client = FakeFlowClient()
     snapshot = collect(client, _pair_state("BTC/FDUSD"))
     assert snapshot["ok"] is True
     assert snapshot["futures"] == {
         "available": False,
-        "same_symbol": "BTCFDUSD",
-        "reason": "matching USD-M perpetual is not available",
+        "disabled": True,
+        "reason": "spot_only_policy",
     }
-    assert not any(call[0] in {
-        "futures_depth", "futures_taker", "futures_open_interest", "futures_premium"
-    } for call in client.calls)
+    assert not any(call[0].startswith("futures") for call in client.calls)
 
 
-def test_moneyflow_client_filters_exchange_info_by_exact_symbol():
+def test_moneyflow_client_filters_spot_exchange_info_by_exact_symbol():
     class Transport:
         def exchange_info(self, symbol):
             return {"symbols": [_spot_metadata(symbol)]}
 
-        def get(self, endpoint, params=None):
-            assert endpoint == "/fapi/v1/exchangeInfo"
-            return {"symbols": [
-                {"symbol": "BTCUSDC", "status": "TRADING"},
-                {"symbol": "BTCUSDT", "status": "TRADING"},
-            ]}
-
     transport = Transport()
-    client = MoneyFlowClient(spot=transport, futures=transport)
-    assert client.futures_exchange_symbol("BTCUSDT")["symbol"] == "BTCUSDT"
-    assert client.futures_exchange_symbol("BTCFDUSD") is None
+    client = MoneyFlowClient(spot=transport)
+    assert client.spot_exchange_symbol("BTCUSDT")["symbol"] == "BTCUSDT"
 
 
 def test_degraded_timeframe_is_fail_closed_and_never_published_bullish():
@@ -452,9 +419,8 @@ def test_degraded_timeframe_is_fail_closed_and_never_published_bullish():
     assert snapshot["classification"]["decision"] != "BULLISH"
 
 
-def _flow_manager(tmp_path, monkeypatch, *, require_futures=False):
+def _flow_manager(tmp_path, monkeypatch):
     monkeypatch.setenv("REQUIRE_FLOW_CONTEXT", "true")
-    monkeypatch.setenv("REQUIRE_MATCHING_FUTURES", "true" if require_futures else "false")
     path = tmp_path / "flow.json"
     manager = OrderManager(None, None, None, None, None, path, {})
     return manager, path
@@ -467,7 +433,7 @@ def _valid_flow(state):
         "generated_at_epoch": time.time(),
         "ok": True,
         "classification": {"bullish": True},
-        "futures": {"available": True},
+        "market_context_mode": "spot_only",
     }
 
 
@@ -494,9 +460,7 @@ def test_flow_gate_rejects_malformed_nonfinite_stale_and_future_timestamps(
     assert reason_fragment in reason
 
 
-def test_flow_gate_rejects_wrong_generation_degraded_and_required_missing_futures(
-    tmp_path, monkeypatch
-):
+def test_flow_gate_rejects_wrong_generation_and_degraded_context(tmp_path, monkeypatch):
     state = _pair_state()
     manager, path = _flow_manager(tmp_path, monkeypatch)
     flow = _valid_flow(state)
@@ -510,15 +474,6 @@ def test_flow_gate_rejects_wrong_generation_degraded_and_required_missing_future
     flow["ok"] = False
     path.write_text(json.dumps(flow), encoding="utf-8")
     assert manager._flow_gate(state) == (False, "money-flow service is degraded")
-
-    manager, path = _flow_manager(tmp_path, monkeypatch, require_futures=True)
-    flow = _valid_flow(state)
-    flow["futures"]["available"] = False
-    path.write_text(json.dumps(flow), encoding="utf-8")
-    assert manager._flow_gate(state) == (
-        False, "matching USD-M futures context is required but unavailable"
-    )
-
 
 def test_moneyflow_client_has_only_public_get_endpoints_and_no_order_or_credential_api():
     source = inspect.getsource(MoneyFlowClient)
@@ -537,13 +492,9 @@ def test_moneyflow_client_has_only_public_get_endpoints_and_no_order_or_credenti
         "/api/v3/depth",
         "/api/v3/aggTrades",
         "/api/v3/klines",
-        "/fapi/v1/exchangeInfo",
-        "/fapi/v1/depth",
-        "/futures/data/takerlongshortRatio",
-        "/fapi/v1/openInterest",
-        "/fapi/v1/premiumIndex",
     }
     lowered = source.lower()
+    assert "futures" not in lowered and "fapi.binance.com" not in lowered
     assert "api_key" not in lowered and "api_secret" not in lowered
     assert ".post(" not in lowered and ".delete(" not in lowered and ".put(" not in lowered
 

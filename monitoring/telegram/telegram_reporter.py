@@ -32,13 +32,14 @@ def _format(report: dict) -> str:
     moneyflow = report.get("moneyflow", {})
     offhost_backup = report.get("offhost_backup", {})
     classification = moneyflow.get("classification", {})
-    futures = moneyflow.get("futures", {})
+    stream = (moneyflow.get("spot", {}) or {}).get("stream", {}) or {}
+    confluence = (moneyflow.get("external_context", {}) or {}).get("confluence", {}) or {}
     lines = [
         str(report.get("banner", "MODE: UNKNOWN")),
         f"Release: {deployment.get('release_tag') or deployment.get('release_sha256') or 'n/a'}",
         f"Bot services: {bot.get('status', 'n/a')}",
         f"Active pair: {active_pair.get('pair', 'n/a')} | pair state: {'valid' if active_pair.get('valid') else 'INVALID/UNKNOWN'}",
-        f"Money flow: {moneyflow.get('status', 'n/a')} | decision: {classification.get('decision', 'n/a')} | matching futures: {'yes' if futures.get('available') else 'no'}",
+        f"Money flow: {moneyflow.get('status', 'n/a')} | decision: {classification.get('decision', 'n/a')} | Spot stream: {'ready' if stream.get('ready') else 'fallback'} | external confluence: {'yes' if confluence.get('confirmed') else 'no'}",
         f"Closed: {performance.get('closed_trades', 'n/a')} | Open: {performance.get('open_trades', 'n/a')} | Win%: {performance.get('win_rate_pct', 'n/a')}",
         f"Net P/L: {performance.get('net_pnl_pct', 'n/a')}% | PF: {performance.get('profit_factor', 'n/a')} | MaxDD: {performance.get('max_drawdown_pct', 'n/a')}%",
         f"Orders rejected: {order_quality.get('rejected_orders', 'n/a')} | Signals rejected: {order_quality.get('rejected_signals', 'n/a')}",

@@ -1,7 +1,7 @@
 # Architecture and trust boundaries
 
 ```text
-Binance public Spot + USD-M
+Binance public Spot REST + market-data WebSocket
           |
           v
    moneyflow (no keys) --------------------------+
@@ -77,4 +77,3 @@ embedded sanitized config/source, parsed metrics, and explicit external assertio
 
 The release remains simulation-capable without evidence. Live startup fails closed if
 any binding differs.
-

@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 """Pure, deterministic money-flow calculations."""
 
-from decimal import Decimal, InvalidOperation
 import math
+from decimal import Decimal, InvalidOperation
 
 
 def _d(value) -> Decimal:
@@ -64,6 +65,86 @@ def aggregate_trade_flow(rows: list[dict]) -> dict:
     }
 
 
+def external_confluence(
+    context: dict,
+    *,
+    spot_mid: float,
+    minimum_providers: int = 1,
+    minimum_change_24h_pct: float = 0.0,
+    maximum_price_deviation_bps: float = 100.0,
+) -> dict:
+    """Evaluate fixed-BTC third-party quotes without discovering or ranking assets.
+
+    A provider confirms only when its cached quote is fresh, its 24-hour change
+    meets the configured direction floor, and its aggregated USD price remains
+    plausibly close to Binance Spot.  Every fresh provider must agree; a
+    contradictory fresh provider cannot be hidden by lowering the quorum.
+    """
+    mid = float(spot_mid)
+    minimum = int(minimum_providers)
+    change_floor = float(minimum_change_24h_pct)
+    deviation_limit = float(maximum_price_deviation_bps)
+    if not math.isfinite(mid) or mid <= 0:
+        raise ValueError("spot mid must be finite and positive")
+    if minimum not in {1, 2}:
+        raise ValueError("external confluence provider quorum must be 1 or 2")
+    if not math.isfinite(change_floor) or not -100 <= change_floor <= 100:
+        raise ValueError("external confluence change floor is invalid")
+    if not math.isfinite(deviation_limit) or not 1 <= deviation_limit <= 1_000:
+        raise ValueError("external confluence price deviation is invalid")
+
+    rows = []
+    providers = context.get("providers") if isinstance(context, dict) else {}
+    providers = providers if isinstance(providers, dict) else {}
+    for name in ("coingecko", "coinmarketcap"):
+        provider = providers.get(name)
+        if not isinstance(provider, dict) or not provider.get("enabled"):
+            continue
+        row = {
+            "provider": name,
+            "fresh": bool(provider.get("available") and provider.get("fresh")),
+            "confirms": False,
+        }
+        if row["fresh"]:
+            data = provider.get("data") if isinstance(provider.get("data"), dict) else {}
+            try:
+                price = float(data["price_usd"])
+                change = float(data["percent_change_24h"])
+                if not math.isfinite(price) or price <= 0 or not math.isfinite(change):
+                    raise ValueError("non-finite provider value")
+                deviation = abs(price - mid) / mid * 10_000.0
+                row.update({
+                    "price_usd": price,
+                    "percent_change_24h": change,
+                    "price_deviation_bps": deviation,
+                    "price_consistent": deviation <= deviation_limit,
+                    "direction_confirms": change >= change_floor,
+                })
+                row["confirms"] = bool(
+                    row["price_consistent"] and row["direction_confirms"]
+                )
+            except (KeyError, TypeError, ValueError, OverflowError):
+                row["fresh"] = False
+                row["reason"] = "malformed_provider_data"
+        else:
+            row["reason"] = str(provider.get("reason") or provider.get("status") or "unavailable")
+        rows.append(row)
+
+    fresh = [row for row in rows if row["fresh"]]
+    confirming = [row for row in fresh if row["confirms"]]
+    confirmed = len(fresh) >= minimum and len(confirming) == len(fresh)
+    return {
+        "confirmed": confirmed,
+        "minimum_providers": minimum,
+        "fresh_provider_count": len(fresh),
+        "confirming_provider_count": len(confirming),
+        "minimum_change_24h_pct": change_floor,
+        "maximum_price_deviation_bps": deviation_limit,
+        "providers": rows,
+        "reason": "confirmed" if confirmed else "external_confluence_not_confirmed",
+    }
+
+
 def timeframe_context(klines: list, *, fast: int = 9, slow: int = 21) -> dict:
     closes = [float(row[4]) for row in klines if isinstance(row, (list, tuple)) and len(row) > 6]
     if len(closes) < slow + 2 or any(not math.isfinite(value) or value <= 0 for value in closes):
@@ -87,28 +168,33 @@ def timeframe_context(klines: list, *, fast: int = 9, slow: int = 21) -> dict:
     }
 
 
-def classify(snapshot: dict, *, min_taker_ratio: float = 0.55,
-             min_spot_imbalance: float = 0.05) -> dict:
+def classify(
+    snapshot: dict,
+    *,
+    min_taker_ratio: float = 0.55,
+    min_spot_imbalance: float = 0.05,
+    require_external_confluence: bool = False,
+) -> dict:
     spot = snapshot.get("spot") or {}
-    futures = snapshot.get("futures") or {}
     spot_ok = (
         float((spot.get("trades") or {}).get("taker_buy_ratio", 0)) >= min_taker_ratio
         and float((spot.get("depth") or {}).get("imbalance", -1)) >= min_spot_imbalance
-    )
-    futures_available = bool(futures.get("available"))
-    futures_ok = not futures_available or (
-        float((futures.get("depth") or {}).get("imbalance", -1)) >= 0
-        and float((futures.get("taker") or {}).get("buySellRatio", 0)) >= 1
     )
     timeframes = snapshot.get("timeframes") or {}
     higher = [str((timeframes.get(name) or {}).get("direction"))
               for name in ("15m", "1h", "2h", "4h", "1d")]
     higher_ok = sum(item == "bullish" for item in higher) >= (len(higher) + 1) // 2
-    bullish = bool(spot_ok and futures_ok and higher_ok)
+    external = ((snapshot.get("external_context") or {}).get("confluence") or {})
+    external_ok = bool(external.get("confirmed")) if require_external_confluence else True
+    bullish = bool(spot_ok and higher_ok and external_ok)
     return {
         "bullish": bullish,
+        "market_context_mode": "spot_only",
         "spot_pressure_bullish": spot_ok,
-        "futures_confirmation": futures_ok if futures_available else None,
         "higher_timeframe_bullish": higher_ok,
+        "external_confluence_required": bool(require_external_confluence),
+        "external_confluence_confirmed": (
+            bool(external.get("confirmed")) if require_external_confluence else None
+        ),
         "decision": "BULLISH" if bullish else "NOT_BULLISH",
     }

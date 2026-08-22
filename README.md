@@ -29,12 +29,15 @@ hardening do not establish profitability.
 
 There are exactly four application services:
 
-1. `moneyflow` reads public Spot and same-symbol USD-M data. It publishes order-book
-   imbalance, taker pressure, open interest/premium where available, and closed-candle
-   context for 1m, 5m, 15m, 1h, 2h, 4h, and 1d. It has no credentials or order methods.
-   Optional CoinGecko Demo and CoinMarketCap Basic clients fetch only Bitcoin ID
-   (`bitcoin` / `1`) in USD as advisory telemetry. They cannot select a pair,
-   change a signal, size an order, or move money. Their default caps are 4% below
+1. `moneyflow` reads public Spot REST data plus credential-free `aggTrade` and
+   `bookTicker` market streams. It publishes bounded 15/30/60-second taker-flow
+   windows, order-book imbalance, spread/liquidity, and closed-candle context for
+   1m, 5m, 15m, 1h, 2h, 4h, and 1d. It has no credentials or order methods and
+   makes no futures request. Optional CoinGecko Demo and CoinMarketCap Basic
+   clients fetch only Bitcoin ID (`bitcoin` / `1`) in USD. They cannot select a
+   pair, size an order, or move money. When explicitly enabled, fresh fixed-BTC
+   provider agreement can participate in the existing MoneyFlow confirmation;
+   otherwise it remains advisory. Their default caps are 4% below
    the conservative documented free quotas: CoinGecko 96/minute and 9,600/month;
    CoinMarketCap 28/minute and 9,600/month, with a five-minute minimum cadence,
    durable pre-request reservations and fail-closed state-loss handling.
@@ -52,8 +55,8 @@ There are exactly four application services:
    It never receives Binance credentials.
 
 The system does not rank, scan, or rotate through altcoins. Higher timeframes and
-futures data are context; the inherited entry formula remains the original 1m entry
-with a 5m hard trend filter.
+Spot microstructure are confirmation context; the inherited entry formula remains
+the original 1m entry with a 5m hard trend filter.
 
 ## Safe first launch
 
@@ -86,8 +89,8 @@ unrelated, manually held BTC as bot inventory.
 
 In `testnet` mode, authenticated order placement and the execution-sidecar's filter
 preflight use Binance Spot Testnet. The read-only signal stack intentionally consumes
-production Spot and same-symbol USD-M public market data so dry/Testnet decisions see
-the real market. Testnet fills therefore validate lifecycle safety, not realistic
+production Spot public market data so dry/Testnet decisions see the real market.
+Testnet fills therefore validate lifecycle safety, not realistic
 liquidity, slippage, or profitability.
 
 For the beginner-safe Oracle host and installer flow, read
@@ -121,9 +124,9 @@ In live mode, applying a different pair also latches a restart requirement: fres
 evidence bound to the new pair generation must be signed and verified before entries
 can be resumed.
 
-If an exact same-symbol USD-M perpetual does not exist, the monitor reports that
-fact. With `REQUIRE_MATCHING_FUTURES=true`, entries fail closed; otherwise futures
-context is advisory.
+The MoneyFlow network client is Spot-only. No USD-M hostname, open-interest,
+funding-rate, mark-price, or futures taker/depth input participates in collection or
+classification.
 
 ## Important limits
 

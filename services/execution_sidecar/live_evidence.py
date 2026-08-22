@@ -96,7 +96,19 @@ def runtime_risk_policy(allowed_quotes) -> dict:
         },
         "flow": {
             "require_flow_context": _boolean("REQUIRE_FLOW_CONTEXT", False),
-            "require_matching_futures": _boolean("REQUIRE_MATCHING_FUTURES", False),
+            "market_context_mode": "spot_only",
+            "require_external_confluence": _boolean(
+                "REQUIRE_EXTERNAL_CONFLUENCE", False
+            ),
+            "external_confluence_min_providers": int(
+                os.getenv("EXTERNAL_CONFLUENCE_MIN_PROVIDERS", "1")
+            ),
+            "external_confluence_min_24h_change_pct": _number_text(
+                "EXTERNAL_CONFLUENCE_MIN_24H_CHANGE_PCT", "0"
+            ),
+            "external_confluence_max_price_deviation_bps": _number_text(
+                "EXTERNAL_CONFLUENCE_MAX_PRICE_DEVIATION_BPS", "100"
+            ),
             "max_flow_age_seconds": int(os.getenv("MAX_FLOW_AGE_SECONDS", "45")),
             "min_taker_buy_ratio": _number_text("FLOW_MIN_TAKER_BUY_RATIO", "0.55"),
             "min_spot_imbalance": _number_text("FLOW_MIN_SPOT_IMBALANCE", "0.05"),
@@ -104,6 +116,9 @@ def runtime_risk_policy(allowed_quotes) -> dict:
             "depth_limit": int(os.getenv("MONEYFLOW_DEPTH_LIMIT", "100")),
             "trade_limit": int(os.getenv("MONEYFLOW_TRADE_LIMIT", "500")),
             "depth_band_bps": int(os.getenv("MONEYFLOW_DEPTH_BAND_BPS", "10")),
+            "spot_stream_stale_seconds": int(
+                os.getenv("MONEYFLOW_SPOT_STREAM_STALE_SECONDS", "10")
+            ),
         },
         "backtest_gate": {
             "minimum_trades": int(os.getenv("LIVE_MIN_BACKTEST_TRADES", "100")),

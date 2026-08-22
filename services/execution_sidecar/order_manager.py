@@ -32,8 +32,6 @@ class OrderManager:
         self.paths = paths
         self.max_flow_age = env_int("MAX_FLOW_AGE_SECONDS", 45, 5, 300)
         self.require_flow = os.getenv("REQUIRE_FLOW_CONTEXT", "false").lower() == "true"
-        self.require_matching_futures = (
-            os.getenv("REQUIRE_MATCHING_FUTURES", "false").lower() == "true")
 
     def _flow_gate(self, pair_state: dict) -> tuple[bool, str]:
         flow = read_json(self.moneyflow_path, None)
@@ -52,9 +50,6 @@ class OrderManager:
             return False, "money-flow snapshot is stale"
         if not flow.get("ok"):
             return False, "money-flow service is degraded"
-        futures = flow.get("futures") or {}
-        if self.require_matching_futures and not futures.get("available"):
-            return False, "matching USD-M futures context is required but unavailable"
         if not (flow.get("classification") or {}).get("bullish"):
             return False, "money-flow context is not bullish"
         return True, "fresh bullish flow"

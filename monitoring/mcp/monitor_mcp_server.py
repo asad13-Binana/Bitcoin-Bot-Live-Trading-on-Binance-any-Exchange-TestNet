@@ -104,7 +104,7 @@ def create_server():
 
     @server.tool()
     def bot_market_context() -> dict:
-        """Active BTC pair plus bounded Spot/USD-M money-flow context."""
+        """Active BTC pair plus bounded Spot-only money-flow context."""
         return _get("/moneyflow")
 
     @server.tool()
