@@ -125,8 +125,8 @@
       "size": 18713
     },
     "VALIDATION_STATUS.json": {
-      "sha256": "b6ea12c36d8d0fc38c11b900aeb0d2dd71db7350d88281a0a8e5031044e88367",
-      "size": 14541
+      "sha256": "cc92c8e5a7f247b9480c2c08772e44012e6fb8b80bafe1a4617b405d1a95b7ff",
+      "size": 14670
     },
     "deploy/api_preflight.sh": {
       "sha256": "d1ab42fa9e423bf2e1e0b90ba9d93a7bee16bba38e94e6ab11bc64514d8ece6a",
@@ -817,8 +817,8 @@
       "size": 4724
     },
     "tests/test_binance_official_sources.py": {
-      "sha256": "8319d4eeb4eaea0233d6c76dcc2093d11c604a541acadb19b42c547f614f1615",
-      "size": 19278
+      "sha256": "98a11d0f6624176b6731e7f149f3a782feedf54fbdd4e845f33514894acf6c7a",
+      "size": 22912
     },
     "tests/test_control_and_flow.py": {
       "sha256": "78a201406507a70e8a34971a60bc14cc8795c9c1292099206d2d1e43de8866a4",
