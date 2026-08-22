@@ -5,6 +5,8 @@ from __future__ import annotations
 from decimal import Decimal
 import hashlib
 import hmac
+from importlib import metadata
+import inspect
 from pathlib import Path
 from types import SimpleNamespace
 import zipfile
@@ -140,6 +142,22 @@ class _FilterScopePublic(_RulePublic):
             "exchangeFilters": list(self.exchange_filters),
             "symbols": [row],
         }
+
+
+def test_cancel_only_symbol_status_fails_closed_before_replacement():
+    class CancelOnlyPublic(_RulePublic):
+        def exchange_info(self, symbol):
+            assert symbol == "BTCUSDT"
+            row = _symbol_row()
+            row["status"] = "CANCEL_ONLY"
+            return {"symbols": [row]}
+
+    with pytest.raises(FilterViolation, match="status is 'CANCEL_ONLY', not TRADING"):
+        SpotFilterValidator(CancelOnlyPublic()).validate_replacement(
+            "BTCUSDT",
+            "order",
+            _replacement("100.0"),
+        )
 
 
 def test_max_num_order_lists_counts_only_lists_on_the_requested_symbol():
@@ -546,6 +564,103 @@ def test_user_stream_signature_uses_gateway_clock_and_recv_window(monkeypatch):
         b"test-secret", query.encode(), hashlib.sha256
     ).hexdigest()
     assert params == {**unsigned, "signature": expected}
+
+
+@pytest.mark.parametrize(
+    ("event_type", "expected_error"),
+    [
+        ("eventStreamTerminated", "event_stream_terminated"),
+        ("serverShutdown", "server_shutdown"),
+    ],
+)
+def test_user_stream_terminal_events_close_the_socket_and_clear_subscription(
+    tmp_path, monkeypatch, event_type, expected_error
+):
+    monkeypatch.setenv("RUNTIME_DIR", str(tmp_path))
+    stream = ModernUserDataStream(SimpleNamespace(), testnet=True)
+    stream._connected = True
+    stream._subscribed = True
+
+    class Socket:
+        def __init__(self):
+            self.closed = 0
+
+        def close(self):
+            self.closed += 1
+
+    socket = Socket()
+    stream._ws = socket
+    stream._dispatch_event({"e": event_type})
+
+    assert socket.closed == 1
+    assert stream._subscribed is False
+    assert stream._last_error == expected_error
+
+
+def test_pinned_python_binance_private_http_interface_remains_compatible():
+    from binance.client import Client
+
+    assert metadata.version("python-binance") == "1.0.28"
+    for method_name in ("_get", "_post", "_delete"):
+        parameters = list(inspect.signature(getattr(Client, method_name)).parameters.values())
+        assert [parameter.name for parameter in parameters[:4]] == [
+            "self",
+            "path",
+            "signed",
+            "version",
+        ]
+        assert parameters[4].kind is inspect.Parameter.VAR_KEYWORD
+
+
+def test_gateway_order_list_calls_match_the_pinned_python_binance_contract():
+    calls = []
+
+    class RecordingClient:
+        def _get(self, path, signed=False, version="v1", **kwargs):
+            calls.append(("GET", path, signed, version, kwargs))
+            return {"ok": True}
+
+        def _post(self, path, signed=False, version="v1", **kwargs):
+            calls.append(("POST", path, signed, version, kwargs))
+            return {"ok": True}
+
+        def _delete(self, path, signed=False, version="v1", **kwargs):
+            calls.append(("DELETE", path, signed, version, kwargs))
+            return {"ok": True}
+
+    gateway = object.__new__(BinanceSpotGateway)
+    gateway.client = RecordingClient()
+    gateway.open_order_lists()
+    gateway.get_order_list(order_list_id=41)
+    gateway.get_order_list(list_client_id="btc-list-42")
+    gateway.place("orderList/otoco", {"symbol": "BTCUSDT", "quantity": "0.1"})
+    gateway.cancel_order_list("BTCUSDT", 43)
+
+    assert calls == [
+        ("GET", "openOrderList", True, "v1", {"data": {}}),
+        ("GET", "orderList", True, "v1", {"data": {"orderListId": 41}}),
+        (
+            "GET",
+            "orderList",
+            True,
+            "v1",
+            {"data": {"origClientOrderId": "btc-list-42"}},
+        ),
+        (
+            "POST",
+            "orderList/otoco",
+            True,
+            "v1",
+            {"data": {"symbol": "BTCUSDT", "quantity": "0.1"}},
+        ),
+        (
+            "DELETE",
+            "orderList",
+            True,
+            "v1",
+            {"data": {"symbol": "BTCUSDT", "orderListId": 43}},
+        ),
+    ]
 
 
 def _write_kline_archive(

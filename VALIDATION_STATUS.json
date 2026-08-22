@@ -13,7 +13,7 @@
     "core_and_monitoring_suite": "The complete repository and monitoring suites are required to pass for the exact release; authoritative per-interpreter counts and any skips are retained in exact-head CI rather than duplicated in this drift-prone tracked summary",
     "intentional_test_skips": "Windows symlink creation unavailable; ordinary pytest environment lacks TA-Lib, while the direct TA-Lib strategy probe and exact Freqtrade backtest both passed execution",
     "focused_pair_and_capability_suite": "37 passed, 0 failed",
-    "focused_binance_official_source_suite": "24 passed, 0 failed for symbol-scoped order lists, MAX_POSITION, exchange-wide order and order-list limits, shared account-snapshot handling, PRICE_RANGE, EXPIRED_IN_MATCH, clock synchronization, WebSocket signing and public archive integrity; one additional Windows directory-fsync regression passed",
+    "focused_binance_official_source_suite": "29 passed, 0 failed for CANCEL_ONLY fail-closed handling, symbol-scoped order lists, MAX_POSITION, exchange-wide order and order-list limits, shared account-snapshot handling, PRICE_RANGE, EXPIRED_IN_MATCH, clock synchronization, WebSocket signing and terminal lifecycle events, pinned python-binance 1.0.28 order-list interface compatibility and public archive integrity; one additional Windows directory-fsync regression passed",
     "fresh_extract_retest": "enforced by the GitHub artifact job for the exact commit; consult the immutable workflow run and downloaded artifact evidence rather than treating this tracked JSON as self-certification",
     "python_compile": "passed for services, strategy, tests, scripts and monitoring",
     "secret_scan": "passed; no high-confidence tokens or populated sensitive assignments",
