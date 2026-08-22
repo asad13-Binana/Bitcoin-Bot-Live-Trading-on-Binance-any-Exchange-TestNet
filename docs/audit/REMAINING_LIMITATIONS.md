@@ -37,10 +37,10 @@ profitability or safety guarantee.
   partial-fill path cancels the working entry, requires terminal confirmation and then
   protects the executed amount; this requires real Testnet race testing.
 - Public order-book and taker-flow signals are noisy and can be manipulated or disappear.
-  Higher-timeframe and futures observations are context, not proof of future price.
-- A matching same-symbol USD-M perpetual may not exist. With
-  `REQUIRE_MATCHING_FUTURES=true` the absence fails entries closed; otherwise futures
-  context is advisory.
+  Higher-timeframe and rolling Spot observations are context, not proof of future price.
+- The rolling Spot WebSocket sample requires a complete 60-second warm-up after start,
+  reconnect, symbol change, or sequence gap. Until then the bounded REST aggregate-trade
+  fallback is explicit in the snapshot.
 - Quote-market availability, trading status, filters, order-list capability and Binance
   API behavior can change. Pair metadata must be fetched from the same execution
   environment before a money-moving request.
@@ -50,8 +50,9 @@ profitability or safety guarantee.
   reconciliation.
 - CoinGecko and CoinMarketCap free-plan limits and terms can change. The shipped
   conservative caps, five-minute cadence, durable reservation ledger and backoff reduce
-  abuse risk but do not guarantee provider access. Both clients are disabled by default
-  and their output is advisory only.
+  abuse risk but do not guarantee provider access. Both clients are disabled by default.
+  If external confluence is required, insufficient, stale, contradictory, or price-divergent
+  provider evidence fails the MoneyFlow decision closed.
 - In testnet mode, public signal/moneyflow telemetry intentionally uses production market
   data for realistic observations, while authenticated execution and filter preflight use
   Spot Testnet. This split must be understood during evidence review; Testnet liquidity

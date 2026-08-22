@@ -635,7 +635,10 @@ def main():
             "freqtrade_pair_ready": freqtrade_ready,
             "freqtrade_pair_detail": freqtrade_detail,
             "moneyflow_ok": bool(flow.get("ok")),
-            "matching_futures_available": bool((flow.get("futures") or {}).get("available")),
+            "market_context_mode": str(flow.get("market_context_mode") or "unknown"),
+            "external_confluence_confirmed": bool(
+                ((flow.get("external_context") or {}).get("confluence") or {}).get("confirmed")
+            ),
             "last_reconciliation_status": reconciliation_status,
             "reconciliation_ok": reconciliation_ok,
             "user_stream_ok": user_stream_ok,

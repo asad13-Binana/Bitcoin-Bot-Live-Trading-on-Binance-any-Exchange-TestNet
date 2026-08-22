@@ -1,1 +1,1 @@
-"""Read-only Bitcoin Spot/USD-M money-flow telemetry."""
+"""Read-only Bitcoin Spot money-flow telemetry."""

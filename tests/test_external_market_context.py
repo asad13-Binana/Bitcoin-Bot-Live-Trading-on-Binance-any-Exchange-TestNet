@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 import math
-from pathlib import Path
 import sqlite3
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 import yaml
@@ -32,7 +32,6 @@ from services.moneyflow.external_context import (
 )
 from services.moneyflow.service import collect
 from services.telegram_broker import bot as telegram_bot
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -349,9 +348,6 @@ def test_manager_provider_outage_never_changes_core_binance_health_or_classifica
                 for index in range(64)
             ]
 
-        def futures_exchange_symbol(self, symbol):
-            return None
-
     pair = {
         "pair": "BTC/USDT",
         "symbol": "BTCUSDT",
@@ -362,6 +358,64 @@ def test_manager_provider_outage_never_changes_core_binance_health_or_classifica
     assert snapshot["external_context"]["providers"]["coingecko"]["status"] == "transport_error"
     assert "transport_error" not in snapshot["errors"]
     assert snapshot["external_context"]["affects_entry_decision"] is False
+
+
+def test_required_external_confluence_is_a_fail_closed_moneyflow_confirmation(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("REQUIRE_EXTERNAL_CONFLUENCE", "true")
+    monkeypatch.setenv("EXTERNAL_CONFLUENCE_MIN_PROVIDERS", "1")
+    monkeypatch.setenv("EXTERNAL_CONFLUENCE_MIN_24H_CHANGE_PCT", "0")
+    monkeypatch.setenv("EXTERNAL_CONFLUENCE_MAX_PRICE_DEVIATION_BPS", "100")
+
+    class BinanceFlow:
+        def spot_exchange_symbol(self, symbol):
+            return {
+                "symbol": symbol,
+                "status": "TRADING",
+                "baseAsset": "BTC",
+                "quoteAsset": "USDT",
+                "isSpotTradingAllowed": True,
+                "ocoAllowed": True,
+                "otoAllowed": True,
+                "filters": [
+                    {"filterType": "PRICE_FILTER", "tickSize": "0.01"},
+                    {"filterType": "LOT_SIZE", "stepSize": "0.00001"},
+                ],
+            }
+
+        def spot_depth(self, symbol, limit):
+            return {"bids": [["99999", "2"]], "asks": [["100001", "1"]]}
+
+        def spot_aggregate_trades(self, symbol, limit):
+            return [{"a": 1, "p": "100000", "q": "1", "m": False}]
+
+        def klines(self, symbol, interval, limit):
+            return [
+                [index, "99900", "100100", "99800", str(100000 + index), "1", index + 1]
+                for index in range(64)
+            ]
+
+    pair = {"pair": "BTC/USDT", "symbol": "BTCUSDT", "state_hash": "a" * 64}
+    positive_path = tmp_path / "positive"
+    negative_path = tmp_path / "negative"
+    positive_path.mkdir()
+    negative_path.mkdir()
+    positive = _manager(positive_path, FakeProviderClient(_normalized()))
+    confirmed = collect(BinanceFlow(), pair, positive)
+    assert confirmed["ok"] is True
+    assert confirmed["classification"]["decision"] == "BULLISH"
+    assert confirmed["external_context"]["affects_entry_decision"] is True
+    assert confirmed["external_context"]["confluence"]["confirmed"] is True
+
+    negative_data = _normalized()
+    negative_data["percent_change_24h"] = -0.1
+    negative = _manager(negative_path, FakeProviderClient(negative_data))
+    blocked = collect(BinanceFlow(), pair, negative)
+    assert blocked["ok"] is False
+    assert blocked["classification"]["decision"] == "UNAVAILABLE"
+    assert blocked["external_context"]["confluence"]["confirmed"] is False
+    assert "external_confluence:not_confirmed" in blocked["errors"]
 
 
 def test_env_cannot_raise_provider_caps_above_four_percent_below(monkeypatch, tmp_path):

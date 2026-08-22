@@ -6,8 +6,8 @@ TELEGRAM SELF-AUDIT: owner-only /audit; read-only; no sidecar command or repair/
 MARKET: one owner-selected, current Binance BTC-base Spot pair
 PAIR CHANGE: select -> reconcile -> manual-swap acknowledgement -> apply -> heartbeat verify -> explicit resume
 ORDER OWNER: execution-sidecar only
-PUBLIC CONTEXT: Spot + exact same-symbol USD-M where available
-OPTIONAL EXTERNAL CONTEXT: Bitcoin-only CoinGecko/CoinMarketCap telemetry; advisory, disabled by default, quota bounded
+PUBLIC CONTEXT: Binance Spot only; rolling aggregate-trade flow + order-book liquidity
+OPTIONAL EXTERNAL CONTEXT: fixed-Bitcoin CoinGecko/CoinMarketCap confluence; disabled by default, quota bounded, fail-closed when required
 SIGNAL TIMEFRAMES: 1m entry, 5m hard trend filter
 TELEMETRY TIMEFRAMES: 1m, 5m, 15m, 1h, 2h, 4h, 1d
 PROMOTION: Testnet/soak/drills + exact Freqtrade ZIP + offline Ed25519 evidence
