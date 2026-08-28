@@ -244,13 +244,27 @@ class CoinMarketCapClient:
             },
             timeout=self._timeout,
         )
-        # CoinMarketCap v3 returns a bare CryptoQuoteV3DTO array.  The older
-        # v2 object envelope ({"status": ..., "data": {"1": ...}}) must not
-        # be accepted here because silently parsing the wrong schema would make
-        # a provider appear healthy while no current v3 quote was validated.
-        if not isinstance(payload, list) or len(payload) != 1:
+        # CoinMarketCap v3 wraps its CryptoQuoteV3DTO array in a response object.
+        # Do not accept either the obsolete v2 ID-keyed object or the previously
+        # assumed bare array: a schema mismatch must keep this optional provider
+        # unavailable rather than publish unvalidated market context.
+        if not isinstance(payload, dict):
+            raise ProviderPayloadError("CoinMarketCap response is malformed")
+        status = payload.get("status")
+        error_code = status.get("error_code") if isinstance(status, dict) else None
+        status_ok = (
+            (type(error_code) is int and error_code == 0)
+            or (isinstance(error_code, str) and error_code == "0")
+        )
+        if (
+            not isinstance(status, dict)
+            or not status_ok
+        ):
+            raise ProviderPayloadError("CoinMarketCap request status is not successful")
+        rows = payload.get("data")
+        if not isinstance(rows, list) or len(rows) != 1:
             raise ProviderPayloadError("CoinMarketCap identity mismatch")
-        row = payload[0]
+        row = rows[0]
         if not isinstance(row, dict):
             raise ProviderPayloadError("CoinMarketCap Bitcoin row is malformed")
         if (
