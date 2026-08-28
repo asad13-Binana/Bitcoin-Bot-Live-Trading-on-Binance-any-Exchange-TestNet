@@ -454,9 +454,9 @@ line 154-193 | function | ApiReadinessProbe._request_json | PRESERVE_AND_REGRESS
 line 195-207 | function | ApiReadinessProbe._signed_params | PRESERVE_AND_REGRESSION_TEST | sha256=37d9fddf42d9f0827061e1dfdbc5d17360a0c1d7e3e74c342ba6a989e80b29ff
 line 209-277 | function | ApiReadinessProbe._binance | PRESERVE_AND_REGRESSION_TEST | sha256=6535d61f6ffc1f58ab94c3b541802f6547b8b747ef85cc276bb2cc42e565c417
 line 279-302 | function | ApiReadinessProbe._telegram | PRESERVE_AND_REGRESSION_TEST | sha256=19e02ae3aa869fac26f1db5f1ab5c959b713bea84f916229701cc0c1a5edbcd3
-line 304-383 | function | ApiReadinessProbe._optional_providers | PRESERVE_AND_REGRESSION_TEST | sha256=d930c1e1cb050891f68b7d456731e1c57796f9d3b529a782bac94b36a733a96f
-line 385-402 | function | ApiReadinessProbe.run | PRESERVE_AND_REGRESSION_TEST | sha256=c5472c8a47e0ccf8cc430bb8c0bbb9e226868302b78768d5ccf221a38bcaa28d
-line 405-440 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=0d76204284517f1c9198a1aa15fe7702b6f8811f159e91a708e91a1dc0210e75
+line 304-389 | function | ApiReadinessProbe._optional_providers | PRESERVE_AND_REGRESSION_TEST | sha256=ed6634d47a3d62a8d0d5e73fc47276ccb437229b1c300a3d07d6391c4f2ec15e
+line 391-408 | function | ApiReadinessProbe.run | PRESERVE_AND_REGRESSION_TEST | sha256=c5472c8a47e0ccf8cc430bb8c0bbb9e226868302b78768d5ccf221a38bcaa28d
+line 411-446 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=0d76204284517f1c9198a1aa15fe7702b6f8811f159e91a708e91a1dc0210e75
 
 FILE: scripts/build_artifact_provenance.py (3 callable(s))
 line 15-16 | function | _sha256 | PRESERVE_AND_REGRESSION_TEST | sha256=9da2ea2c4f7f9301e06e1ac26911597bbebdfdf8b3864861379b3e0612b9b38b
@@ -969,7 +969,7 @@ line 158-181 | function | _normalized_metrics | PRESERVE_AND_REGRESSION_TEST | s
 line 187-190 | function | CoinGeckoClient.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=71785607868918d27281ea8782823a7fb1d3f2831d347f3eec5fa48d7ba31075
 line 192-225 | function | CoinGeckoClient.fetch_bitcoin_usd | PRESERVE_AND_REGRESSION_TEST | sha256=4ef3f2c92ee0d5754ac2f2d91acae146bb1933730474854a44a0ab2fcdc83ee2
 line 231-234 | function | CoinMarketCapClient.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=71785607868918d27281ea8782823a7fb1d3f2831d347f3eec5fa48d7ba31075
-line 236-291 | function | CoinMarketCapClient.fetch_bitcoin_usd | PRESERVE_AND_REGRESSION_TEST | sha256=d94146312b4b04232d0fd325c389491a0c610a8f55f79f4c27a092839aa91777
+line 236-295 | function | CoinMarketCapClient.fetch_bitcoin_usd | PRESERVE_AND_REGRESSION_TEST | sha256=cfc9d9e4e3c5bd12e8df6e799e17f8ef358d9b1a53a7cddfcd7aae9637f867ad
 
 FILE: services/moneyflow/external_context.py (30 callable(s))
 line 39-41 | function | four_percent_below | PRESERVE_AND_REGRESSION_TEST | sha256=4018ff813d4e00ec18ab39d828ef412839dda619bb3097c91acb350a53fac92c

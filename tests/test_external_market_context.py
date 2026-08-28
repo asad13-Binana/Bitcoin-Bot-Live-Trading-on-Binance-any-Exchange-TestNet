@@ -48,9 +48,9 @@ def _cg_payload(price=100_000.0):
     }
 
 
-def _cmc_payload(price=100_100.0):
+def _cmc_payload(price=100_100.0, error_code="0"):
     return {
-        "status": {"error_code": 0, "error_message": None},
+        "status": {"error_code": error_code, "error_message": None},
         "data": [{
             "id": 1,
             "name": "Bitcoin",
@@ -113,6 +113,13 @@ def test_clients_use_exact_fixed_bitcoin_gets_and_header_only_credentials():
     for call, key in ((cg_call, cg_key), (cmc_call, cmc_key)):
         assert key not in call["url"]
         assert key not in json.dumps(call["params"])
+
+
+def test_coinmarketcap_accepts_documented_numeric_success_code():
+    result = CoinMarketCapClient(
+        "key", transport=CaptureTransport(_cmc_payload(error_code=0))
+    ).fetch_bitcoin_usd()
+    assert result["identity"]["id"] == 1
 
 
 @pytest.mark.parametrize(

@@ -251,10 +251,14 @@ class CoinMarketCapClient:
         if not isinstance(payload, dict):
             raise ProviderPayloadError("CoinMarketCap response is malformed")
         status = payload.get("status")
+        error_code = status.get("error_code") if isinstance(status, dict) else None
+        status_ok = (
+            (type(error_code) is int and error_code == 0)
+            or (isinstance(error_code, str) and error_code == "0")
+        )
         if (
             not isinstance(status, dict)
-            or type(status.get("error_code")) is not int
-            or status.get("error_code") != 0
+            or not status_ok
         ):
             raise ProviderPayloadError("CoinMarketCap request status is not successful")
         rows = payload.get("data")

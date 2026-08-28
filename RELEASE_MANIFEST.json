@@ -45,7 +45,7 @@
       "size": 2387
     },
     "BITCOIN_BOT_SERVICES_FUNCTIONS_AND_TELEGRAM_GUIDE.txt": {
-      "sha256": "8006cdf6cd47a95a66841c823cb0a3e1e1a92bc903cd67fdf68fd98e66e2b6ba",
+      "sha256": "9363ce62148c5e2cecadd389cdb5f9c5f9d5fe567d21affd2b4515592196eeb5",
       "size": 131933
     },
     "BOT_SIMPLE_DESCRIPTION.txt": {
@@ -289,7 +289,7 @@
       "size": 54191
     },
     "docs/audit/FUNCTION_PARITY_MATRIX.csv": {
-      "sha256": "6b1b7e72a133d5712485821826c98b718d3f962cb07ec41b989c12ba15046447",
+      "sha256": "6b617bfb76fe601bd23612e73477c8d0b6db517171c2029896a5543d2a81d320",
       "size": 131610
     },
     "docs/audit/ISSUE_LEDGER.csv": {
@@ -537,8 +537,8 @@
       "size": 12021
     },
     "scripts/api_readiness.py": {
-      "sha256": "914391ff49146ecf9e965c8644ece25a5fea04c085b70a1298b7db4715b65f29",
-      "size": 18217
+      "sha256": "b56ce092818bcbe05b6043efd62e5c85b2b3b4c788a8983b090acd61a3a7f9cc",
+      "size": 18480
     },
     "scripts/build_artifact_provenance.py": {
       "sha256": "b4d6b4158fdc7c4662736aa584d06f5a5516e89e614b99a051ca1a29ebf76673",
@@ -745,8 +745,8 @@
       "size": 1094
     },
     "services/moneyflow/external_clients.py": {
-      "sha256": "c2120ff1412d117e6916cb1b7f4e99475be0075d36e33c8f98a60f9388e5bd21",
-      "size": 10634
+      "sha256": "ce0f97d1fec4589106e5ff53a5e049267389c72b7342d1cb799ff5fe68ec9023",
+      "size": 10802
     },
     "services/moneyflow/external_context.py": {
       "sha256": "88d65c7d46ebf39a93ccba6bce41e45add3822c01671682b0daf8670c3631e02",
@@ -821,8 +821,8 @@
       "size": 13125
     },
     "tests/test_api_readiness.py": {
-      "sha256": "15a2bdb69903cef843368175492309a5eb03b304be4e7b45ef394912b8e647ec",
-      "size": 5782
+      "sha256": "b5eb12077e2f7833ab50d794ea6bcf2bb2b39e397f9d4ba41f09bf1bb053c646",
+      "size": 5784
     },
     "tests/test_binance_official_sources.py": {
       "sha256": "98a11d0f6624176b6731e7f149f3a782feedf54fbdd4e845f33514894acf6c7a",
@@ -845,8 +845,8 @@
       "size": 60091
     },
     "tests/test_external_market_context.py": {
-      "sha256": "7d6dd703ae44ff2b539efa9eb9efdb126508a73d2cb437c7d260e5fe7f645a7d",
-      "size": 19640
+      "sha256": "e0b34c2738e632ca9276e854d6f67c55b077e280b3e60ac0c55cf2249275f253",
+      "size": 19904
     },
     "tests/test_external_validation_evidence.py": {
       "sha256": "bd4786eb7b689226592ab765f2b338ef12f829a1964248efc4a1ee246c635fb6",

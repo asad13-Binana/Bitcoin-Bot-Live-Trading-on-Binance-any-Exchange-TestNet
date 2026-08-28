@@ -104,7 +104,7 @@ def test_report_is_get_only_and_contains_no_credentials(monkeypatch):
 
 def _cmc_v3_payload():
     return {
-        "status": {"error_code": 0, "error_message": None},
+        "status": {"error_code": "0", "error_message": None},
         "data": [{
             "id": 1,
             "name": "Bitcoin",

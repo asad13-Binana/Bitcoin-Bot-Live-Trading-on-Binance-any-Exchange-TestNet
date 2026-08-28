@@ -355,6 +355,13 @@ class ApiReadinessProbe:
                         headers={"Accept": "application/json", header_name: key},
                     )
                     status = payload.get("status") if isinstance(payload, dict) else None
+                    error_code = (
+                        status.get("error_code") if isinstance(status, dict) else None
+                    )
+                    status_ok = (
+                        (type(error_code) is int and error_code == 0)
+                        or (isinstance(error_code, str) and error_code == "0")
+                    )
                     rows = payload.get("data") if isinstance(payload, dict) else None
                     row = rows[0] if isinstance(rows, list) and len(rows) == 1 else None
                     quotes = row.get("quote") if isinstance(row, dict) else None
@@ -365,8 +372,7 @@ class ApiReadinessProbe:
                     )
                     valid = (
                         isinstance(status, dict)
-                        and type(status.get("error_code")) is int
-                        and status.get("error_code") == 0
+                        and status_ok
                         and isinstance(row, dict)
                         and row.get("id") == 1
                         and str(row.get("symbol", "")).upper() == "BTC"
