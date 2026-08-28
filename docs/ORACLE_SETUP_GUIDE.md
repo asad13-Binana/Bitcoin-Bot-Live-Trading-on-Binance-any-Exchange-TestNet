@@ -16,17 +16,20 @@ Recommended identity and capacity:
 | Shape | `VM.Standard.A1.Flex` |
 | Architecture | ARM64 / Ampere |
 | Operating system | Ubuntu 24.04 LTS ARM64 |
-| OCPU | 1 |
-| RAM | 6 GB |
-| Boot volume | approximately 50 GB |
+| OCPU | 2 |
+| RAM | 12 GB |
+| Swap | at least 3,800 MiB |
+| Boot volume | sized so the root filesystem has at least 80 GiB free before bootstrap |
 | Host name | `bitcoin-testnet-tokyo` |
 | Product | `BITCOIN-BOT` |
 | Environment | `TESTNET` |
 | Instance ID | `BITCOIN-TN-TYO-01` |
 
 The host installer rejects non-Ubuntu hosts, Ubuntu releases other than 24.04
-by default, non-ARM64 hosts by default, and machines below 1,400 MiB of physical
-memory. A larger reviewed ARM64 server remains compatible.
+by default, non-ARM64 hosts by default, machines below 11,264 MiB of physical
+memory, total RAM plus swap below 14,336 MiB, and root filesystems with less
+than 80 GiB free. These are the shared four-bot host gates; the default 50 GB
+boot volume cannot satisfy the disk gate.
 
 ## 2. OCI network and metadata controls
 

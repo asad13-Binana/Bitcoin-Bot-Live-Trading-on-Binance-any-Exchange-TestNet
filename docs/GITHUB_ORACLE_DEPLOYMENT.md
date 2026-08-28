@@ -55,10 +55,12 @@ GitHub-hosted runner address ranges.
 
 ## 2. Prepare the Oracle host once
 
-Use an Oracle Ubuntu 24.04 ARM64 Ampere A1 Flex instance. The
-complete four-service stack requires at least 1,400 MiB physical RAM and 3,800
-MiB swap; the 1 GB E2.1.Micro shape is intentionally rejected. Free capacity is
-not guaranteed.
+Use an Oracle Ubuntu 24.04 ARM64 Ampere A1 Flex instance. The shared four-bot
+host contract requires 2 OCPUs, at least 11,264 MiB physical RAM, at least
+3,800 MiB swap, at least 14,336 MiB combined RAM and swap, and at least 80 GiB
+free on the root filesystem before bootstrap. The E2.1.Micro shape and the
+default 50 GB boot volume are intentionally rejected. Free capacity is not
+guaranteed.
 
 Restrict the VCN, security list and host firewall to SSH from the administrator's
 own path. The bot and runner need outbound HTTPS. No application HTTP port needs

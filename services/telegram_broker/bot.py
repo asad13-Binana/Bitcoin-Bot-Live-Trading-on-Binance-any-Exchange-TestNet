@@ -245,6 +245,30 @@ def send(text, chat_id=None, buttons=None):
     response.raise_for_status()
 
 
+def edit_or_send(text, chat_id, message_id=None, buttons=None):
+    """Edit a callback menu in place, with a presentation-only fallback."""
+    if not TOKEN:
+        return
+    if message_id is None:
+        send(text, chat_id, buttons)
+        return
+    data = {"chat_id": chat_id or OWNER, "message_id": message_id,
+            "text": redact_text(text)[:4000]}
+    if buttons:
+        data["reply_markup"] = json.dumps({"inline_keyboard": buttons})
+    try:
+        response = requests.post(BASE + "/editMessageText", data=data, timeout=15)
+        if (
+            response.status_code == 400
+            and "message is not modified" in response.text.lower()
+        ):
+            return
+        response.raise_for_status()
+    except Exception as exc:
+        log.debug("editMessageText failed; sending a new menu: %s", _safe_error(exc))
+        send(text, chat_id, buttons)
+
+
 def sidecar_command(name, args=None, wait=False):
     cid = uuid.uuid4().hex
     payload = {"command_id": cid, "command": name, "args": args or {},
@@ -307,18 +331,35 @@ def _ask_confirm(chat, label, action, args=None, text="Confirm action."):
 
 
 def menu():
+    """Compact owner panel; every previous Bitcoin control stays reachable."""
     return [
-        [{"text": "Resume entries", "callback_data": "do|entries_on"},
-         {"text": "Pause entries", "callback_data": "do|entries_off"}],
+        [{"text": "Dashboard", "callback_data": "do|menu_dashboard"},
+         {"text": "Trading", "callback_data": "do|menu_trading"}],
+        [{"text": "System", "callback_data": "do|menu_system"},
+         {"text": "Emergency", "callback_data": "do|menu_emergency"}],
+        [{"text": "Help", "callback_data": "do|help"}],
+    ]
+
+
+def dashboard_menu():
+    return [
         [{"text": "Status", "callback_data": "do|status"},
          {"text": "Balance", "callback_data": "do|balance"}],
         [{"text": "Profit report", "callback_data": "do|profit"},
          {"text": "Last signal", "callback_data": "do|last_signal"}],
         [{"text": "Active BTC pair", "callback_data": "do|pair"},
          {"text": "Choose BTC pair", "callback_data": "do|pairs"}],
+        [{"text": "Money flow", "callback_data": "do|flow"}],
+        [{"text": "Home", "callback_data": "do|home"}],
+    ]
+
+
+def trading_menu():
+    return [
+        [{"text": "Resume entries", "callback_data": "do|entries_on"},
+         {"text": "Pause entries", "callback_data": "do|entries_off"}],
         [{"text": "Manual swap done", "callback_data": "do|swap_done"},
          {"text": "Verify pair reload", "callback_data": "do|verify_pair"}],
-        [{"text": "Money flow", "callback_data": "do|flow"}],
         [{"text": "Fixed OCO", "callback_data": "do|mode_fixed"},
          {"text": "OCO + trailing", "callback_data": "do|mode_oco_trailing"}],
         [{"text": "Trailing only", "callback_data": "do|mode_trailing"},
@@ -326,14 +367,28 @@ def menu():
         [{"text": "Break-even help", "callback_data": "do|be_help"},
          {"text": "Profit-lock help", "callback_data": "do|profit_help"}],
         [{"text": "Reconcile", "callback_data": "do|reconcile"},
-         {"text": "Restart user stream", "callback_data": "do|restart_stream"}],
+         {"text": "Home", "callback_data": "do|home"}],
+    ]
+
+
+def system_menu():
+    return [
+        [{"text": "Restart user stream", "callback_data": "do|restart_stream"}],
         [{"text": "Logs", "callback_data": "do|logs"},
-          {"text": "Deployment", "callback_data": "do|deploy"}],
+         {"text": "Deployment", "callback_data": "do|deploy"}],
         [{"text": "Self audit", "callback_data": "do|audit"}],
         [{"text": "Backtest gate", "callback_data": "do|backtest"},
          {"text": "Settings", "callback_data": "do|settings"}],
+        [{"text": "Home", "callback_data": "do|home"}],
+    ]
+
+
+def emergency_menu():
+    return [
         [{"text": "Emergency help", "callback_data": "do|emergency_help"},
-         {"text": "Help", "callback_data": "do|help"}],
+         {"text": "Pause entries", "callback_data": "do|entries_off"}],
+        [{"text": "Status", "callback_data": "do|status"},
+         {"text": "Home", "callback_data": "do|home"}],
     ]
 
 
@@ -527,8 +582,8 @@ def _self_audit(now: float | None = None) -> dict:
         str(moneyflow.get("pair", "missing")),
     )
     record(
-        "pair_switch_idle",
-        sidecar.get("pair_switch_stage") == "IDLE",
+        "pair_switch_settled",
+        sidecar.get("pair_switch_stage") in {"ACTIVE", "PAUSED_READY"},
         str(sidecar.get("pair_switch_stage", "missing")),
     )
     record("freqtrade_ping", freqtrade.get("ok") is True, "ok" if freqtrade.get("ok") else "failed")
@@ -654,8 +709,25 @@ def _show_pairs(chat, page=0):
     )
 
 
-def route(action, chat):
-    if action == "entries_on":
+def route(action, chat, message_id=None):
+    if action == "home":
+        edit_or_send("Bitcoin Spot bot owner controls", chat, message_id, menu())
+    elif action == "menu_dashboard":
+        edit_or_send("Dashboard - read-only bot and account status.", chat,
+                     message_id, dashboard_menu())
+    elif action == "menu_trading":
+        edit_or_send("Trading and protection controls.", chat,
+                     message_id, trading_menu())
+    elif action == "menu_system":
+        edit_or_send("System, validation and deployment controls.", chat,
+                     message_id, system_menu())
+    elif action == "menu_emergency":
+        edit_or_send("Emergency controls - confirmations remain mandatory.", chat,
+                     message_id, emergency_menu())
+    elif action == "help":
+        edit_or_send(help_text(), chat, message_id,
+                     [[{"text": "Home", "callback_data": "do|home"}]])
+    elif action == "entries_on":
         _ask_confirm(chat, "CONFIRM resume", "resume_entries", text=
                      "Resume Freqtrade signal generation and sidecar entries?")
     elif action == "entries_off":
@@ -862,7 +934,16 @@ def handle_message(message):
 
 def handle_callback(callback):
     user_id = callback.get("from", {}).get("id")
-    chat = str(callback.get("message", {}).get("chat", {}).get("id", ""))
+    message = callback.get("message", {})
+    chat = str(message.get("chat", {}).get("id", ""))
+    raw_message_id = message.get("message_id")
+    message_id = (
+        raw_message_id
+        if isinstance(raw_message_id, int)
+        and not isinstance(raw_message_id, bool)
+        and raw_message_id > 0
+        else None
+    )
     data = str(callback.get("data", ""))
     try:
         requests.post(BASE + "/answerCallbackQuery",
@@ -873,7 +954,7 @@ def handle_callback(callback):
         audit("telegram_callback_unauthorized", severity="WARNING", details={"user_id": user_id})
         return
     if data.startswith("do|"):
-        route(data.split("|", 1)[1], chat); return
+        route(data.split("|", 1)[1], chat, message_id); return
     if data.startswith(("select|", "page|")):
         item, reason = CB.consume(data.split("|", 1)[1])
         if not item:

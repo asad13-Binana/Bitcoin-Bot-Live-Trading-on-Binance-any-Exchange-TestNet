@@ -675,9 +675,15 @@ def test_account_events_trigger_authoritative_reconciliation(
 
 
 def test_telegram_menu_is_btc_control_only_and_has_no_altcoin_scanner_actions():
-    buttons = [button for row in telegram_bot.menu() for button in row]
+    menus = (
+        telegram_bot.menu(), telegram_bot.dashboard_menu(),
+        telegram_bot.trading_menu(), telegram_bot.system_menu(),
+        telegram_bot.emergency_menu(),
+    )
+    assert len(telegram_bot.menu()) <= 5
+    buttons = [button for screen in menus for row in screen for button in row]
     callbacks = {button["callback_data"] for button in buttons}
-    assert callbacks == {
+    assert {
         "do|entries_on", "do|entries_off", "do|status", "do|balance",
         "do|profit", "do|last_signal", "do|pair", "do|pairs", "do|flow",
         "do|swap_done", "do|verify_pair",
@@ -685,10 +691,49 @@ def test_telegram_menu_is_btc_control_only_and_has_no_altcoin_scanner_actions():
         "do|trailing_help", "do|be_help", "do|profit_help", "do|reconcile",
         "do|restart_stream", "do|logs", "do|deploy", "do|backtest",
         "do|audit", "do|settings", "do|emergency_help", "do|help",
-    }
-    rendered = json.dumps(telegram_bot.menu()).lower() + " " + telegram_bot.help_text().lower()
+    }.issubset(callbacks)
+    assert {
+        "do|menu_dashboard", "do|menu_trading", "do|menu_system",
+        "do|menu_emergency", "do|home",
+    }.issubset(callbacks)
+    rendered = json.dumps(menus).lower() + " " + telegram_bot.help_text().lower()
     for forbidden in ("scanner", "scan50", "top 50", "altcoin", "sharia"):
         assert forbidden not in rendered
+
+
+def test_telegram_menu_edit_failure_is_presentation_only(monkeypatch):
+    class Response:
+        status_code = 500
+        text = "edit unavailable"
+
+        def raise_for_status(self):
+            raise RuntimeError("edit unavailable")
+
+    sent = []
+    monkeypatch.setattr(telegram_bot, "TOKEN", "123456:" + "T" * 32)
+    monkeypatch.setattr(telegram_bot.requests, "post", lambda *args, **kwargs: Response())
+    monkeypatch.setattr(
+        telegram_bot, "send",
+        lambda text, chat_id=None, buttons=None: sent.append((text, chat_id, buttons)),
+    )
+    telegram_bot.edit_or_send("menu", "123", 77, telegram_bot.menu())
+    assert sent == [("menu", "123", telegram_bot.menu())]
+
+
+def test_telegram_callback_routes_navigation_with_existing_message_id(monkeypatch):
+    routed = []
+    monkeypatch.setattr(telegram_bot, "is_owner", lambda *_: True)
+    monkeypatch.setattr(telegram_bot.requests, "post", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        telegram_bot, "route", lambda action, chat, message_id=None:
+        routed.append((action, chat, message_id)),
+    )
+    telegram_bot.handle_callback({
+        "id": "callback", "from": {"id": 7},
+        "message": {"message_id": 77, "chat": {"id": 7}},
+        "data": "do|menu_dashboard",
+    })
+    assert routed == [("menu_dashboard", "7", 77)]
 
 
 def test_telegram_self_audit_is_read_only_and_owner_accessible(tmp_path, monkeypatch):
@@ -716,7 +761,7 @@ def test_telegram_self_audit_is_read_only_and_owner_accessible(tmp_path, monkeyp
     (sidecar_runtime / "sidecar_health.json").write_text(json.dumps({
         "ok": True, "ts": now, "execution_mode": "simulation",
         "simulation": True, "entries_enabled": False, "unresolved_intents": 0,
-        "active_pair": "BTC/USDT", "pair_switch_stage": "IDLE",
+        "active_pair": "BTC/USDT", "pair_switch_stage": "ACTIVE",
     }), encoding="utf-8")
     (moneyflow_runtime / "moneyflow_health.json").write_text(json.dumps({
         "ok": True, "ts": now, "pair": "BTC/USDT",
@@ -781,7 +826,7 @@ def test_telegram_self_audit_fails_closed_on_stale_or_armed_state(tmp_path, monk
         "deployment_active", "release_validation", "release_identity",
         "release_path_identity", "deployment_mode", "release_validation_mode",
         "entries_off", "no_unresolved_intents", "btc_pair_consistency",
-        "moneyflow_pair_consistency", "pair_switch_idle",
+        "moneyflow_pair_consistency", "pair_switch_settled",
         "freqtrade_ping", "sidecar_fresh", "moneyflow_healthy",
         "moneyflow_fresh", "telegram_healthy", "telegram_fresh",
     ):

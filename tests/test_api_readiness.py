@@ -102,6 +102,38 @@ def test_report_is_get_only_and_contains_no_credentials(monkeypatch):
         assert secret not in encoded
 
 
+def _cmc_v3_payload():
+    return {
+        "status": {"error_code": 0, "error_message": None},
+        "data": [{
+            "id": 1,
+            "name": "Bitcoin",
+            "symbol": "BTC",
+            "slug": "bitcoin",
+            "quote": [{"symbol": "USD", "price": 100_000.0}],
+        }],
+    }
+
+
+def test_optional_coinmarketcap_readiness_accepts_only_current_v3_envelope(monkeypatch):
+    env = {
+        **environment(),
+        "COINMARKETCAP_CONTEXT_ENABLED": "true",
+        "COINMARKETCAP_API_KEY": "c" * 32,
+    }
+    probe = api_readiness.ApiReadinessProbe(env=env, release_mode="testnet")
+    monkeypatch.setattr(probe, "_request_json", lambda *args, **kwargs: _cmc_v3_payload())
+    assert probe._optional_providers()["coinmarketcap"] == {
+        "ok": True, "skipped": False, "asset": "BTC",
+    }
+
+    monkeypatch.setattr(
+        probe, "_request_json", lambda *args, **kwargs: _cmc_v3_payload()["data"]
+    )
+    with pytest.raises(api_readiness.ReadinessError, match="wrong asset identity"):
+        probe._optional_providers()
+
+
 def test_wrapper_requires_root_trusted_env_and_literal_parser():
     wrapper = (ROOT / "deploy/api_preflight.sh").read_text(encoding="utf-8")
     assert "api_preflight.sh must run as root" in wrapper

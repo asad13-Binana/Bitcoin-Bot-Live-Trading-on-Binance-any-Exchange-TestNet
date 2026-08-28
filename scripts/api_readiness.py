@@ -354,12 +354,26 @@ class ApiReadinessProbe:
                         params={"id": "1", "convert": "USD"},
                         headers={"Accept": "application/json", header_name: key},
                     )
+                    status = payload.get("status") if isinstance(payload, dict) else None
+                    rows = payload.get("data") if isinstance(payload, dict) else None
+                    row = rows[0] if isinstance(rows, list) and len(rows) == 1 else None
+                    quotes = row.get("quote") if isinstance(row, dict) else None
+                    quote = (
+                        quotes[0]
+                        if isinstance(quotes, list) and len(quotes) == 1
+                        else None
+                    )
                     valid = (
-                        isinstance(payload, list)
-                        and len(payload) == 1
-                        and isinstance(payload[0], dict)
-                        and payload[0].get("id") == 1
-                        and str(payload[0].get("symbol", "")).upper() == "BTC"
+                        isinstance(status, dict)
+                        and type(status.get("error_code")) is int
+                        and status.get("error_code") == 0
+                        and isinstance(row, dict)
+                        and row.get("id") == 1
+                        and str(row.get("symbol", "")).upper() == "BTC"
+                        and str(row.get("slug", "")).lower() == "bitcoin"
+                        and str(row.get("name", "")).lower() == "bitcoin"
+                        and isinstance(quote, dict)
+                        and str(quote.get("symbol", "")).upper() == "USD"
                     )
             finally:
                 self.timeout = original_timeout

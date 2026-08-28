@@ -49,8 +49,9 @@ def _cg_payload(price=100_000.0):
 
 
 def _cmc_payload(price=100_100.0):
-    return [
-        {
+    return {
+        "status": {"error_code": 0, "error_message": None},
+        "data": [{
             "id": 1,
             "name": "Bitcoin",
             "symbol": "BTC",
@@ -65,8 +66,8 @@ def _cmc_payload(price=100_100.0):
                     "last_updated": "2026-07-22T00:00:00Z",
                 }
             ],
-        }
-    ]
+        }],
+    }
 
 
 class CaptureTransport:
@@ -124,19 +125,43 @@ def test_clients_use_exact_fixed_bitcoin_gets_and_header_only_credentials():
         ),
         CoinMarketCapClient(
             "key",
-            transport=CaptureTransport([{
+            transport=CaptureTransport({
+                "status": {"error_code": 0},
+                "data": [{
                 "id": 1027,
                 "name": "Ethereum",
                 "symbol": "ETH",
                 "slug": "ethereum",
                 "quote": [{"symbol": "USD"}],
-            }]),
+                }],
+            }),
         ),
     ],
 )
 def test_clients_fail_closed_on_identity_mismatch_or_extra_assets(client):
     with pytest.raises(ProviderPayloadError):
         client.fetch_bitcoin_usd()
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        _cmc_payload()["data"],
+        {"status": {"error_code": 1006}, "data": _cmc_payload()["data"]},
+        {"status": {"error_code": 0}, "data": []},
+        {
+            "status": {"error_code": 0},
+            "data": _cmc_payload()["data"] + _cmc_payload()["data"],
+        },
+        {
+            "status": {"error_code": 0},
+            "data": [{**_cmc_payload()["data"][0], "quote": []}],
+        },
+    ],
+)
+def test_coinmarketcap_requires_the_exact_successful_v3_envelope(payload):
+    with pytest.raises(ProviderPayloadError):
+        CoinMarketCapClient("key", transport=CaptureTransport(payload)).fetch_bitcoin_usd()
 
 
 @pytest.mark.parametrize("bad", [float("nan"), float("inf"), -1, True, "not-a-number"])
