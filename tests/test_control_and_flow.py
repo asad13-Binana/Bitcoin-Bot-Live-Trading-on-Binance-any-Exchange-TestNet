@@ -701,6 +701,36 @@ def test_telegram_menu_is_btc_control_only_and_has_no_altcoin_scanner_actions():
         assert forbidden not in rendered
 
 
+def test_every_static_telegram_menu_button_routes_to_an_owner_response(monkeypatch):
+    sent, _, _ = _telegram_capture(monkeypatch)
+    monkeypatch.setattr(
+        telegram_bot,
+        "edit_or_send",
+        lambda text, chat, message_id=None, buttons=None:
+        sent.append((str(text), str(chat), buttons)),
+    )
+    menus = (
+        telegram_bot.menu(), telegram_bot.dashboard_menu(),
+        telegram_bot.trading_menu(), telegram_bot.system_menu(),
+        telegram_bot.emergency_menu(),
+    )
+    actions = sorted({
+        button["callback_data"].split("|", 1)[1]
+        for screen in menus for row in screen for button in row
+        if button["callback_data"].startswith("do|")
+    })
+    for action in actions:
+        sent.clear()
+        telegram_bot.route(action, "7", 77)
+        assert sent, f"Telegram menu action produced no owner response: {action}"
+
+    # An owner-forged or stale callback name must fall back to help instead of
+    # raising a KeyError and interrupting the Telegram polling loop.
+    sent.clear()
+    telegram_bot.route("mode_unrecognised", "7", 77)
+    assert sent and "Commands:" in sent[-1][0]
+
+
 def test_telegram_menu_edit_failure_is_presentation_only(monkeypatch):
     class Response:
         status_code = 500

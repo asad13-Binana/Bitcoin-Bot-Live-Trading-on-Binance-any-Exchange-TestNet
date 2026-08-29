@@ -7,8 +7,8 @@ reclaim an idle instance and capacity can still be unavailable.
 
 ## Safety model
 
-1. `bitcoin-bot-state-backup.timer` creates a consistent, secret-free local backup.
-2. `bitcoin-bot-offhost-backup.timer` validates the newest backup, encrypts it with an
+1. `bitcoin-testnet-state-backup.timer` creates a consistent, secret-free local backup.
+2. `bitcoin-testnet-offhost-backup.timer` validates the newest backup, encrypts it with an
    `age` public recipient, uploads it to a private OCI Object Storage bucket, and
    downloads the encrypted object once to verify its exact SHA-256.
 3. The VM authenticates as an OCI instance principal. No user API key, private
@@ -56,14 +56,14 @@ authorise a replacement VM.
 On the VM:
 
 ```bash
-sudoedit /etc/bitcoin-bot/offhost-backup.env
-sudo chmod 0600 /etc/bitcoin-bot/offhost-backup.env
-sudo chown root:root /etc/bitcoin-bot/offhost-backup.env
-sudo /usr/local/libexec/bitcoin-bot/configure_offhost_backup.sh
-sudo systemctl start bitcoin-bot-state-backup.service
-sudo systemctl start bitcoin-bot-offhost-backup.service
-sudo systemctl status bitcoin-bot-offhost-backup.service --no-pager
-sudo /usr/local/sbin/bitcoin-bot-oracle-validate
+sudoedit /etc/bitcoin-testnet/offhost-backup.env
+sudo chmod 0600 /etc/bitcoin-testnet/offhost-backup.env
+sudo chown root:root /etc/bitcoin-testnet/offhost-backup.env
+sudo /usr/local/libexec/bitcoin-testnet/configure_offhost_backup.sh
+sudo systemctl start bitcoin-testnet-state-backup.service
+sudo systemctl start bitcoin-testnet-offhost-backup.service
+sudo systemctl status bitcoin-testnet-offhost-backup.service --no-pager
+sudo /usr/local/sbin/bitcoin-testnet-oracle-validate
 ```
 
 `configure_offhost_backup.sh` pulls Oracle's official OCI CLI image by immutable
@@ -98,7 +98,7 @@ identity temporarily as root-owned mode `0600`, stage one known timestamp, and
 remove the identity from the VM when the drill is complete:
 
 ```bash
-sudo /usr/local/libexec/bitcoin-bot/stage_offhost_restore.sh \
+sudo /usr/local/libexec/bitcoin-testnet/stage_offhost_restore.sh \
   YYYYMMDDTHHMMSSZ /root/bitcoin-bot-recovery-identity.txt
 sudo rm -f /root/bitcoin-bot-recovery-identity.txt
 ```
@@ -115,4 +115,3 @@ unchanged. They cannot prove your tenancy bucket, IAM policy, email confirmation
 alarm delivery, Object Storage upload, replacement-instance capacity, or recovery
 drill. Capture those results after Oracle provisioning. Until then, classify the
 repository as source-ready—not host-validated or LIVE-money certified.
-

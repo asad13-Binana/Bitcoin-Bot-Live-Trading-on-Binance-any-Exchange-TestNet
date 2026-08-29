@@ -734,7 +734,7 @@ def route(action, chat, message_id=None):
         sidecar = sidecar_command("entries", {"enabled": False}, wait=True)
         freqtrade = ft_call("POST", "/pause")
         send(json.dumps({"sidecar": sidecar, "freqtrade": freqtrade}, indent=2), chat)
-    elif action.startswith("mode_"):
+    elif action in {"mode_fixed", "mode_trailing", "mode_oco_trailing"}:
         mode = {"mode_fixed": "FIXED_OCO", "mode_trailing": "TRAILING_ONLY",
                 "mode_oco_trailing": "OCO_TRAILING"}[action]
         _ask_confirm(chat, "CONFIRM mode", "set_mode", {"mode": mode},

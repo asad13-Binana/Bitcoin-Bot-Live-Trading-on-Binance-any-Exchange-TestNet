@@ -1,22 +1,14 @@
 BITCOIN SPOT BOT — GITHUB AND ORACLE LAUNCH GUIDE
-Release date: 30 July 2026
-Status: source-level offline release candidate; live trading is NOT certified
+Status: current GitHub release workflow; Oracle runtime validation is pending
 
 1. PACKAGE CHOICE
 
-Use only one complete package:
+Use only the immutable artifact created by the successful workflow for the exact
+reviewed TestNet commit. RELEASE_MODE=testnet permits simulation or TestNet and
+rejects live execution regardless of environment variables.
 
-- BITCOIN_BOT_TESTNET_GITHUB_ORACLE_2026-07-30.zip
-  RELEASE_MODE=testnet; permits EXECUTION_MODE=simulation or testnet.
-  It rejects live mode regardless of environment variables.
-
-- BITCOIN_BOT_LIVE_GITHUB_ORACLE_2026-07-30.zip
-  RELEASE_MODE=live; permits EXECUTION_MODE=simulation or live.
-  It still defaults to simulation and remains not-certified for real funds.
-
-Verify the adjacent checksum before extraction. Example on Ubuntu:
-
-  sha256sum -c BITCOIN_BOT_TESTNET_GITHUB_ORACLE_2026-07-30.zip.sha256
+Verify the artifact's adjacent `bitcoin-bot-<commit>.tar.gz.sha256` before
+extraction. Do not substitute an old Desktop ZIP or a working-tree archive.
 
 Never commit .env, API keys, Telegram tokens, signing private keys, runtime
 databases, evidence files, logs or account identifiers.
@@ -48,7 +40,7 @@ Do not tag a production release while any required check is absent or skipped.
 
 Follow docs/GITHUB_ORACLE_DEPLOYMENT.md. Prepare a supported Oracle Ubuntu host,
 restrict SSH at the VCN and host firewall, install Docker/chrony, and create the
-private root-owned mode-0600 file /etc/bitcoin-bot/.env.
+private root-owned mode-0600 file /etc/bitcoin-testnet/.env.
 
 Use one Always Free VM.Standard.A1.Flex allocation of 2 OCPU and 12 GB RAM. The
 1 GB E2.1.Micro shape is not supported for the full four-service stack. The
@@ -131,12 +123,12 @@ certify real-money trading or guarantee profit.
 
 5. CHECKS AFTER EVERY DEPLOYMENT
 
-  readlink -f /opt/bitcoin-bot/current
-  sudo /usr/local/sbin/bitcoin-bot-deploy verify
-  docker ps --filter label=com.docker.compose.project=bitcoin-bot
-  cat /var/lib/bitcoin-bot/shared/runtime/deployment_status.json
-  cat /var/lib/bitcoin-bot/shared/runtime/release_validation.json
-  cat /var/lib/bitcoin-bot/shared/runtime/sidecar/sidecar_health.json
+  readlink -f /opt/bitcoin-testnet/current
+  sudo /usr/local/sbin/bitcoin-testnet-deploy verify
+  docker ps --filter label=com.docker.compose.project=bitcoin-testnet
+  cat /var/lib/bitcoin-testnet/shared/runtime/deployment_status.json
+  cat /var/lib/bitcoin-testnet/shared/runtime/release_validation.json
+  cat /var/lib/bitcoin-testnet/shared/runtime/sidecar/sidecar_health.json
 
 Verify RELEASE_MODE, execution_mode, active_pair, pair_generation,
 pair_config_hash, pair_switch_stage, reconciliation status, user-stream status,

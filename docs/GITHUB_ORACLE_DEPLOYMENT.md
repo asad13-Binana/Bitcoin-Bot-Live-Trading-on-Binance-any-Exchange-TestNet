@@ -67,14 +67,15 @@ own path. The bot and runner need outbound HTTPS. No application HTTP port needs
 to be public. Verify that the selected image supports IMDSv2, and configure
 IMDSv2-only. Do not install Oracle Database; this bot uses local SQLite state.
 
-For the initial bootstrap only, transfer the final release ZIP and its adjacent
-`.sha256` from the Desktop by the administrator. Verify the external ZIP hash,
-freshly extract it, then verify the internal manifest before running any setup:
+For the initial bootstrap only, transfer the exact reviewed Bitcoin TestNet
+release package and its adjacent `.sha256` by the administrator. Verify the
+external package hash, freshly extract it, enter its repository root, then
+verify the internal manifest before running any setup:
+
+After verifying and extracting the package with its supplied filename, enter the
+directory that contains `RELEASE_MANIFEST.json`, then run:
 
 ```bash
-sha256sum -c BITCOIN_BOT_LIVE_GITHUB_ORACLE_2026-07-30.zip.sha256
-python3 -m zipfile -e BITCOIN_BOT_LIVE_GITHUB_ORACLE_2026-07-30.zip bootstrap
-cd bootstrap/bitcoin-bot-live-trading
 python3 scripts/verify_manifest.py
 python3 tests/secret_scan.py
 chmod +x deploy/oracle_setup.sh
@@ -85,29 +86,30 @@ DEPLOY_USER="$(id -un)" ENABLE_GITHUB_RUNNER=false bash deploy/oracle_setup.sh
 The setup configures the already selected deployment user and creates:
 
 - the trusted deployment user and existing Docker-based release directories;
-- `/etc/bitcoin-bot/.env`, mode `0600`, owned by `root:root`;
-- dedicated `gha-runner`, separate from the deployment user;
-- `/var/lib/bitcoin-bot/incoming`, mode `0700`, owned by `gha-runner`;
-- root-only staging and `/etc/bitcoin-bot/approved-artifact.sha256`;
-- root-owned `/usr/local/sbin/bitcoin-bot-deploy`;
+- `/etc/bitcoin-testnet/.env`, mode `0600`, owned by `root:root`;
+- dedicated `ghabtcntn`, separate from the deployment user;
+- `/var/lib/bitcoin-testnet/incoming`, mode `0700`, owned by `ghabtcntn`;
+- root-only staging and `/etc/bitcoin-testnet/approved-artifact.sha256`;
+- root-owned `/usr/local/sbin/bitcoin-testnet-deploy`;
 - an optional sudoers rule for exactly `preflight`, `simulation`, and `verify`
   only when `ENABLE_GITHUB_RUNNER=true` is explicitly selected.
 
 The runner is not in `docker`, `sudo`, `adm`, `lxd`, `disk`, or `root`. The
-Docker group is root-equivalent; never add `gha-runner` to it. The runner also
-cannot read `/etc/bitcoin-bot/.env`.
+Docker group is root-equivalent; never add `ghabtcntn` to it. The runner also
+cannot read `/etc/bitcoin-testnet/.env`.
 
 ## 3. Create the private simulation configuration
 
-Populate `/etc/bitcoin-bot/.env` from `.env.example` through `sudo`; it must
+Populate `/etc/bitcoin-testnet/.env` from `.env.example` through `sudo`; it must
 remain `root:root` mode `0600`. Do not commit, upload, print or place this file
-in GitHub secrets:
+in GitHub secrets. Never put a runtime `.env` in the release/source root; the
+manifest verifier correctly rejects unexpected files there:
 
 ```bash
-sudo install -m 0600 -o root -g root .env.example /etc/bitcoin-bot/.env
-sudoedit /etc/bitcoin-bot/.env
-sudo chown root:root /etc/bitcoin-bot/.env
-sudo chmod 0600 /etc/bitcoin-bot/.env
+sudo install -m 0600 -o root -g root .env.example /etc/bitcoin-testnet/.env
+sudoedit /etc/bitcoin-testnet/.env
+sudo chown root:root /etc/bitcoin-testnet/.env
+sudo chmod 0600 /etc/bitcoin-testnet/.env
 ```
 
 Generate every HMAC/API secret independently. For the self-hosted simulation
@@ -120,7 +122,7 @@ AUTO_CONFIRM=false
 AUTO_PROTECTION_ENABLED=false
 BINANCE_API_KEY=
 BINANCE_API_SECRET=
-SHARED_HOST_PATH=/var/lib/bitcoin-bot/shared
+SHARED_HOST_PATH=/var/lib/bitcoin-testnet/shared
 ```
 
 Set exact numeric `BOT_UID` and `BOT_GID` for the deployment user. The persistent
@@ -145,11 +147,11 @@ In the private repository, open:
 `Settings → Actions → Runners → New self-hosted runner`
 
 Select the Oracle host architecture and use the exact current commands generated
-by GitHub. Run installation and registration as `gha-runner`, not as root or the
+by GitHub. Run installation and registration as `ghabtcntn`, not as root or the
 bot deployment user, and add the custom label:
 
 ```text
-oracle-sim
+oracle-bitcoin-testnet
 ```
 
 Install the runner as a service using GitHub's generated service command. Do not
@@ -176,7 +178,7 @@ Use a two-pass process:
 4. On Oracle, use `sudoedit` to place only that 64-character digest in:
 
 ```text
-/etc/bitcoin-bot/approved-artifact.sha256
+/etc/bitcoin-testnet/approved-artifact.sha256
 ```
 
 5. Confirm the file is root-owned and mode `0600`.
@@ -210,9 +212,9 @@ administrator before enabling that release's workflow.
 ## 6. What the three restricted wrapper commands do
 
 ```bash
-sudo /usr/local/sbin/bitcoin-bot-deploy preflight
-sudo /usr/local/sbin/bitcoin-bot-deploy simulation
-sudo /usr/local/sbin/bitcoin-bot-deploy verify
+sudo /usr/local/sbin/bitcoin-testnet-deploy preflight
+sudo /usr/local/sbin/bitcoin-testnet-deploy simulation
+sudo /usr/local/sbin/bitcoin-testnet-deploy verify
 ```
 
 - `preflight` performs read-only host, secret-separation, artifact, manifest,
@@ -233,11 +235,11 @@ actions. It cannot edit the strategy or resume entries.
 After a successful workflow:
 
 ```bash
-readlink -f /opt/bitcoin-bot/current
-sudo /usr/local/sbin/bitcoin-bot-deploy verify
-cat /var/lib/bitcoin-bot/shared/runtime/deployment_status.json
-cat /var/lib/bitcoin-bot/shared/runtime/release_validation.json
-cat /var/lib/bitcoin-bot/shared/runtime/sidecar/sidecar_health.json
+readlink -f /opt/bitcoin-testnet/current
+sudo /usr/local/sbin/bitcoin-testnet-deploy verify
+cat /var/lib/bitcoin-testnet/shared/runtime/deployment_status.json
+cat /var/lib/bitcoin-testnet/shared/runtime/release_validation.json
+cat /var/lib/bitcoin-testnet/shared/runtime/sidecar/sidecar_health.json
 ```
 
 In the owner-only private Telegram chat, use:

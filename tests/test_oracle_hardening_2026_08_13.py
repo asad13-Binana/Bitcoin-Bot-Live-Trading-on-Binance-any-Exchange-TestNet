@@ -99,15 +99,17 @@ def test_compose_has_bounded_resources_logs_and_no_public_ports_or_socket():
     assert set(compose["services"]) == {
         "moneyflow", "freqtrade", "execution-sidecar", "telegram-broker"
     }
-    for service in compose["services"].values():
+    for name, service in compose["services"].items():
         assert "ports" not in service
         assert service.get("mem_limit")
         assert float(service.get("cpus", 0)) > 0
         assert int(service.get("pids_limit", 0)) > 0
-        assert service.get("restart") == "unless-stopped"
+        expected_restart = "on-failure:5" if name == "execution-sidecar" else "unless-stopped"
+        assert service.get("restart") == expected_restart
         assert service.get("logging", {}).get("driver") == "json-file"
         assert "/var/run/docker.sock" not in raw
     assert sum(float(service["cpus"]) for service in compose["services"].values()) <= 1.0
+    assert set(compose["services"]["telegram-broker"]["depends_on"]) == {"freqtrade"}
 
 
 def test_resource_guard_is_root_only_bounded_and_project_scoped():

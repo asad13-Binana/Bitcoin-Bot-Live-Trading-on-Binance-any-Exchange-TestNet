@@ -75,7 +75,7 @@ The full verifier needs the project test dependencies; keep its temporary enviro
 outside the immutable source tree so it cannot invalidate the exact manifest.
 
 Then use the verified installer documented below. It stores runtime configuration
-at `/etc/bitcoin-bot/.env`, outside the immutable release tree. Leave
+at `/etc/bitcoin-testnet/.env`, outside the immutable release tree. Leave
 `EXECUTION_MODE=simulation` and entries off for the first launch.
 
 Do not place Binance or Telegram credentials in Git, the ZIP, an issue, a workflow
@@ -103,6 +103,9 @@ The pinned six-repository Binance review and adopted/rejected decisions are in
 The current Oracle Free Tier sizing, ARM64 image verification, and decisions on
 the supplied OCI instance-creation and Oracle Database action repositories are
 in [`docs/ORACLE_GITHUB_SOURCE_REVIEW_2026-07-30.md`](docs/ORACLE_GITHUB_SOURCE_REVIEW_2026-07-30.md).
+The supplied AWS TestNet incident evidence, non-core corrections and protected-
+core boundary are recorded in
+[`docs/AWS_TESTNET_INCIDENT_REVIEW_2026-08-30.md`](docs/AWS_TESTNET_INCIDENT_REVIEW_2026-08-30.md).
 
 ## Pair changes
 

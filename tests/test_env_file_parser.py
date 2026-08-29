@@ -8,7 +8,7 @@ The privileged installers used to read configuration with:
 
 `source` makes Bash interpret the file, so every value was shell code executed
 with the installer's privileges — root, via `as_root`. The rollback path did the
-same to snapshots under /var/lib/bitcoin-bot/config-snapshots, which
+same to snapshots under /var/lib/bitcoin-testnet/config-snapshots, which
 oracle_setup.sh chowns to the unprivileged deployment user, turning a
 deployment-user file write into root code execution.
 
@@ -357,6 +357,8 @@ def test_oracle_env_ownership_contract_is_root_only_end_to_end():
     installer = INSTALL_ARTIFACT.read_text(encoding="utf-8")
     deployment = (ROOT / "docs/GITHUB_ORACLE_DEPLOYMENT.md").read_text(encoding="utf-8")
     security = (ROOT / "docs/SECURITY_AND_SECRETS_GUIDE.md").read_text(encoding="utf-8")
+    package_mode = (ROOT / "RELEASE_MODE").read_text(encoding="utf-8").strip()
+    private_env = f"/etc/bitcoin-{package_mode}/.env"
 
     assert 'install -m 0600 -o root -g root /dev/null "$PRIVATE/.env"' in setup
     assert 'chown root:root "$PRIVATE/.env"' in setup
@@ -367,7 +369,7 @@ def test_oracle_env_ownership_contract_is_root_only_end_to_end():
     assert '$(stat -c \'%g\' "$ENV_FILE") == 0' in installer
     assert "deployment-user-owned file" not in installer
     assert "owned by `root:root`" in deployment
-    assert "sudoedit /etc/bitcoin-bot/.env" in deployment
+    assert f"sudoedit {private_env}" in deployment
     assert "(`root:root`, mode 0600)" in security
 
 

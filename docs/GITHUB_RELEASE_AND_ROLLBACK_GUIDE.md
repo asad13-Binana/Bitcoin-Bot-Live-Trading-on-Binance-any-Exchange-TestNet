@@ -3,11 +3,11 @@
 ## Release identity
 
 Each CI artifact contains one `bitcoin-bot/` root. Its manifest hash becomes the
-release identity and image tag. Oracle snapshots `/etc/bitcoin-bot/.env` to a
+release identity and image tag. Oracle snapshots `/etc/bitcoin-testnet/.env` to a
 timestamp-matched mode-0600 file. A successful generation receives a one-line marker
 containing both the release hash and configuration SHA-256.
 
-`/opt/bitcoin-bot/current` is switched atomically. Do not edit this link, a config
+`/opt/bitcoin-testnet/current` is switched atomically. Do not edit this link, a config
 snapshot, success marker, manifest, evidence document, or retained backtest.
 
 ## Automatic rollback
