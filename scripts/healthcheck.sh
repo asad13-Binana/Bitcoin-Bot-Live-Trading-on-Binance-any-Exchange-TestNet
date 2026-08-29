@@ -3,18 +3,15 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
+# shellcheck source=deploy/instance_identity.sh
+source "$ROOT/deploy/instance_identity.sh"
 
 EXPECTED=(moneyflow freqtrade execution-sidecar telegram-broker)
-COMPOSE_PROJECT_NAME=bitcoin-bot
-CONFIG_ROOT=/var/lib/bitcoin-bot/config-snapshots
 CONFIG_FILE=${BITCOIN_BOT_ENV_FILE:-$CONFIG_ROOT/$(basename "$ROOT").env}
-if [[ ! -f "$CONFIG_FILE" ]]; then
-  [[ -f "$ROOT/.env" ]] || {
-    echo "private runtime config not found: $CONFIG_FILE" >&2
-    exit 1
-  }
-  CONFIG_FILE="$ROOT/.env"
-fi
+[[ -f "$CONFIG_FILE" && ! -L "$CONFIG_FILE" ]] || {
+  echo "private instance config not found or is a symlink: $CONFIG_FILE" >&2
+  exit 1
+}
 RELEASE_HASH=$(awk 'NF{print $1;exit}' RELEASE_SHA256.txt)
 [[ "$RELEASE_HASH" =~ ^[0-9a-f]{64}$ ]] || { echo 'invalid release hash' >&2; exit 1; }
 RELEASE_TAG="bitcoin-${RELEASE_HASH:0:16}"

@@ -57,6 +57,15 @@ def test_four_bot_resource_envelope_reconciles() -> None:
     assert host["maximum_aggregate_container_memory_mib"] == 5140
     assert sorted(item["monitor_port"] for item in instances) == [8090, 8091, 8092, 8093]
 
+
+def test_healthcheck_uses_the_immutable_instance_identity_and_no_repo_env() -> None:
+    script = (ROOT / "scripts" / "healthcheck.sh").read_text(encoding="utf-8")
+    assert 'source "$ROOT/deploy/instance_identity.sh"' in script
+    assert '$CONFIG_ROOT/$(basename "$ROOT").env' in script
+    assert 'COMPOSE_PROJECT_NAME=bitcoin-bot' not in script
+    assert '/var/lib/bitcoin-bot/config-snapshots' not in script
+    assert 'CONFIG_FILE="$ROOT/.env"' not in script
+
 def _identity_value(name: str) -> str:
     prefix = f"readonly {name}="
     for raw in (ROOT / "deploy" / "instance_identity.sh").read_text(

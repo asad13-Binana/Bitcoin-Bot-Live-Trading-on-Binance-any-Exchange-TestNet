@@ -153,10 +153,10 @@ Do not use an unreviewed major-version upgrade.
 Edit the root-only file:
 
 ```bash
-sudoedit /etc/bitcoin-bot/.env
-sudo chown root:root /etc/bitcoin-bot/.env
-sudo chmod 0600 /etc/bitcoin-bot/.env
-sudo stat -c '%U:%G %a %n' /etc/bitcoin-bot/.env
+sudoedit /etc/bitcoin-testnet/.env
+sudo chown root:root /etc/bitcoin-testnet/.env
+sudo chmod 0600 /etc/bitcoin-testnet/.env
+sudo stat -c '%U:%G %a %n' /etc/bitcoin-testnet/.env
 ```
 
 Copy keys from `.env.example`, never the example placeholder secrets. Required
@@ -195,35 +195,42 @@ With the optional GitHub runner disabled, use the isolated staging identity
 without granting it Docker or secret access:
 
 ```bash
-sudo install -m 0600 -o gha-runner -g gha-runner \
+sudo install -m 0600 -o ghabtcntn -g ghabtcntn \
   bitcoin-bot-COMMIT.tar.gz \
-  /var/lib/bitcoin-bot/incoming/bitcoin-bot-release.tar.gz
-sudo install -m 0600 -o gha-runner -g gha-runner \
+  /var/lib/bitcoin-testnet/incoming/bitcoin-bot-release.tar.gz
+sudo install -m 0600 -o ghabtcntn -g ghabtcntn \
   bitcoin-bot-COMMIT.tar.gz.sha256 \
-  /var/lib/bitcoin-bot/incoming/bitcoin-bot-release.tar.gz.sha256
-sudoedit /etc/bitcoin-bot/approved-artifact.sha256
-sudo chown root:root /etc/bitcoin-bot/approved-artifact.sha256
-sudo chmod 0600 /etc/bitcoin-bot/approved-artifact.sha256
+  /var/lib/bitcoin-testnet/incoming/bitcoin-bot-release.tar.gz.sha256
+sudoedit /etc/bitcoin-testnet/approved-artifact.sha256
+sudo chown root:root /etc/bitcoin-testnet/approved-artifact.sha256
+sudo chmod 0600 /etc/bitcoin-testnet/approved-artifact.sha256
 ```
 
 The approval file contains exactly one independently verified 64-character
 tarball SHA-256. Then run:
 
 ```bash
-sudo /usr/local/sbin/bitcoin-bot-deploy preflight
-sudo /usr/local/sbin/bitcoin-bot-deploy simulation
-sudo /usr/local/sbin/bitcoin-bot-deploy verify
+sudo /usr/local/sbin/bitcoin-testnet-deploy preflight
+sudo /usr/local/sbin/bitcoin-testnet-deploy simulation
+sudo /usr/local/sbin/bitcoin-testnet-deploy verify
 ```
 
 Approval is consumed before installation and cannot be silently replayed.
+
+The execution sidecar has five bounded automatic retries. If reconciliation
+continues to fail, it remains stopped and entries remain fail-closed instead of
+creating an unlimited restart storm. Telegram remains available after Freqtrade
+is healthy so the owner can inspect `/status`, `/audit`, `/deploy` and `/errors`.
+Do not repeatedly restart the sidecar or clear a risk pause until the account,
+orders, order lists, intents and durable state reconcile.
 
 ## 8. Validate the Oracle host
 
 Run the redacted diagnostic:
 
 ```bash
-sudo /usr/local/sbin/bitcoin-bot-oracle-validate \
-  | sudo tee /var/log/bitcoin-bot/oracle-validation.txt
+sudo /usr/local/sbin/bitcoin-testnet-oracle-validate \
+  | sudo tee /var/log/bitcoin-testnet/oracle-validation.txt
 ```
 
 It reports identity, OS, architecture, kernel, CPU, RAM, swap, disk, Docker,
@@ -248,9 +255,9 @@ without recording that token in shell history.
 Create a root-only backup:
 
 ```bash
-sudo /usr/local/libexec/bitcoin-bot/backup_state.sh
-sudo /usr/local/libexec/bitcoin-bot/verify_backup.sh \
-  /var/backups/bitcoin-bot/YYYYMMDDTHHMMSSZ
+sudo /usr/local/libexec/bitcoin-testnet/backup_state.sh
+sudo /usr/local/libexec/bitcoin-testnet/verify_backup.sh \
+  /var/backups/bitcoin-testnet/YYYYMMDDTHHMMSSZ
 ```
 
 The backup uses SQLite's online backup API and `PRAGMA quick_check`, captures
@@ -309,7 +316,7 @@ results authorises LIVE money.
 - Do not use a production Binance execution endpoint.
 - Do not enable withdrawals on any API key.
 - Do not expose port 8091, Freqtrade, databases or Docker publicly.
-- Do not add the deploy, runner or botmon account to the Docker group.
+- Do not add the deploy, runner or bitcointnmon account to the Docker group.
 - Do not deploy a working tree or an artifact whose digest is not independently approved.
 - Do not describe the strategy as profitable or real-money ready.
 

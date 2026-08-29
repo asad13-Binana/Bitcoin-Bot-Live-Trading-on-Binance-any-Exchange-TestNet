@@ -58,7 +58,7 @@ as_root(){ if [[ $EUID -eq 0 ]]; then "$@"; else sudo -n "$@"; fi; }
 #
 # The old mode check (`stat -c '%a' == 600`) constrained permissions but never
 # ownership, and the rollback path sourced configuration snapshots under
-# /var/lib/bitcoin-bot/config-snapshots, which oracle_setup.sh chowns to the
+# /var/lib/bitcoin-testnet/config-snapshots, which oracle_setup.sh chowns to the
 # unprivileged deployment user. Anyone able to write a snapshot could therefore
 # execute arbitrary code as root during the next upgrade or rollback.
 #

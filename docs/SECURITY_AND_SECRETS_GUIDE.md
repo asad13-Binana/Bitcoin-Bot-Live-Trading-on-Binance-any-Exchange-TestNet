@@ -15,8 +15,8 @@ withdrawal. Rotate a key after any suspected disclosure.
 
 ## Storage
 
-Secrets live only in `/etc/bitcoin-bot/.env` (`root:root`, mode 0600) and separate
-root/botmon monitor env files. Config snapshots are mode 0600 under a mode-0700
+Secrets live only in `/etc/bitcoin-testnet/.env` (`root:root`, mode 0600) and separate
+root/bitcointnmon monitor env files. Config snapshots are mode 0600 under a mode-0700
 directory and are bound into a success marker by SHA-256. Do not put any private env,
 key, evidence private key, database, or logs in Git or the ZIP.
 
@@ -28,7 +28,7 @@ Oracle receives only its public key.
 
 Use a private GitHub repository and protect `main`; environment-reviewer availability
 is plan-dependent and is not the primary deployment control. Keep the dedicated
-`gha-runner` outside Docker and privileged groups, separate it from the deployment
+`ghabtcntn` outside Docker and privileged groups, separate it from the deployment
 account, and require the one-use root-approved artifact hash. GitHub Actions does not
 SSH to Oracle. Pin the host key for administrator SSH/SCP access and restrict that
 inbound path. Docker group membership is effectively privileged and must be limited

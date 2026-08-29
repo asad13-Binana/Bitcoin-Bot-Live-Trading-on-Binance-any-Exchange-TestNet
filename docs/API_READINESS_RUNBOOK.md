@@ -8,7 +8,7 @@ not send a Telegram message.
 
 ## Private configuration
 
-Create `/etc/bitcoin-bot/.env` from `.env.example`, populate it outside Git,
+Create `/etc/bitcoin-testnet/.env` from `.env.example`, populate it outside Git,
 and keep it a regular `root:root` file with mode `0600`. Never paste a key or
 token into a GitHub issue, workflow variable, command line, log, or audit
 report. For Binance, use a dedicated Spot key, disable withdrawals, and apply
@@ -25,8 +25,8 @@ Set `EXECUTION_MODE=testnet`, `BOT_ENVIRONMENT=TESTNET`,
 `LIVE_TRADING_ENABLED=false`, and use Binance Spot Testnet credentials. Then:
 
 ```bash
-sudo /opt/bitcoin-bot/current/deploy/api_preflight.sh \
-  | sudo tee /var/log/bitcoin-bot/api-readiness-testnet.json >/dev/null
+sudo /opt/bitcoin-testnet/current/deploy/api_preflight.sh \
+  | sudo tee /var/log/bitcoin-testnet/api-readiness-testnet.json >/dev/null
 ```
 
 The command exits non-zero if any required check fails. A pass proves API
@@ -35,19 +35,8 @@ lifecycle, Telegram message delivery, crash recovery, Oracle soak, or trading
 profitability. Perform the TestNet lifecycle drills in
 `docs/EXTERNAL_VALIDATION_RUNBOOK.md` next.
 
-## LIVE package: authentication only, still disabled
+## LIVE boundary
 
-Do this only after TestNet and Oracle gates are complete. Keep
-`EXECUTION_MODE=simulation`, `BOT_ENVIRONMENT=LIVE`, and
-`LIVE_TRADING_ENABLED=false`; use a dedicated production key with withdrawals
-disabled and IP restriction enabled. The explicit phrase prevents accidental
-production authentication:
-
-```bash
-sudo /opt/bitcoin-bot/current/deploy/api_preflight.sh \
-  --confirm-live-read-only LIVE_READ_ONLY_NO_ORDERS \
-  | sudo tee /var/log/bitcoin-bot/api-readiness-live-read-only.json >/dev/null
-```
-
-This does not enable LIVE trading. The current protected strategy failed its
-profitability/drawdown gate, so real-money promotion remains prohibited.
+Do not put production credentials in this TestNet instance. Production
+read-only authentication belongs to the separately reviewed LIVE repository
+and cannot promote this TestNet package to LIVE trading.

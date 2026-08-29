@@ -143,6 +143,10 @@ services:
 
   execution-sidecar:
     <<: *service-hardening
+    # A reconciliation failure is a durable operator gate, not a reason to
+    # spin forever. Five bounded retries preserve transient recovery while
+    # avoiding the restart storm observed on the AWS TestNet experiment.
+    restart: "on-failure:5"
     image: bitcoin-testnet-services:${RELEASE_TAG:-local}
     command: python -m services.execution_sidecar.main
     depends_on:
@@ -254,8 +258,6 @@ services:
     image: bitcoin-testnet-services:${RELEASE_TAG:-local}
     command: python -m services.telegram_broker.bot
     depends_on:
-      execution-sidecar:
-        condition: service_healthy
       freqtrade:
         condition: service_healthy
     environment:
