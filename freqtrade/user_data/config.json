@@ -43,7 +43,7 @@
       "method": "RemotePairList",
       "mode": "whitelist",
       "processing_mode": "filter",
-      "pairlist_url": "file:///freqtrade/shared/pair/current_pairlist.json",
+      "pairlist_url": "file:////freqtrade/shared/pair/current_pairlist.json",
       "number_assets": 1,
       "refresh_period": 10,
       "keep_pairlist_on_failure": false,
