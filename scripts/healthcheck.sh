@@ -14,14 +14,23 @@ CONFIG_FILE=${BITCOIN_BOT_ENV_FILE:-$CONFIG_ROOT/$(basename "$ROOT").env}
 }
 RELEASE_HASH=$(awk 'NF{print $1;exit}' RELEASE_SHA256.txt)
 [[ "$RELEASE_HASH" =~ ^[0-9a-f]{64}$ ]] || { echo 'invalid release hash' >&2; exit 1; }
+CONFIG_HASH=$(sha256sum "$CONFIG_FILE" | awk '{print $1}')
+[[ "$CONFIG_HASH" =~ ^[0-9a-f]{64}$ ]] || { echo 'invalid config hash' >&2; exit 1; }
 RELEASE_TAG="bitcoin-${RELEASE_HASH:0:16}"
 CLEAN_ENV=(env -i "PATH=$PATH" "HOME=${HOME:-/tmp}" \
   "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" "RELEASE_TAG=$RELEASE_TAG" \
-  "SIDECAR_RELEASE_HASH=$RELEASE_HASH" "ENVELOPE_RELEASE_HASH=$RELEASE_HASH")
+  "SIDECAR_RELEASE_HASH=$RELEASE_HASH" "ENVELOPE_RELEASE_HASH=$RELEASE_HASH" \
+  "DEPLOYED_RELEASE_HASH=$RELEASE_HASH" "DEPLOYED_CONFIG_SHA256=$CONFIG_HASH")
 for passthrough in DOCKER_HOST DOCKER_CONTEXT DOCKER_CONFIG XDG_RUNTIME_DIR; do
   [[ -n "${!passthrough:-}" ]] && CLEAN_ENV+=("$passthrough=${!passthrough}")
 done
 COMPOSE=("${CLEAN_ENV[@]}" docker compose --env-file "$CONFIG_FILE")
+
+# Report interpolation errors as configuration failures, not missing services.
+"${COMPOSE[@]}" config -q || {
+  echo 'health-check Compose configuration failed' >&2
+  exit 1
+}
 
 fail=0
 mapfile -t running < <("${COMPOSE[@]}" ps --status running --services 2>/dev/null | sort)

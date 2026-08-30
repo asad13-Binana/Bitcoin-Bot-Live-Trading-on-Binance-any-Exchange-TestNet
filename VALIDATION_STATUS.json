@@ -10,6 +10,7 @@
   "monitoring_authority": "monitoring/api/app.py is the sole HTTP monitoring API implementation",
   "offline_verification_host": "Windows 11, Python 3.13.14; service and monitoring hash locks installed together in an isolated environment; Git Bash full release gate executed; Docker Linux runtime and systemd runtime unavailable locally; exact-commit GitHub and actual-host Oracle evidence are classified separately",
   "results": {
+    "post_deployment_pairlist_repair": "The supplied AWS PR17 cutover failed at the pinned Freqtrade RemotePairList loader. Both source configurations now retain the absolute mounted path; seven offline deployment regressions and the artifact job's six real-plugin tests cover path semantics and refresh/failure handling. The health-check helper now binds the required deployment hashes. Exact-commit CI must pass before manual merge; sustained AWS/Oracle worker health remains a separate host gate. See docs/AWS_POST_DEPLOYMENT_REPAIR_2026-08-30.md.",
     "core_and_monitoring_suite": "The complete repository and monitoring suites are required to pass for the exact release; authoritative per-interpreter counts and any skips are retained in exact-head CI rather than duplicated in this drift-prone tracked summary",
     "intentional_test_skips": "Windows symlink creation unavailable; ordinary pytest environment lacks TA-Lib, while the direct TA-Lib strategy probe and exact Freqtrade backtest both passed execution",
     "focused_pair_and_capability_suite": "37 passed, 0 failed",
