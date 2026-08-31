@@ -203,8 +203,8 @@ Total prompt/send call sites: 57
   line 715: send: send("Confirmation rejected: " + reason, chat)
 
 8. COMPLETE NON-TEST PYTHON AND BASH FUNCTION INVENTORY
-Total callable declarations: 729
-Kinds: function=657, shell_function=72
+Total callable declarations: 738
+Kinds: function=666, shell_function=72
 This section is generated from docs/audit/FUNCTION_PARITY_MATRIX.csv. Python rows carry an exact function source hash. Bash rows carry the exact containing-file hash; the release manifest independently binds every byte of every file.
 
 FILE: deploy/backup_state.sh (1 callable(s))
@@ -289,16 +289,27 @@ line 23 | shell_function | on_exit | PRESERVE_AND_REGRESSION_TEST | sha256=37391
 line 93 | shell_function | run_oci | PRESERVE_AND_REGRESSION_TEST | sha256=3739143efe1608a033705122968f5480a2ba81d6a8d6540258110a75970bd539
 
 FILE: deploy/oracle_setup.sh (4 callable(s))
-line 21 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=cacc3720e64c4bc0e694b9446a6dd744d4e55e0daf76e5ff93cf2e82426b3cfa
-line 22 | shell_function | as_root | PRESERVE_AND_REGRESSION_TEST | sha256=cacc3720e64c4bc0e694b9446a6dd744d4e55e0daf76e5ff93cf2e82426b3cfa
-line 101 | shell_function | cleanup_docker_repo | PRESERVE_AND_REGRESSION_TEST | sha256=cacc3720e64c4bc0e694b9446a6dd744d4e55e0daf76e5ff93cf2e82426b3cfa
-line 438 | shell_function | cleanup_sudoers | PRESERVE_AND_REGRESSION_TEST | sha256=cacc3720e64c4bc0e694b9446a6dd744d4e55e0daf76e5ff93cf2e82426b3cfa
+line 28 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=fc01a7c1dd9cbda0fb84eabc7a1945660f3e2bfd3eeef8817acf261451cda865
+line 29 | shell_function | as_root | PRESERVE_AND_REGRESSION_TEST | sha256=fc01a7c1dd9cbda0fb84eabc7a1945660f3e2bfd3eeef8817acf261451cda865
+line 108 | shell_function | cleanup_docker_repo | PRESERVE_AND_REGRESSION_TEST | sha256=fc01a7c1dd9cbda0fb84eabc7a1945660f3e2bfd3eeef8817acf261451cda865
+line 445 | shell_function | cleanup_sudoers | PRESERVE_AND_REGRESSION_TEST | sha256=fc01a7c1dd9cbda0fb84eabc7a1945660f3e2bfd3eeef8817acf261451cda865
 
 FILE: deploy/oracle_validate.sh (4 callable(s))
 line 12 | shell_function | section | PRESERVE_AND_REGRESSION_TEST | sha256=3cbebe19b5762a9c6e6b97b5ebd35fc3fe0eb4b909ed27845102ccc36de67de7
 line 13 | shell_function | line | PRESERVE_AND_REGRESSION_TEST | sha256=3cbebe19b5762a9c6e6b97b5ebd35fc3fe0eb4b909ed27845102ccc36de67de7
 line 14 | shell_function | command_value | PRESERVE_AND_REGRESSION_TEST | sha256=3cbebe19b5762a9c6e6b97b5ebd35fc3fe0eb4b909ed27845102ccc36de67de7
 line 21 | shell_function | http_status | PRESERVE_AND_REGRESSION_TEST | sha256=3cbebe19b5762a9c6e6b97b5ebd35fc3fe0eb4b909ed27845102ccc36de67de7
+
+FILE: deploy/ownership_tree.py (9 callable(s))
+line 41-51 | function | LinuxOwnership.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=4ddbbb0172e5cb8bcd7ad6757452c04dca8f81a50bcc312f0f19e64b46a9b2da
+line 53-66 | function | LinuxOwnership.open | PRESERVE_AND_REGRESSION_TEST | sha256=db523e7f2260804daf4eb11b96c50a8f3158c2c80de4ee7e730105976ba275c2
+line 68-72 | function | LinuxOwnership.chown | PRESERVE_AND_REGRESSION_TEST | sha256=453e5f849203e50fce557cebff7638f1fb5e70daa4158ec2246d073c6887f937
+line 75-76 | function | identity | PRESERVE_AND_REGRESSION_TEST | sha256=f83ba324c2ea2d8d97de24777c7b3966a0d6771325f0c6fae5aac4db279d5bc6
+line 79-83 | function | validate_object | PRESERVE_AND_REGRESSION_TEST | sha256=973a73ccfa35011267922e3be63a4f1a95f25f003b5fe312011fd5568f7e2e53
+line 86-96 | function | open_root | PRESERVE_AND_REGRESSION_TEST | sha256=681b10d62bcf5603e1e756b18ba84adc4ee527dd72c50ab445a918b3df91f318
+line 99-122 | function | inventory | PRESERVE_AND_REGRESSION_TEST | sha256=df64c4981d99d8ad58c4b888c63cbcec61a50aebbd5ca05d572699a85a0a002e
+line 125-154 | function | change_ownership | PRESERVE_AND_REGRESSION_TEST | sha256=466b8edb3f0b14248d2c3b6f499bc8387cc701962430fcd422b2c5cc7d91b1e7
+line 157-174 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=16bf4ac59d2b711617219493671aba4acec94714715142d1b8e7e5cc13dcd194
 
 FILE: deploy/prepare_runtime_locks.py (3 callable(s))
 line 25-45 | function | identity_locks | PRESERVE_AND_REGRESSION_TEST | sha256=90f2c4ca136d6e91f1819d40ed34cde553a79d2ac97236b0ec19fda6b57e9284

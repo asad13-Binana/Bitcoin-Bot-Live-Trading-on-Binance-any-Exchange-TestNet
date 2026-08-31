@@ -80,7 +80,7 @@ python3 scripts/verify_manifest.py
 python3 tests/secret_scan.py
 chmod +x deploy/oracle_setup.sh
 sudo -v
-DEPLOY_USER="$(id -un)" ENABLE_GITHUB_RUNNER=false bash deploy/oracle_setup.sh
+sudo DEPLOY_USER="$(id -un)" ENABLE_GITHUB_RUNNER=false bash deploy/oracle_setup.sh
 ```
 
 The setup configures the already selected deployment user and creates:

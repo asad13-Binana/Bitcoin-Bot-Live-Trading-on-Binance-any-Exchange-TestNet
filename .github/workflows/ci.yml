@@ -164,6 +164,8 @@ jobs:
           sudo apt-get install -y sqlite3
       - name: Real Linux lock and backup regressions on disposable fixtures
         run: sudo "$(command -v python)" -m pytest -q tests/test_deployment_runtime_20260831.py
+      - name: Real ownership and mount-boundary regressions in a private mount namespace
+        run: sudo unshare --mount --propagation private env BITCOIN_MOUNT_TESTS=1 "$(command -v python)" -m pytest -q tests/test_ownership_tree.py
       - name: Pinned Freqtrade normal entrypoint with the dedicated host identity
         run: python scripts/verify_freqtrade_runtime.py
 
