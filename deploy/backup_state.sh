@@ -61,7 +61,10 @@ done
 tar --numeric-owner --one-file-system -C "$PERSIST_PARENT" -czf "$TMP/config-snapshots.tar.gz" \
   config-snapshots
 tar --numeric-owner --one-file-system -C "$SHARED" -czf "$TMP/audit-evidence.tar.gz" audit
-tar --numeric-owner --one-file-system -C "$SHARED" -czf "$TMP/deployment-metadata.tar.gz" runtime
+# Raw WAL/SHM/live database copies are not safe restore inputs. The online
+# standalone copies above are authoritative; this archive is metadata only.
+tar --numeric-owner --one-file-system --exclude='*.sqlite*' \
+  -C "$SHARED" -czf "$TMP/deployment-metadata.tar.gz" runtime
 chmod 0600 "$TMP"/*.tar.gz
 
 (

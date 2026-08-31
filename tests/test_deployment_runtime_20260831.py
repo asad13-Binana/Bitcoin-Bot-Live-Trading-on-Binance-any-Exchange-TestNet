@@ -180,6 +180,9 @@ def test_complete_backup_uses_canonical_parent_and_restorable_sqlite(tmp_path):
                             capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr
     created = list(backups.iterdir())
+    import tarfile
+    with tarfile.open(created[0] / "deployment-metadata.tar.gz") as archive:
+        assert not any(".sqlite" in member.name for member in archive.getmembers())
     assert len(created) == 1
     verified = subprocess.run(["bash", str(release / "verify_backup.sh"), str(created[0])],
                               capture_output=True, text=True, timeout=30)
