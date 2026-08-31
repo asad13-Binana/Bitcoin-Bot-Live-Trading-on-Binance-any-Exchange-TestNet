@@ -171,6 +171,10 @@ def test_sbom_is_deterministic_and_lock_bound():
     assert {item["name"] for item in properties} == {
         "bitcoin-bot:lock-sha256:monitoring",
         "bitcoin-bot:lock-sha256:services",
+        "bitcoin-bot:container-base:freqtrade",
+        "bitcoin-bot:container-base:services",
+        "bitcoin-bot:container-recipe-sha256:freqtrade",
+        "bitcoin-bot:container-recipe-sha256:services",
     }
 
 

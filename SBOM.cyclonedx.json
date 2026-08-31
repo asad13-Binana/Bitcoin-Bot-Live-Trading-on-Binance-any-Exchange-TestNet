@@ -759,6 +759,22 @@
       {
         "name": "bitcoin-bot:lock-sha256:services",
         "value": "7bb7301ed48c65bb50ed2efdb6bbe6d3148618368f1a9a74e45b422cb17af7e2"
+      },
+      {
+        "name": "bitcoin-bot:container-base:freqtrade",
+        "value": "freqtradeorg/freqtrade:2026.6@sha256:d451af021d5e08b70580c0eea5848534e9846b57391b34821c0a5814416397e6"
+      },
+      {
+        "name": "bitcoin-bot:container-recipe-sha256:freqtrade",
+        "value": "78521eb044b333bd755115f8c40617871b26017b654f419239b517d729d8178c"
+      },
+      {
+        "name": "bitcoin-bot:container-base:services",
+        "value": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+      },
+      {
+        "name": "bitcoin-bot:container-recipe-sha256:services",
+        "value": "ad72dc983071f43a993201b1a73eeff326050c3f8a15ba805853fca18481f220"
       }
     ],
     "tools": {

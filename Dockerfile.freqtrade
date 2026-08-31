@@ -1,0 +1,14 @@
+# Deployment wrapper only: no package install, strategy or entrypoint change.
+FROM freqtradeorg/freqtrade:2026.6@sha256:d451af021d5e08b70580c0eea5848534e9846b57391b34821c0a5814416397e6
+
+# The upstream image installs Python packages as ftuser (uid 1000). The host
+# deliberately runs a different dedicated uid/gid; permit traversal, not listing
+# or writes, and direct Python's user-site discovery to the existing installation.
+USER root
+RUN test "$(id -u ftuser)" = 1000 \
+    && test "$(stat -c '%u:%a' /home/ftuser)" = 1000:700 \
+    && test -x /home/ftuser/.local/bin/freqtrade \
+    && test -d /home/ftuser/.local/lib \
+    && chmod 0711 /home/ftuser
+ENV PYTHONUSERBASE=/home/ftuser/.local
+USER ftuser

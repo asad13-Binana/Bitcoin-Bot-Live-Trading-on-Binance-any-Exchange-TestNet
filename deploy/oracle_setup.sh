@@ -369,6 +369,13 @@ done
 as_root install -m 0755 -o root -g root -d "$ROOT_LIBEXEC"
 as_root install -m 0644 -o root -g root \
   "$SCRIPT_DIR/instance_identity.sh" "$ROOT_LIBEXEC/instance_identity.sh"
+[[ -f "$SCRIPT_DIR/prepare_runtime_locks.py" && ! -L "$SCRIPT_DIR/prepare_runtime_locks.py" ]] || \
+  fail 'runtime lock helper is missing or a symlink'
+as_root install -m 0644 -o root -g root \
+  "$SCRIPT_DIR/prepare_runtime_locks.py" "$ROOT_LIBEXEC/prepare_runtime_locks.py"
+# /run is recreated at boot. Every lock caller also invokes this idempotent
+# helper; no symlink/owner/mode repair or inode replacement is permitted.
+as_root python3 -I "$ROOT_LIBEXEC/prepare_runtime_locks.py"
 as_root install -m 0755 -o root -g root \
   "$SCRIPT_DIR/install_artifact.sh" "$ROOT_LIBEXEC/install_artifact.sh"
 as_root install -m 0755 -o root -g root \
@@ -408,9 +415,6 @@ as_root systemctl daemon-reload
 as_root systemctl enable --now "${SYSTEMD_PREFIX}-resource-guard.timer" \
   "${SYSTEMD_PREFIX}-state-backup.timer" >/dev/null
 as_root install -m 0700 -o root -g root -d "$BACKUP_ROOT"
-as_root touch "$BACKUP_LOCK" "$OFFHOST_BACKUP_LOCK"
-as_root chown root:root "$BACKUP_LOCK" "$OFFHOST_BACKUP_LOCK"
-as_root chmod 0600 "$BACKUP_LOCK" "$OFFHOST_BACKUP_LOCK"
 
 SUDOERS_TMP=$(mktemp)
 cleanup_sudoers(){ rm -f -- "$SUDOERS_TMP"; }
@@ -431,9 +435,6 @@ fi
 cleanup_sudoers
 trap - EXIT
 
-as_root touch "$INSTALL_LOCK" "$ACTIONS_LOCK"
-as_root chown root:root "$INSTALL_LOCK" "$ACTIONS_LOCK"
-as_root chmod 0600 "$INSTALL_LOCK" "$ACTIONS_LOCK"
 
 echo "Oracle host prepared for $DEPLOY_USER without Docker-group membership."
 if [[ "$ENABLE_GITHUB_RUNNER" == true ]]; then

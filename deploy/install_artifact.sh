@@ -319,6 +319,7 @@ CHECKSUM=$(readlink -f "$CHECKSUM" 2>/dev/null || true)
 
 # A repository-specific Compose project and lock isolate this instance from
 # the other three bots on the shared Oracle host.
+as_root python3 -I "$SCRIPT_DIR/prepare_runtime_locks.py"
 exec 9>"$INSTALL_LOCK" || fail "cannot open deployment lock $INSTALL_LOCK; run oracle_setup.sh first"
 flock -n 9 || fail "another install holds $INSTALL_LOCK"
 
@@ -582,8 +583,12 @@ cleanup(){
   fi
   if [[ "$CONFIG_COMMITTED" != true && "$PRESERVE_FAILED_RELEASE" != true \
      && -n "$NEW_TAG" ]]; then
-    image_users=$(docker ps -aq --filter "ancestor=$SERVICE_IMAGE:$NEW_TAG" 2>/dev/null || true)
-    [[ -n "$image_users" ]] || docker image rm "$SERVICE_IMAGE:$NEW_TAG" >/dev/null 2>&1 || true
+    for built_image in "$SERVICE_IMAGE" "$FREQTRADE_IMAGE"; do
+      # Inspection failure is not evidence that an image is unused.
+      if image_users=$(docker ps -aq --filter "ancestor=$built_image:$NEW_TAG" 2>/dev/null); then
+        [[ -n "$image_users" ]] || docker image rm "$built_image:$NEW_TAG" >/dev/null 2>&1 || true
+      fi
+    done
   fi
 }
 trap cleanup EXIT
@@ -820,7 +825,7 @@ compose_for(){
 }
 
 compose_for "$NEW" "$RELEASE_HASH" "$NEW_TAG" config -q
-compose_for "$NEW" "$RELEASE_HASH" "$NEW_TAG" build moneyflow
+compose_for "$NEW" "$RELEASE_HASH" "$NEW_TAG" build moneyflow freqtrade
 
 OLD=''
 OLD_HASH=''
@@ -1339,6 +1344,7 @@ while IFS= read -r candidate; do
   [[ ! -L "$snapshot" && ! -L "$marker" ]] && rm -f -- "$snapshot" "$marker"
   if [[ "$candidate_hash" =~ ^[0-9a-f]{64}$ && "$candidate_hash" != "$RELEASE_HASH" ]]; then
     docker image rm "$SERVICE_IMAGE:bitcoin-${candidate_hash:0:16}" >/dev/null 2>&1 || true
+    docker image rm "$FREQTRADE_IMAGE:bitcoin-${candidate_hash:0:16}" >/dev/null 2>&1 || true
   fi
 done < <(find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | \
   sort -nr | cut -d' ' -f2-)

@@ -46,6 +46,18 @@ def build() -> dict:
                     f"{item['version']} and {version}")
             item["scopes"].add(scope)  # type: ignore[union-attr]
 
+    # Record immutable image inputs as provenance properties. This is not an
+    # inventory of transitive OS/Python packages inside the upstream image.
+    for scope in ("freqtrade", "services"):
+        recipe = ROOT / f"Dockerfile.{scope}"
+        bases = re.findall(r"(?m)^FROM ([^\s]+)$", recipe.read_text(encoding="utf-8"))
+        if len(bases) != 1 or not re.fullmatch(r".+@sha256:[0-9a-f]{64}", bases[0]):
+            raise ValueError(f"{recipe.name} must have one digest-pinned base")
+        lock_hashes.extend([
+            {"name": f"bitcoin-bot:container-base:{scope}", "value": bases[0]},
+            {"name": f"bitcoin-bot:container-recipe-sha256:{scope}", "value": _sha256(recipe)},
+        ])
+
     components = []
     for name, item in sorted(dependencies.items()):
         version = str(item["version"])
