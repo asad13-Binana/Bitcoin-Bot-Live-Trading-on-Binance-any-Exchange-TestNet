@@ -43,7 +43,7 @@ def denied(action):
     try:
         action()
     except (PermissionError, OSError) as exc:
-        assert exc.errno in (13, 30), exc  # EACCES or EROFS, not unrelated failure
+        assert exc.errno in (1, 13, 30), exc  # EPERM, EACCES or EROFS only
     else:
         raise AssertionError("immutable or foreign-owned path was writable")
 

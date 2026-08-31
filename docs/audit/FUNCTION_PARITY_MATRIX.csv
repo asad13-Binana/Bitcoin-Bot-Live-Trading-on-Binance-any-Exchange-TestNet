@@ -263,7 +263,7 @@
 "scripts/services_runtime_fixture.py","PublicSpotFixture.__init__","18","19","function","f1ef0357f8414253c5102d0ca16d683dd4719b1b6a0b320cd428cbae4b5f9971","PRESERVE_AND_REGRESSION_TEST"
 "scripts/services_runtime_fixture.py","PublicSpotFixture.exchange_info","21","26","function","3d533c3b4642df4c6cfafd36bcce4d4c11f09cc650e2c426ea566e3228f2e6e2","PRESERVE_AND_REGRESSION_TEST"
 "scripts/services_runtime_fixture.py","PublicSpotFixture.get","28","39","function","72b1df935631140ba607fd23ff5e8d569da0bd15b706c31cad78f2cd864549c1","PRESERVE_AND_REGRESSION_TEST"
-"scripts/services_runtime_fixture.py","denied","42","48","function","aaa2a00bc8b12fbb9311cc7397840e525e5f814fa11759a1fce8ede022c29bd1","PRESERVE_AND_REGRESSION_TEST"
+"scripts/services_runtime_fixture.py","denied","42","48","function","266f3c06d7dbd1971c849de32245350ced20204980a70c039546764e3c42906c","PRESERVE_AND_REGRESSION_TEST"
 "scripts/services_runtime_fixture.py","inspect_application","51","78","function","7d604916e3acd29d4a5f1c43d5beae8f802006427a99ed0725e0049c5b030829","PRESERVE_AND_REGRESSION_TEST"
 "scripts/services_runtime_fixture.py","collection","81","109","function","71f91ae1efaa046cce65c10054367a2746d1021a0d215c0e6c980c391b190921","PRESERVE_AND_REGRESSION_TEST"
 "scripts/set_git_exec_bits.py","git","42","49","function","05cd62c5ed1e68868e2a10fdba0e7bf5f54bacf4fe0aea3b98cb17a70b4fcaab","PRESERVE_AND_REGRESSION_TEST"

@@ -45,7 +45,7 @@
       "size": 2387
     },
     "BITCOIN_BOT_SERVICES_FUNCTIONS_AND_TELEGRAM_GUIDE.txt": {
-      "sha256": "b2fde5115d7fa2805ab432514df46e73b68f4947f162fe9a65727dba3bc722f6",
+      "sha256": "422935a6636d2ef622951038249771b801e4541b75d6ab5cd0a4889e87c765ac",
       "size": 137035
     },
     "BOT_SIMPLE_DESCRIPTION.txt": {
@@ -329,7 +329,7 @@
       "size": 60210
     },
     "docs/audit/FUNCTION_PARITY_MATRIX.csv": {
-      "sha256": "1b718945e7223c7e15f0089e7ffda40a825f5dfa4891d2b178ccc8ab598d8263",
+      "sha256": "eddb483dd60384663a05e992178b45dff2cf47627c4b5d4fc0a321b64091c9cc",
       "size": 137152
     },
     "docs/audit/ISSUE_LEDGER.csv": {
@@ -617,8 +617,8 @@
       "size": 4078
     },
     "scripts/services_runtime_fixture.py": {
-      "sha256": "adb2a46edc7f010888414b18e149fcdc57432a0580666bfe9831ff2f225c2e0a",
-      "size": 5155
+      "sha256": "3a49c7ade8cce3b92c74ac4e4631f251ad2d059a80e85726adfceee1eae78562",
+      "size": 5147
     },
     "scripts/set_git_exec_bits.py": {
       "sha256": "46521414c60b0d2e5bef31a5b73a248a1c971e5eb1f1ff468bc3ce5cbab7fb62",
@@ -961,8 +961,8 @@
       "size": 1031
     },
     "tests/test_services_runtime.py": {
-      "sha256": "76c240056dc05c50b16f45b004ebce9dca8ce9c58e943d1b5d9d190e03ae54bc",
-      "size": 2685
+      "sha256": "02aff89cc92376c7570297a2d193d73b14806def47a7b1876c29111c2f3e1583",
+      "size": 3315
     },
     "tests/test_snapshot_display.py": {
       "sha256": "a60f7b39192829047ba5118a5641835432cc81ab29ff1a079850f01eb1465073",

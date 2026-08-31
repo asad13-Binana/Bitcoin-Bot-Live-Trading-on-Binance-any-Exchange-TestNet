@@ -56,3 +56,21 @@ def test_public_fixture_has_no_order_surface_and_rejects_unexpected_endpoint():
     with pytest.raises(AssertionError):
         fixture.get("/api/v3/order", {"symbol": "BTCUSDT"})
     assert not hasattr(fixture, "post") and not hasattr(fixture, "create_order")
+
+
+@pytest.mark.parametrize("number", [1, 13, 30])
+def test_permission_probe_accepts_only_real_os_denial_codes(number):
+    fixture = load_script("services_runtime_fixture")
+    def rejected():
+        raise OSError(number, "synthetic denial")
+    fixture.denied(rejected)
+
+
+def test_permission_probe_rejects_missing_file_as_false_security_pass():
+    fixture = load_script("services_runtime_fixture")
+    with pytest.raises(AssertionError):
+        fixture.denied(lambda: None)
+    def missing():
+        raise FileNotFoundError(2, "synthetic missing path")
+    with pytest.raises(AssertionError):
+        fixture.denied(missing)
