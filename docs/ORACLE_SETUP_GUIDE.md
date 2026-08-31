@@ -105,12 +105,13 @@ tarball SHA-256.
 
 ## 5. Run the host bootstrap
 
-Transfer the reviewed repository bootstrap files over SSH, then run as the
-normal Ubuntu administrative user:
+Transfer the reviewed repository bootstrap files over SSH. Stop the instance's
+writers and preserve its state before maintenance. From the normal Ubuntu
+administrator's shell, invoke the entire setup as root through sudo:
 
 ```bash
 chmod +x deploy/*.sh deploy/bitcoin-bot-deploy
-DEPLOY_USER="$(id -un)" \
+sudo DEPLOY_USER="$(id -un)" \
 ENABLE_GITHUB_RUNNER=false \
 REQUIRED_UBUNTU_VERSION=24.04 \
 REQUIRE_ARM64=true \

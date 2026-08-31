@@ -2,6 +2,13 @@
 # Prepare an Ubuntu Oracle Cloud VM for the immutable Bitcoin Bot artifact.
 set -euo pipefail
 
+# Every path/identity check must run in the same privileged context. Reject
+# the formerly documented unprivileged invocation before any setup side effect.
+[[ $EUID -eq 0 ]] || {
+  echo 'ERROR: run setup through sudo with DEPLOY_USER set to the non-root administrator' >&2
+  exit 1
+}
+
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 # shellcheck source=deploy/instance_identity.sh
 source "$SCRIPT_DIR/instance_identity.sh"
@@ -312,14 +319,14 @@ as_root chmod 0700 "$INCOMING"
 as_root chown root:root "$ROOT_INCOMING"
 as_root chmod 0700 "$ROOT_INCOMING"
 as_root chmod 0750 "$PRIVATE"
-as_root chown -R --one-file-system "$BOT_USER:$BOT_GROUP" \
+as_root python3 -I "$SCRIPT_DIR/ownership_tree.py" --owner "$BOT_USER:$BOT_GROUP" \
   "$APP_ROOT/releases" "$PERSIST" "$CONFIG_ROOT"
 as_root chmod 0755 "$APP_ROOT/releases"
 as_root chmod 0700 "$CONFIG_ROOT"
 # Monitoring interpreters are root-managed. Re-running host setup must never
 # make them writable by the deployment account.
 if [[ -d "$APP_ROOT/monitoring-venvs" ]]; then
-  as_root chown -R --one-file-system root:root "$APP_ROOT/monitoring-venvs"
+  as_root python3 -I "$SCRIPT_DIR/ownership_tree.py" --owner root:root "$APP_ROOT/monitoring-venvs"
 fi
 if [[ -L "$APP_ROOT/monitoring-current" ]]; then
   as_root chown -h root:root "$APP_ROOT/monitoring-current"
