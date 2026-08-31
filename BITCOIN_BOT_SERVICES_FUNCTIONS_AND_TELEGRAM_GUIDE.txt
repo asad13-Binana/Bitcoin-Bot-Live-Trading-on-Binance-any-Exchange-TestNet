@@ -540,11 +540,11 @@ line 98-108 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=3c0915e251
 
 FILE: scripts/services_runtime_fixture.py (6 callable(s))
 line 18-19 | function | PublicSpotFixture.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=f1ef0357f8414253c5102d0ca16d683dd4719b1b6a0b320cd428cbae4b5f9971
-line 21-26 | function | PublicSpotFixture.exchange_info | PRESERVE_AND_REGRESSION_TEST | sha256=3d533c3b4642df4c6cfafd36bcce4d4c11f09cc650e2c426ea566e3228f2e6e2
-line 28-39 | function | PublicSpotFixture.get | PRESERVE_AND_REGRESSION_TEST | sha256=72b1df935631140ba607fd23ff5e8d569da0bd15b706c31cad78f2cd864549c1
-line 42-48 | function | denied | PRESERVE_AND_REGRESSION_TEST | sha256=266f3c06d7dbd1971c849de32245350ced20204980a70c039546764e3c42906c
-line 51-78 | function | inspect_application | PRESERVE_AND_REGRESSION_TEST | sha256=7d604916e3acd29d4a5f1c43d5beae8f802006427a99ed0725e0049c5b030829
-line 81-109 | function | collection | PRESERVE_AND_REGRESSION_TEST | sha256=71f91ae1efaa046cce65c10054367a2746d1021a0d215c0e6c980c391b190921
+line 21-32 | function | PublicSpotFixture.exchange_info | PRESERVE_AND_REGRESSION_TEST | sha256=4b5c77e251eeeaf78953f7c391cfcc975313e835e075e0207d9d82ad43622aa2
+line 34-45 | function | PublicSpotFixture.get | PRESERVE_AND_REGRESSION_TEST | sha256=72b1df935631140ba607fd23ff5e8d569da0bd15b706c31cad78f2cd864549c1
+line 48-54 | function | denied | PRESERVE_AND_REGRESSION_TEST | sha256=266f3c06d7dbd1971c849de32245350ced20204980a70c039546764e3c42906c
+line 57-84 | function | inspect_application | PRESERVE_AND_REGRESSION_TEST | sha256=7d604916e3acd29d4a5f1c43d5beae8f802006427a99ed0725e0049c5b030829
+line 87-115 | function | collection | PRESERVE_AND_REGRESSION_TEST | sha256=71f91ae1efaa046cce65c10054367a2746d1021a0d215c0e6c980c391b190921
 
 FILE: scripts/set_git_exec_bits.py (5 callable(s))
 line 42-49 | function | git | PRESERVE_AND_REGRESSION_TEST | sha256=05cd62c5ed1e68868e2a10fdba0e7bf5f54bacf4fe0aea3b98cb17a70b4fcaab

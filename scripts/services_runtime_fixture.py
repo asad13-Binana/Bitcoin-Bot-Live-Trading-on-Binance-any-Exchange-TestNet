@@ -23,7 +23,13 @@ class PublicSpotFixture:
         self.calls.append("exchangeInfo")
         return {"symbols": [{"symbol": symbol, "baseAsset": "BTC", "quoteAsset": "USDT",
                               "status": "TRADING", "isSpotTradingAllowed": True,
-                              "permissions": ["SPOT"]}]}
+                              "permissions": ["SPOT"], "ocoAllowed": True, "otoAllowed": True,
+                              "filters": [
+                                  {"filterType": "PRICE_FILTER", "minPrice": "0.01",
+                                   "maxPrice": "1000000", "tickSize": "0.01"},
+                                  {"filterType": "LOT_SIZE", "minQty": "0.00001",
+                                   "maxQty": "9000", "stepSize": "0.00001"},
+                              ]}]}
 
     def get(self, path, params):
         assert params["symbol"] == "BTCUSDT"

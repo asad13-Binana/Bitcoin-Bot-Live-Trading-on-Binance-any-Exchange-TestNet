@@ -45,7 +45,7 @@
       "size": 2387
     },
     "BITCOIN_BOT_SERVICES_FUNCTIONS_AND_TELEGRAM_GUIDE.txt": {
-      "sha256": "422935a6636d2ef622951038249771b801e4541b75d6ab5cd0a4889e87c765ac",
+      "sha256": "9cafb9665d77696fec6bbdca752adc6e670dac7e92874a9d98c1f8767f787980",
       "size": 137035
     },
     "BOT_SIMPLE_DESCRIPTION.txt": {
@@ -129,8 +129,8 @@
       "size": 19418
     },
     "VALIDATION_STATUS.json": {
-      "sha256": "33b6cf9d01d40b9e91192d36a665076a82ceb55d23c1bb03990e7f11cf1cda5a",
-      "size": 18688
+      "sha256": "9e5cbf8299b7b1b3a9a5d2ad841fb80e792a5230d670e58ed54be200c2200f50",
+      "size": 18799
     },
     "deploy/api_preflight.sh": {
       "sha256": "d1ab42fa9e423bf2e1e0b90ba9d93a7bee16bba38e94e6ab11bc64514d8ece6a",
@@ -329,7 +329,7 @@
       "size": 60210
     },
     "docs/audit/FUNCTION_PARITY_MATRIX.csv": {
-      "sha256": "eddb483dd60384663a05e992178b45dff2cf47627c4b5d4fc0a321b64091c9cc",
+      "sha256": "a7a33333ac6b95504da6c405c8c40262cb264c62596cb83777ed908c8b6437e6",
       "size": 137152
     },
     "docs/audit/ISSUE_LEDGER.csv": {
@@ -617,8 +617,8 @@
       "size": 4078
     },
     "scripts/services_runtime_fixture.py": {
-      "sha256": "3a49c7ade8cce3b92c74ac4e4631f251ad2d059a80e85726adfceee1eae78562",
-      "size": 5147
+      "sha256": "ea82b03d760be58d9135d23b62c4a034c00a19531e3e4e9afc89cd2909063ebb",
+      "size": 5586
     },
     "scripts/set_git_exec_bits.py": {
       "sha256": "46521414c60b0d2e5bef31a5b73a248a1c971e5eb1f1ff468bc3ce5cbab7fb62",
@@ -961,8 +961,8 @@
       "size": 1031
     },
     "tests/test_services_runtime.py": {
-      "sha256": "02aff89cc92376c7570297a2d193d73b14806def47a7b1876c29111c2f3e1583",
-      "size": 3315
+      "sha256": "d392ab31be0def3a9f2002402d581a65404cd92e4f68e47f0afb3bf198e14909",
+      "size": 5997
     },
     "tests/test_snapshot_display.py": {
       "sha256": "a60f7b39192829047ba5118a5641835432cc81ab29ff1a079850f01eb1465073",

@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
+import shutil
+import time
 
 import pytest
 import yaml
@@ -74,3 +77,55 @@ def test_permission_probe_rejects_missing_file_as_false_security_pass():
         raise FileNotFoundError(2, "synthetic missing path")
     with pytest.raises(AssertionError):
         fixture.denied(missing)
+
+
+def test_container_public_fixture_runs_real_moneyflow_and_publishes_fresh_files(tmp_path, monkeypatch):
+    from services.moneyflow import service
+    from services.moneyflow.client import MoneyFlowClient
+
+    fixture = load_script("services_runtime_fixture").PublicSpotFixture()
+    pair = tmp_path / "pair"
+    shutil.copytree(ROOT / "shared/pair", pair)
+    latest = tmp_path / "moneyflow/latest.json"
+    runtime = tmp_path / "runtime/moneyflow"
+    monkeypatch.setattr(service, "ACTIVE_PAIR_FILE", pair / "active_pair.json")
+    monkeypatch.setattr(service, "MONEYFLOW_FILE", latest)
+    monkeypatch.setattr(service, "RUNTIME", runtime)
+    for key, value in {
+        "PAIRLIST_FILE": pair / "current_pairlist.json",
+        "FREQTRADE_ACTIVE_CONFIG": pair / "freqtrade-active.json",
+        "EXTERNAL_MARKET_CACHE_FILE": latest.parent / "external_market_cache.json",
+        "BTC_QUOTE_ALLOWLIST": "USDT",
+        "COINGECKO_CONTEXT_ENABLED": "false",
+        "COINMARKETCAP_CONTEXT_ENABLED": "false",
+        "REQUIRE_EXTERNAL_CONFLUENCE": "false",
+    }.items():
+        monkeypatch.setenv(key, str(value))
+    # Reject every real network attempt; only the public in-memory fixture runs.
+    import socket
+    def no_network(*args, **kwargs):
+        raise AssertionError("offline collection attempted network I/O")
+    monkeypatch.setattr(socket.socket, "connect", no_network)
+    started = time.time()
+    snapshot = service.run_once(client=MoneyFlowClient(spot=fixture))
+    health = json.loads((runtime / "moneyflow_health.json").read_text())
+    assert json.loads(latest.read_text()) == snapshot
+    assert snapshot["ok"] is True and health["ok"] is True
+    assert snapshot["pair"] == health["pair"] == "BTC/USDT"
+    assert started <= health["ts"] <= time.time()
+    assert started <= snapshot["generated_at_epoch"] <= time.time()
+    assert set(snapshot["timeframes"]) == set(service.TIMEFRAMES)
+    assert all(row["direction"] != "unavailable" for row in snapshot["timeframes"].values())
+    assert len(fixture.calls) == 10
+    assert snapshot["futures"]["disabled"] is True
+    assert snapshot["external_context"]["advisory_only"] is True
+
+
+@pytest.mark.parametrize("field", ["ocoAllowed", "otoAllowed", "filters"])
+def test_public_fixture_cannot_bypass_missing_market_capabilities(field):
+    from services.common.market_policy import PairPolicyError, validate_exchange_symbol
+
+    metadata = load_script("services_runtime_fixture").PublicSpotFixture().exchange_info("BTCUSDT")["symbols"][0]
+    metadata.pop(field)
+    with pytest.raises(PairPolicyError):
+        validate_exchange_symbol("BTC/USDT", metadata, ["USDT"])
