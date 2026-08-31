@@ -129,8 +129,8 @@
       "size": 19418
     },
     "VALIDATION_STATUS.json": {
-      "sha256": "d28247ce5271578e3b55b385e92d5647aad424861fb22dba7fe108751c98f3d0",
-      "size": 17285
+      "sha256": "9198ca0f7a2c89828a393acfd37598ff2d5fa300b9a1b53def0038b6c0bc8ed7",
+      "size": 17551
     },
     "deploy/api_preflight.sh": {
       "sha256": "d1ab42fa9e423bf2e1e0b90ba9d93a7bee16bba38e94e6ab11bc64514d8ece6a",
@@ -249,8 +249,8 @@
       "size": 1860
     },
     "docs/AWS_ORACLE_REPAIR_2026-08-31.md": {
-      "sha256": "39a7e54a468c00dd4350fba103500bd9064eeda892a142b4c8b378b758ac4bae",
-      "size": 17173
+      "sha256": "e5a45e3f881726207b5922b42b25f19c61e9357555511539fe9b498d9fd87ede",
+      "size": 17172
     },
     "docs/AWS_POST_DEPLOYMENT_REPAIR_2026-08-30.md": {
       "sha256": "2188fb2a51d5ca1f4a7ab5e38eeea5f84c59d04b7f8d97e0edf3ea142209cfae",

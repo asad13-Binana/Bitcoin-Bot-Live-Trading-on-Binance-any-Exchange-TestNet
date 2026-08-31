@@ -124,4 +124,3 @@ Initial PR commits passed full GitHub workflows: TestNet `02b873a194cf3480a50db8
 Those runs cover the initial container/lock/backup/health patch, **not later commits** containing this document and the host profile. Before merging, require the latest exact PR head to pass all jobs again. Local Windows cannot execute Docker/systemd; Linux CI proof is separate from AWS/Oracle-host proof.
 
 Next: owner reviews and manually merges green PRs; verify exact post-merge main artifacts; refresh trusted root deployment helpers from that verified release (updating GitHub alone does not replace installed root helpers); preserve/back up existing state; install simulation/TestNet first; collect host, Telegram, authorised TestNet lifecycle, restore and soak evidence. Both LIVE packages stay simulation-only until separately certified.
-
