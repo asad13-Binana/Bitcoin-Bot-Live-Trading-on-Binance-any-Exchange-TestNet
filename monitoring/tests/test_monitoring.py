@@ -335,7 +335,15 @@ def test_websocket_state_and_reconnects_are_exposed():
     assert result["connected"] and result["subscribed"] and result["reconnect_count"] == 3
 
 
-def test_active_pair_and_moneyflow_context_are_exposed():
+@pytest.mark.parametrize("snapshot_offset,health_ok,health_offset,expected", [
+    (0, True, 0, "healthy"),
+    (-3600, True, 0, "degraded"),
+    (3600, True, 0, "degraded"),
+    (0, False, 0, "degraded"),
+    (0, "true", 0, "degraded"),
+    (0, True, 3600, "degraded"),
+])
+def test_active_pair_and_moneyflow_context_are_exposed(snapshot_offset, health_ok, health_offset, expected):
     now = time.time()
     _write(CONFIG.active_pair_status_path, {
         "schema_version": 1, "pair": "BTC/USDT", "symbol": "BTCUSDT",
@@ -344,10 +352,10 @@ def test_active_pair_and_moneyflow_context_are_exposed():
         "state_hash": "a" * 64,
     })
     _write(CONFIG.moneyflow_health_path, {
-        "ok": True, "ts": now, "pair": "BTC/USDT", "decision": "BULLISH",
+        "ok": health_ok, "ts": now + health_offset, "pair": "BTC/USDT", "decision": "BULLISH",
     })
     _write(CONFIG.moneyflow_status_path, {
-        "schema_version": 1, "ok": True, "generated_at_epoch": now,
+        "schema_version": 1, "ok": True, "generated_at_epoch": now + snapshot_offset,
         "generated_at": "2026-07-22T00:00:00+00:00", "pair": "BTC/USDT",
         "symbol": "BTCUSDT", "pair_state_hash": "a" * 64,
         "classification": {"bullish": True, "decision": "BULLISH"},
@@ -359,7 +367,7 @@ def test_active_pair_and_moneyflow_context_are_exposed():
     pair = metrics.active_pair_status()
     flow = metrics.moneyflow_status()
     assert pair["valid"] and pair["pair"] == "BTC/USDT"
-    assert flow["status"] == "healthy" and flow["pair_state_matches"]
+    assert flow["status"] == expected and flow["pair_state_matches"]
     assert flow["classification"]["decision"] == "BULLISH"
 
 

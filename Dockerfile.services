@@ -4,9 +4,14 @@ ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/app PIP_NO_CACHE_DI
 COPY requirements.services.lock /app/
 RUN pip install --no-cache-dir --require-hashes -r requirements.services.lock \
     && useradd --create-home --uid 10001 bot
-COPY --chown=bot:bot services /app/services
-COPY --chown=bot:bot freqtrade/user_data/strategies/IctSmcStrategy.py /app/freqtrade/user_data/strategies/IctSmcStrategy.py
-COPY --chown=bot:bot RELEASE_MANIFEST.json RELEASE_SHA256.txt VALIDATION_STATUS.json /app/
+COPY --chown=0:0 services /app/services
+COPY --chown=0:0 freqtrade/user_data/strategies/IctSmcStrategy.py /app/freqtrade/user_data/strategies/IctSmcStrategy.py
+COPY --chown=0:0 RELEASE_MANIFEST.json RELEASE_SHA256.txt VALIDATION_STATUS.json /app/
 COPY RELEASE_MODE /app/RELEASE_MODE
-RUN chmod 0444 /app/RELEASE_MODE
+# COPY preserves restrictive modes from root-only artifact extraction. Compose
+# intentionally uses the dedicated HOST UID, not image user 10001. Normalise
+# only immutable image content, never mounted host state; root owns all code.
+RUN chown -R 0:0 /app \
+    && find /app -type d -exec chmod 0555 {} + \
+    && find /app -type f -exec chmod 0444 {} +
 USER bot

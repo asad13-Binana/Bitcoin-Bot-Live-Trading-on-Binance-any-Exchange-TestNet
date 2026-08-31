@@ -97,10 +97,12 @@ def _health(path: Path, max_age: int) -> dict:
     if stamp is None and isinstance(data, dict):
         stamp = data.get("generated_at")
     epoch = _parse_time(stamp)
-    age = None if epoch is None else max(0, time.time() - epoch)
+    age = None if epoch is None or isinstance(stamp, bool) else time.time() - epoch
+    if age is not None and not math.isfinite(age):
+        age = None
     return {
         "available": True,
-        "fresh": age is not None and age <= max_age,
+        "fresh": age is not None and math.isfinite(age) and -30 < age <= max_age,
         "age_seconds": None if age is None else round(age, 3),
         "data": redact_obj(data),
     }
@@ -619,8 +621,10 @@ def moneyflow_status() -> dict:
             "service": service,
         }
     generated = _parse_time(data.get("generated_at_epoch") or data.get("generated_at"))
-    age = None if generated is None else max(0, time.time() - generated)
-    fresh = age is not None and age <= CONFIG.moneyflow_max_age_seconds
+    age = None if generated is None else time.time() - generated
+    if age is not None and not math.isfinite(age):
+        age = None
+    fresh = age is not None and math.isfinite(age) and -30 < age <= CONFIG.moneyflow_max_age_seconds
     active_data, active_error = _safe_json(CONFIG.active_pair_status_path)
     active_hash = active_data.get("state_hash") if active_error is None and isinstance(active_data, dict) else None
     pair_hash_matches = bool(
@@ -707,7 +711,9 @@ def moneyflow_status() -> dict:
     }
     summary["status"] = (
         "healthy"
-        if fresh and data.get("ok") is True and pair_hash_matches and service.get("fresh")
+        if fresh and data.get("ok") is True and pair_hash_matches
+        and service.get("fresh") and isinstance(service.get("data"), dict)
+        and service["data"].get("ok") is True
         else "degraded"
     )
     return redact_obj(summary)

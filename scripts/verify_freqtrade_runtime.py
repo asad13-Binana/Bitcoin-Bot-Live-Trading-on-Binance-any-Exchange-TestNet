@@ -104,6 +104,20 @@ print("PINNED_IMPORTS_USER_SITE_AND_MOUNT_PERMISSIONS=PASS")
         result = run(command + ["run", "--rm", "--no-deps", "-T", "--entrypoint", "python",
                                 "freqtrade", "-c", probe], env)
         print(result.stdout.strip())
+        # Reuse only the isolated synthetic mounts for a second unrelated host
+        # identity. No production user, config, host state or entrypoint changes.
+        env.update({"BOT_UID": "12345", "BOT_GID": "23456"})
+        run(["sudo", "-n", "chown", "-R", "12345:23456", str(scratch / "shared")], env)
+        for args in (["--version"], ["trade", "--help"]):
+            result = run(command + ["run", "--rm", "--no-deps", "-T", "freqtrade", *args], env)
+            if "freqtrade" not in (result.stdout + result.stderr).lower():
+                raise RuntimeError("second identity normal entrypoint returned no Freqtrade output")
+        second_probe = probe.replace("os.getuid() == 994 and os.getgid() == 985",
+                                     "os.getuid() == 12345 and os.getgid() == 23456")
+        result = run(command + ["run", "--rm", "--no-deps", "-T", "--entrypoint", "python",
+                                "freqtrade", "-c", second_probe], env)
+        print("ROOT_COMPOSE_NORMAL_ENTRYPOINT_UID_12345_GID_23456=PASS")
+        print(result.stdout.strip())
         inspected = json.loads(run(["docker", "image", "inspect",
                                     f"bitcoin-{mode}-freqtrade:runtime-ci"], env).stdout)[0]
         config = inspected["Config"]

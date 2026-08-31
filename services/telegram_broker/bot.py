@@ -615,6 +615,12 @@ def _flow_summary():
     source = read_json(MONEYFLOW_FILE, {})
     if not isinstance(source, dict):
         return {"available": False, "reason": "invalid_moneyflow_snapshot"}
+    # This is an owner-visible historical snapshot, not a live service probe.
+    # Never repeat stored ok/fresh flags as current health after a rollback.
+    generated = source.get("generated_at_epoch")
+    age = time.time() - generated if type(generated) in (int, float) else None
+    fresh = age is not None and math.isfinite(age) and -30 < age < 45
+    current_ok = source.get("ok") is True and fresh
     external = source.get("external_context")
     external = external if isinstance(external, dict) else {}
     rows = external.get("providers")
@@ -628,8 +634,8 @@ def _flow_summary():
         quota = row.get("quota") if isinstance(row.get("quota"), dict) else {}
         providers[provider] = {
             "status": row.get("status"),
-            "available": row.get("available") is True,
-            "fresh": row.get("fresh") is True,
+            "available": row.get("available") is True and current_ok,
+            "fresh": row.get("fresh") is True and current_ok,
             "cache_age_seconds": row.get("cache_age_seconds"),
             "price_usd": data.get("price_usd"),
             "volume_24h_usd": data.get("volume_24h_usd"),
@@ -640,9 +646,14 @@ def _flow_summary():
     return {
         "pair": source.get("pair"),
         "generated_at": source.get("generated_at"),
-        "ok": source.get("ok") is True,
+        "ok": current_ok,
+        "fresh": fresh,
+        "snapshot_ok": source.get("ok") is True,
+        "status": "fresh_snapshot_not_service_health" if current_ok else "stale_or_unavailable_snapshot",
+        "age_seconds": round(age, 3) if age is not None and math.isfinite(age) else None,
         "classification": source.get("classification")
-        if isinstance(source.get("classification"), dict) else {},
+        if current_ok and isinstance(source.get("classification"), dict)
+        else {"bullish": False, "decision": "UNAVAILABLE"},
         "spot": source.get("spot") if isinstance(source.get("spot"), dict) else {},
         "futures": source.get("futures") if isinstance(source.get("futures"), dict) else {},
         "external_context": {

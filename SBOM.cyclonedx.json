@@ -774,7 +774,7 @@
       },
       {
         "name": "bitcoin-bot:container-recipe-sha256:services",
-        "value": "ad72dc983071f43a993201b1a73eeff326050c3f8a15ba805853fca18481f220"
+        "value": "49cd464f56bf0e158057e7c3658accf266b8ed4e55a03ee3b0ba51e8952e7a00"
       }
     ],
     "tools": {
