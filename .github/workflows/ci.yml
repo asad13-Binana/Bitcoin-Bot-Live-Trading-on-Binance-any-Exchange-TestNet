@@ -168,6 +168,8 @@ jobs:
         run: sudo unshare --mount --propagation private env BITCOIN_MOUNT_TESTS=1 "$(command -v python)" -m pytest -q tests/test_ownership_tree.py
       - name: Pinned Freqtrade normal entrypoint with the dedicated host identity
         run: python scripts/verify_freqtrade_runtime.py
+      - name: Services image with restrictive context and arbitrary host identities
+        run: python scripts/verify_services_runtime.py
 
   artifact:
     needs: [verify, sast, quality-evidence, runtime-container]
@@ -254,6 +256,7 @@ jobs:
           docker compose --env-file .env.example build moneyflow freqtrade
           docker run --rm --entrypoint python bitcoin-testnet-services:local -c \
             "from pathlib import Path; p=Path('/app/freqtrade/user_data/strategies/IctSmcStrategy.py'); assert p.is_file() and p.stat().st_size > 0"
+          python scripts/verify_services_runtime.py --image bitcoin-testnet-services:local
           bash freqtrade/scripts/verify.sh
           python scripts/verify_freqtrade_runtime.py
           docker compose -f freqtrade/docker-compose.yml --profile offline-audit run --rm \

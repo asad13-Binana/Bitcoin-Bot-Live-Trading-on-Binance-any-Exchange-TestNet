@@ -1106,6 +1106,11 @@ rollback(){
 
   if [[ "$NEW_PROJECT_ATTEMPTED" == true ]]; then
     if [[ -d "$DEST" ]]; then
+      # Best-effort bounded metadata only; never delay safety rollback indefinitely
+      # or dump private container environments/raw logs. Evidence outlives DEST.
+      as_root timeout 30s python3 "$DEST/deploy/capture_failure_evidence.py" \
+        "$COMPOSE_PROJECT_NAME" "$RELEASE_HASH" || \
+        echo 'WARNING: failure evidence capture incomplete; continuing safety rollback.' >&2
       compose_for "$DEST" "$RELEASE_HASH" "$NEW_TAG" down --remove-orphans \
         >/dev/null 2>&1 || down_rc=$?
     else
