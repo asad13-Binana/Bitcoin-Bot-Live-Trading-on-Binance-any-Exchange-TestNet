@@ -416,6 +416,7 @@ case "$1" in
   *) fail "only preflight, simulation, or verify is permitted" ;;
 esac
 
+python3 -I "$(dirname "$IDENTITY_FILE")/prepare_runtime_locks.py"
 require_canonical_file "$ACTION_LOCK" 0 0 600
 exec 8>"$ACTION_LOCK"
 flock -n 8 || fail "another self-hosted deployment action is running"

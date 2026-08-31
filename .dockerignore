@@ -1,5 +1,6 @@
 *
 !Dockerfile.services
+!Dockerfile.freqtrade
 !requirements.services.lock
 !services/
 !services/**

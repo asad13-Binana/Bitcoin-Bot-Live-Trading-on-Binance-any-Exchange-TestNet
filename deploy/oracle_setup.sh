@@ -8,6 +8,7 @@ source "$SCRIPT_DIR/instance_identity.sh"
 readonly INCOMING=$DEPLOY_INBOX
 readonly PRIVATE=$PRIVATE_ROOT
 SWAP_FILE=/swapfile-oracle-trading-bots
+DEPLOYMENT_PROFILE=${DEPLOYMENT_PROFILE:-oracle-four-bot}
 SWAP_MIN_MIB=${SWAP_MIN_MIB:-3800}
 MIN_TOTAL_MEMORY_MIB=${MIN_TOTAL_MEMORY_MIB:-14336}
 MIN_FREE_DISK_GIB=${MIN_FREE_DISK_GIB:-80}
@@ -21,6 +22,17 @@ fail(){ echo "ERROR: $*" >&2; exit 1; }
 as_root(){
   if [[ $EUID -eq 0 ]]; then "$@"; else sudo "$@"; fi
 }
+
+# The smaller profile is explicit, single-instance and never LIVE-money.
+case "$DEPLOYMENT_PROFILE" in
+  oracle-four-bot) ;;
+  single-bot-experiment)
+    REQUIRE_ARM64=false
+    MIN_TOTAL_MEMORY_MIB=10968
+    MIN_FREE_DISK_GIB=12
+    ;;
+  *) fail 'unknown DEPLOYMENT_PROFILE' ;;
+esac
 
 DEPLOY_USER=${DEPLOY_USER:-${SUDO_USER:-${USER:-}}}
 [[ -n "$DEPLOY_USER" && "$DEPLOY_USER" != root ]] || \
@@ -48,8 +60,8 @@ if [[ "$REQUIRE_ARM64" == true && "$HOST_ARCH" != arm64 ]]; then
   fail "Oracle A1 target requires arm64, found $HOST_ARCH"
 fi
 PHYSICAL_MEMORY_MIB=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
-(( PHYSICAL_MEMORY_MIB >= 11264 )) || \
-  fail "physical memory ${PHYSICAL_MEMORY_MIB} MiB is below the required 11264 MiB for the shared four-bot A1 Flex host"
+as_root python3 -I "$SCRIPT_DIR/host_capacity.py" --phase bootstrap \
+  --profile "$DEPLOYMENT_PROFILE" --mode simulation --instance "$INSTANCE_SLUG"
 FREE_DISK_GIB=$(df -Pk / | awk 'NR==2{print int($4/1024/1024)}')
 (( FREE_DISK_GIB >= MIN_FREE_DISK_GIB )) || \
   fail "root filesystem has ${FREE_DISK_GIB} GiB free; require at least ${MIN_FREE_DISK_GIB} GiB for four bots"
@@ -186,6 +198,8 @@ chronyc waitsync 30 "$CHRONY_MAX_OFFSET_SECONDS" >/dev/null || \
 docker compose version >/dev/null || fail 'Docker Compose plugin is unavailable'
 as_root docker version >/dev/null || fail 'Docker Engine is unavailable'
 as_root docker info >/dev/null || fail 'Docker daemon information is unavailable'
+as_root python3 -I "$SCRIPT_DIR/host_capacity.py" --phase install \
+  --profile "$DEPLOYMENT_PROFILE" --mode simulation --instance "$INSTANCE_SLUG"
 
 # Ubuntu security updates remain automatic, but an operating bot is never
 # rebooted without an explicit maintenance decision. Docker's third-party
@@ -369,6 +383,17 @@ done
 as_root install -m 0755 -o root -g root -d "$ROOT_LIBEXEC"
 as_root install -m 0644 -o root -g root \
   "$SCRIPT_DIR/instance_identity.sh" "$ROOT_LIBEXEC/instance_identity.sh"
+[[ -f "$SCRIPT_DIR/prepare_runtime_locks.py" && ! -L "$SCRIPT_DIR/prepare_runtime_locks.py" ]] || \
+  fail 'runtime lock helper is missing or a symlink'
+as_root install -m 0644 -o root -g root \
+  "$SCRIPT_DIR/prepare_runtime_locks.py" "$ROOT_LIBEXEC/prepare_runtime_locks.py"
+[[ -f "$SCRIPT_DIR/host_capacity.py" && ! -L "$SCRIPT_DIR/host_capacity.py" ]] || \
+  fail 'host capacity helper is missing or a symlink'
+as_root install -m 0644 -o root -g root \
+  "$SCRIPT_DIR/host_capacity.py" "$ROOT_LIBEXEC/host_capacity.py"
+# /run is recreated at boot. Every lock caller also invokes this idempotent
+# helper; no symlink/owner/mode repair or inode replacement is permitted.
+as_root python3 -I "$ROOT_LIBEXEC/prepare_runtime_locks.py"
 as_root install -m 0755 -o root -g root \
   "$SCRIPT_DIR/install_artifact.sh" "$ROOT_LIBEXEC/install_artifact.sh"
 as_root install -m 0755 -o root -g root \
@@ -408,9 +433,6 @@ as_root systemctl daemon-reload
 as_root systemctl enable --now "${SYSTEMD_PREFIX}-resource-guard.timer" \
   "${SYSTEMD_PREFIX}-state-backup.timer" >/dev/null
 as_root install -m 0700 -o root -g root -d "$BACKUP_ROOT"
-as_root touch "$BACKUP_LOCK" "$OFFHOST_BACKUP_LOCK"
-as_root chown root:root "$BACKUP_LOCK" "$OFFHOST_BACKUP_LOCK"
-as_root chmod 0600 "$BACKUP_LOCK" "$OFFHOST_BACKUP_LOCK"
 
 SUDOERS_TMP=$(mktemp)
 cleanup_sudoers(){ rm -f -- "$SUDOERS_TMP"; }
@@ -431,9 +453,6 @@ fi
 cleanup_sudoers
 trap - EXIT
 
-as_root touch "$INSTALL_LOCK" "$ACTIONS_LOCK"
-as_root chown root:root "$INSTALL_LOCK" "$ACTIONS_LOCK"
-as_root chmod 0600 "$INSTALL_LOCK" "$ACTIONS_LOCK"
 
 echo "Oracle host prepared for $DEPLOY_USER without Docker-group membership."
 if [[ "$ENABLE_GITHUB_RUNNER" == true ]]; then

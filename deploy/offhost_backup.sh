@@ -98,6 +98,7 @@ run_oci(){
     "$oci_image" "$@"
 }
 
+python3 -I "$SCRIPT_DIR/prepare_runtime_locks.py"
 exec 9>"$LOCK"
 flock -n 9 || fail 'another off-host backup is running'
 
@@ -110,7 +111,7 @@ if [[ "$mode" == --preflight ]]; then
 fi
 
 latest=$(find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d \
-  -name '20????????T??????Z' -printf '%f\n' | sort -r | sed -n '1p')
+  -name '20??????T??????Z' -printf '%f\n' | sort -r | sed -n '1p')
 [[ "$latest" =~ ^20[0-9]{6}T[0-9]{6}Z$ ]] || fail 'no timestamped local backup is available'
 source_backup=$BACKUP_ROOT/$latest
 "$VALIDATOR" "$source_backup" >/dev/null

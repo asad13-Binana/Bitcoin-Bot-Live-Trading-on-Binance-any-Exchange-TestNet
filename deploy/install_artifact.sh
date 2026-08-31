@@ -26,8 +26,6 @@ ENV_FILE=$BOT_ENV_FILE
 ARTIFACT=${1:?usage: install_artifact.sh RELEASE.tar.gz RELEASE.tar.gz.sha256}
 CHECKSUM=${2:?usage: install_artifact.sh RELEASE.tar.gz RELEASE.tar.gz.sha256}
 KEEP_RELEASES=${KEEP_RELEASES:-3}
-MIN_PHYSICAL_MEMORY_MIB=${MIN_PHYSICAL_MEMORY_MIB:-11264}
-MIN_SWAP_MEMORY_MIB=${MIN_SWAP_MEMORY_MIB:-3800}
 MAX_ARCHIVE_CONTENT_MIB=${MAX_ARCHIVE_CONTENT_MIB:-1024}
 LIVE_PREFLIGHT_MARGIN_SECONDS=3600
 LIVE_ACTIVATION_MARGIN_SECONDS=300
@@ -89,7 +87,7 @@ env_file_key_allowed() {
     COINMARKETCAP_API_KEY|COINMARKETCAP_CONTEXT_ENABLED|\
     COINMARKETCAP_MAX_MONTHLY_ATTEMPTS|COINMARKETCAP_MAX_REQUESTS_PER_MINUTE|\
     COMMAND_HMAC_KEY|COMMAND_MAX_AGE_SECONDS|COMMAND_RESULT_MAX_AGE_SECONDS|\
-    COMMAND_RESULT_MAX_FILES|CONTAINER_STATUS_PATH|DEPLOY_STATUS_PATH|\
+    COMMAND_RESULT_MAX_FILES|CONTAINER_STATUS_PATH|DEPLOY_STATUS_PATH|DEPLOYMENT_PROFILE|\
     EXECUTION_DATABASE_PATH|EXECUTION_MODE|EXECUTION_PNL_LEDGER_PATH|\
     EXTERNAL_MARKET_HTTP_TIMEOUT_SECONDS|EXTERNAL_MARKET_REFRESH_SECONDS|\
     EXTERNAL_MARKET_STALE_AFTER_SECONDS|EXTERNAL_CONFLUENCE_MAX_PRICE_DEVIATION_BPS|\
@@ -319,6 +317,7 @@ CHECKSUM=$(readlink -f "$CHECKSUM" 2>/dev/null || true)
 
 # A repository-specific Compose project and lock isolate this instance from
 # the other three bots on the shared Oracle host.
+as_root python3 -I "$SCRIPT_DIR/prepare_runtime_locks.py"
 exec 9>"$INSTALL_LOCK" || fail "cannot open deployment lock $INSTALL_LOCK; run oracle_setup.sh first"
 flock -n 9 || fail "another install holds $INSTALL_LOCK"
 
@@ -476,12 +475,10 @@ for shared_dir in "${SHARED_DIRS[@]}"; do
   require_canonical_dir "$shared_dir" "$BOT_UID" "$BOT_GID" 750
 done
 
-physical_mib=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
-swap_mib=$(awk '/SwapTotal/{print int($2/1024)}' /proc/meminfo)
-(( physical_mib >= MIN_PHYSICAL_MEMORY_MIB )) || \
-  fail "physical memory ${physical_mib} MiB is below ${MIN_PHYSICAL_MEMORY_MIB} MiB"
-(( swap_mib >= MIN_SWAP_MEMORY_MIB )) || \
-  fail "swap ${swap_mib} MiB is below ${MIN_SWAP_MEMORY_MIB} MiB; run oracle_setup.sh"
+DEPLOYMENT_PROFILE=$(env_file_get "$ENV_FILE" DEPLOYMENT_PROFILE) || DEPLOYMENT_PROFILE=oracle-four-bot
+DEPLOYMENT_PROFILE=${DEPLOYMENT_PROFILE:-oracle-four-bot}
+as_root python3 -I "$SCRIPT_DIR/host_capacity.py" --phase install \
+  --profile "$DEPLOYMENT_PROFILE" --mode "$EXECUTION_MODE" --instance "$INSTANCE_SLUG"
 systemctl is-active --quiet chrony || fail 'chrony is not active; reliable clocks are required'
 chrony_tracking=$(chronyc tracking) || fail 'chrony cannot report clock status'
 grep -Eq '^Leap status[[:space:]]*:[[:space:]]*Normal' <<<"$chrony_tracking" || \
@@ -582,8 +579,12 @@ cleanup(){
   fi
   if [[ "$CONFIG_COMMITTED" != true && "$PRESERVE_FAILED_RELEASE" != true \
      && -n "$NEW_TAG" ]]; then
-    image_users=$(docker ps -aq --filter "ancestor=$SERVICE_IMAGE:$NEW_TAG" 2>/dev/null || true)
-    [[ -n "$image_users" ]] || docker image rm "$SERVICE_IMAGE:$NEW_TAG" >/dev/null 2>&1 || true
+    for built_image in "$SERVICE_IMAGE" "$FREQTRADE_IMAGE"; do
+      # Inspection failure is not evidence that an image is unused.
+      if image_users=$(docker ps -aq --filter "ancestor=$built_image:$NEW_TAG" 2>/dev/null); then
+        [[ -n "$image_users" ]] || docker image rm "$built_image:$NEW_TAG" >/dev/null 2>&1 || true
+      fi
+    done
   fi
 }
 trap cleanup EXIT
@@ -820,7 +821,7 @@ compose_for(){
 }
 
 compose_for "$NEW" "$RELEASE_HASH" "$NEW_TAG" config -q
-compose_for "$NEW" "$RELEASE_HASH" "$NEW_TAG" build moneyflow
+compose_for "$NEW" "$RELEASE_HASH" "$NEW_TAG" build moneyflow freqtrade
 
 OLD=''
 OLD_HASH=''
@@ -861,6 +862,9 @@ if [[ -L "$CURRENT" ]]; then
     OLD_EXECUTION_MODE=$(env_file_get "$OLD_CONFIG" EXECUTION_MODE) \
       || OLD_EXECUTION_MODE=simulation
     [[ -n "$OLD_EXECUTION_MODE" ]] || OLD_EXECUTION_MODE=simulation
+    if [[ "$DEPLOYMENT_PROFILE" == single-bot-experiment && "$OLD_EXECUTION_MODE" == live ]]; then
+      fail 'experiment cannot replace/roll back to a LIVE-money deployment'
+    fi
     case "$OLD_EXECUTION_MODE" in
       simulation|testnet|live) OLD_MONITOR_MODE=$OLD_EXECUTION_MODE ;;
       *) fail 'current release config snapshot has invalid EXECUTION_MODE' ;;
@@ -1339,6 +1343,7 @@ while IFS= read -r candidate; do
   [[ ! -L "$snapshot" && ! -L "$marker" ]] && rm -f -- "$snapshot" "$marker"
   if [[ "$candidate_hash" =~ ^[0-9a-f]{64}$ && "$candidate_hash" != "$RELEASE_HASH" ]]; then
     docker image rm "$SERVICE_IMAGE:bitcoin-${candidate_hash:0:16}" >/dev/null 2>&1 || true
+    docker image rm "$FREQTRADE_IMAGE:bitcoin-${candidate_hash:0:16}" >/dev/null 2>&1 || true
   fi
 done < <(find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | \
   sort -nr | cut -d' ' -f2-)

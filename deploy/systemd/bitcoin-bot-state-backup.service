@@ -21,5 +21,4 @@ ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
 ReadOnlyPaths=/var/lib/bitcoin-bot
-ReadWritePaths=/var/backups/bitcoin-bot /var/lock
-
+ReadWritePaths=/var/backups/bitcoin-bot /run/lock

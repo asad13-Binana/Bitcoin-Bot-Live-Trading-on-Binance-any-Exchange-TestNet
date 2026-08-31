@@ -20,6 +20,7 @@ DEST=$BACKUP_ROOT/$STAMP
 TMP=$(mktemp -d "$BACKUP_ROOT/.${STAMP}.XXXXXX")
 cleanup(){ rm -rf --one-file-system "$TMP"; }
 trap cleanup EXIT
+python3 -I "$SCRIPT_DIR/prepare_runtime_locks.py"
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo 'ERROR: another Bitcoin backup is running' >&2; exit 1; }
 [[ ! -e "$DEST" ]] || { echo 'ERROR: timestamp backup already exists' >&2; exit 1; }
@@ -29,6 +30,8 @@ databases=(
   "$SHARED/runtime/sidecar/execution_state.sqlite"
   "$SHARED/runtime/sidecar/signal_state.sqlite"
   "$SHARED/runtime/moneyflow/external_market_quota.sqlite3"
+  "$SHARED/runtime/telegram/telegram_updates.sqlite3"
+  "$SHARED/freqtrade/tradesv3.signal-only.sqlite"
 )
 for database in "${databases[@]}"; do
   [[ -e "$database" ]] || continue
@@ -37,6 +40,9 @@ for database in "${databases[@]}"; do
   name=$(basename "$database")
   target=$TMP/sqlite/$name
   sqlite3 "$database" ".timeout 30000" ".backup '$target'"
+  # An online backup of a WAL-mode database must become a standalone copy.
+  [[ $(sqlite3 "$target" 'PRAGMA journal_mode=DELETE;') == delete ]] || {
+    echo "ERROR: cannot finalise standalone SQLite backup: $name" >&2; exit 1; }
   [[ $(sqlite3 "$target" 'PRAGMA quick_check;') == ok ]] || {
     echo "ERROR: SQLite backup validation failed: $name" >&2; exit 1; }
   chmod 0600 "$target"
@@ -52,10 +58,13 @@ for source in "$CONFIG_ROOT" "$SHARED/audit" "$SHARED/runtime"; do
     exit 1
   fi
 done
-tar --numeric-owner --one-file-system -C "$PERSIST_ROOT" -czf "$TMP/config-snapshots.tar.gz" \
+tar --numeric-owner --one-file-system -C "$PERSIST_PARENT" -czf "$TMP/config-snapshots.tar.gz" \
   config-snapshots
 tar --numeric-owner --one-file-system -C "$SHARED" -czf "$TMP/audit-evidence.tar.gz" audit
-tar --numeric-owner --one-file-system -C "$SHARED" -czf "$TMP/deployment-metadata.tar.gz" runtime
+# Raw WAL/SHM/live database copies are not safe restore inputs. The online
+# standalone copies above are authoritative; this archive is metadata only.
+tar --numeric-owner --one-file-system --exclude='*.sqlite*' \
+  -C "$SHARED" -czf "$TMP/deployment-metadata.tar.gz" runtime
 chmod 0600 "$TMP"/*.tar.gz
 
 (

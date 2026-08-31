@@ -23,4 +23,4 @@ ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
 ReadOnlyPaths=/usr/local/libexec/bitcoin-bot /etc/bitcoin-bot/offhost-backup.env
-ReadWritePaths=/var/backups/bitcoin-bot /var/lib/bitcoin-bot/shared/runtime /var/lock
+ReadWritePaths=/var/backups/bitcoin-bot /var/lib/bitcoin-bot/shared/runtime /run/lock

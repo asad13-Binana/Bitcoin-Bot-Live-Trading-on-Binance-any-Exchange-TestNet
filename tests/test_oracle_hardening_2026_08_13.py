@@ -30,7 +30,8 @@ def test_oracle_target_is_ubuntu_2404_arm64_by_default():
     assert "REQUIRED_UBUNTU_VERSION=${REQUIRED_UBUNTU_VERSION:-24.04}" in setup
     assert "REQUIRE_ARM64=${REQUIRE_ARM64:-true}" in setup
     assert "Oracle A1 target requires arm64" in setup
-    assert "PHYSICAL_MEMORY_MIB >= 11264" in setup
+    assert 'host_capacity.py" --phase bootstrap' in setup
+    assert 'DEPLOYMENT_PROFILE=${DEPLOYMENT_PROFILE:-oracle-four-bot}' in setup
     assert "MIN_TOTAL_MEMORY_MIB=${MIN_TOTAL_MEMORY_MIB:-14336}" in setup
     assert "MIN_FREE_DISK_GIB=${MIN_FREE_DISK_GIB:-80}" in setup
 

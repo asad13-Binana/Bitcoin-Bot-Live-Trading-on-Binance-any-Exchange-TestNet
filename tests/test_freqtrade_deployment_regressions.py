@@ -58,9 +58,9 @@ def test_container_gate_calls_real_remote_pairlist_without_network():
     assert "bash freqtrade/scripts/verify.sh" in workflow
     runtime = yaml.safe_load((ROOT / "docker-compose.yml").read_text())
     offline = yaml.safe_load((ROOT / "freqtrade/docker-compose.yml").read_text())
-    assert runtime["services"]["freqtrade"]["image"] == (
-        offline["services"]["freqtrade"]["image"]
-    )
+    recipe = (ROOT / "Dockerfile.freqtrade").read_text()
+    assert "FROM " + offline["services"]["freqtrade"]["image"] in recipe
+    assert runtime["services"]["freqtrade"]["build"]["dockerfile"] == "Dockerfile.freqtrade"
     assert "@sha256:" in offline["services"]["freqtrade"]["image"]
 
 
