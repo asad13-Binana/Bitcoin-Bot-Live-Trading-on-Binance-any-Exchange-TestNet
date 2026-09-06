@@ -32,11 +32,13 @@ class ModernUserDataStream:
     No retired REST `/api/v3/userDataStream` endpoint is called.
     """
 
-    def __init__(self, broker, on_order_update=None, on_list_update=None, on_resync=None, testnet=True):
+    def __init__(self, broker, on_order_update=None, on_list_update=None, on_resync=None, testnet=True,
+                 on_account_update=None):
         self.broker = broker
         self.on_order_update = on_order_update
         self.on_list_update = on_list_update
         self.on_resync = on_resync
+        self.on_account_update = on_account_update
         self.testnet = bool(testnet)
         self._ws = None
         self._running = False
@@ -143,8 +145,16 @@ class ModernUserDataStream:
             "outboundAccountPosition",
             "balanceUpdate",
             "externalLockUpdate",
-        } and self.on_resync:
-            self.on_resync()
+        }:
+            # These are normal account/balance notifications, not transport
+            # reconnects. Actual socket reconnects still invoke on_resync from
+            # _schedule_reconnect(), preserving the fail-closed reconciliation
+            # interlock without falsely pausing after ordinary fills/commissions.
+            if self.on_account_update:
+                self.on_account_update(event)
+            elif self.on_resync:
+                # Compatibility for callers without a separate account handler.
+                self.on_resync()
         elif event_type == "eventStreamTerminated":
             log.warning("Binance terminated the user-data subscription")
             self._last_error = "event_stream_terminated"

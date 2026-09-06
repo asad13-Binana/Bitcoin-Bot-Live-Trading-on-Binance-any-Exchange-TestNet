@@ -16,8 +16,8 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-UPSTREAM = ("freqtradeorg/freqtrade:2026.6@sha256:"
-            "d451af021d5e08b70580c0eea5848534e9846b57391b34821c0a5814416397e6")
+UPSTREAM = ("freqtradeorg/freqtrade:2026.8@sha256:"
+            "4d23160b501d2b34579e76f57ad75edfa274967cd0dd824ff1c1b86d8c166ab4")
 
 
 def run(args: list[str], env: dict[str, str], *, check: bool = True) -> subprocess.CompletedProcess:
@@ -86,7 +86,7 @@ assert os.getuid() == 994 and os.getgid() == 985
 assert os.environ["PYTHONPATH"] == "/freqtrade/services_src"
 assert os.environ["PYTHONUSERBASE"] == "/home/ftuser/.local"
 assert "/home/ftuser/.local/" in site.getusersitepackages()
-assert importlib.metadata.version("freqtrade").startswith("2026.6")
+assert importlib.metadata.version("freqtrade").startswith("2026.8")
 assert canonical_pair("BTC/USDT") == "BTC/USDT"
 assert pathlib.Path("/home/ftuser/.local/bin/freqtrade").is_file()
 try:

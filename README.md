@@ -149,3 +149,7 @@ classification.
 - [Binance official Spot API documentation](https://github.com/binance/binance-spot-api-docs)
 - [Oracle Cloud Free Tier](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier.htm)
 - [GitHub Actions deployments and environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)
+
+## Repair attribution
+
+Fixes prepared with **GPT-6 Astra**. See the [AWS runtime and adaptive protection repair record](docs/AWS_RUNTIME_REPAIR_20260907.md) for the changes, checks and remaining deployment requirements. This credit is not a certification of trading results. The repository owner reviews and manually merges updates.

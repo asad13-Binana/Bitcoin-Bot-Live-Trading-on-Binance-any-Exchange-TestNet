@@ -18,6 +18,7 @@ import requests
 
 MAX_RESPONSE_BYTES = 64 * 1024
 COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price"
+COINGECKO_KEYLESS_SENTINEL = "__KEYLESS_PUBLIC__"
 COINMARKETCAP_URL = (
     "https://pro-api.coinmarketcap.com/v3/cryptocurrency/quotes/latest"
 )
@@ -190,6 +191,12 @@ class CoinGeckoClient:
         self._transport = transport or _JsonTransport()
 
     def fetch_bitcoin_usd(self) -> dict:
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": "bitcoin-bot-external-context/1.0",
+        }
+        if self._api_key != COINGECKO_KEYLESS_SENTINEL:
+            headers["x-cg-demo-api-key"] = self._api_key
         payload = self._transport.get(
             COINGECKO_URL,
             params={
@@ -200,11 +207,7 @@ class CoinGeckoClient:
                 "include_24hr_change": "true",
                 "include_last_updated_at": "true",
             },
-            headers={
-                "Accept": "application/json",
-                "User-Agent": "bitcoin-bot-external-context/1.0",
-                "x-cg-demo-api-key": self._api_key,
-            },
+            headers=headers,
             timeout=self._timeout,
         )
         if not isinstance(payload, dict):

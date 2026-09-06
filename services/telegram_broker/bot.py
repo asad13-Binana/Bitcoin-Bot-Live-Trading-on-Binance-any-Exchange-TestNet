@@ -399,7 +399,8 @@ def help_text():
         "/fixed_oco /oco_trailing /trailing_only "
         "/convert BTCUSDT MODE /breakeven BTCUSDT /lockprofit BTCUSDT PCT "
         "/tighttrail BTCUSDT BIPS /autoprotection on|off /reconcile /restartws "
-        "/emergency BTCUSDT /setsize QUOTE_AMOUNT /setmax 1 /logs /deploy /audit "
+        "/buy BTCUSDT /sell BTCUSDT /emergency BTCUSDT /setsize QUOTE_AMOUNT "
+        "/setmax 1 /logs /deploy /audit "
         "/lastsignal /backtest /settings. Pair changes and money-affecting actions require "
         "one-time confirmation. Entries remain off after restart, switch or ambiguity."
     )
@@ -859,7 +860,8 @@ def _confirm_action(action, args, chat):
             "entries": "remain OFF until explicit resume",
         }, indent=2)[:3900], chat)
     elif action in {"convert", "break_even", "lock_profit", "tight_trailing",
-                    "emergency_exit", "set_size", "set_max", "auto_protection"}:
+                    "manual_entry", "emergency_exit", "set_size", "set_max",
+                    "auto_protection"}:
         send(json.dumps(sidecar_command(action, args, wait=True), indent=2), chat)
 
 
@@ -926,6 +928,14 @@ def handle_message(message):
     elif cmd == "/autoprotection" and len(parts) == 2 and parts[1].lower() in {"on", "off"}:
         _ask_confirm(chat, "CONFIRM automatic protection", "auto_protection",
                      {"enabled": parts[1].lower() == "on"})
+    elif cmd == "/buy" and len(parts) == 2:
+        _ask_confirm(chat, "CONFIRM manual 1 BTC buy", "manual_entry",
+                     {"symbol": parts[1].replace("/", "").upper()},
+                     "Submit one manual TestNet entry through the normal protected sidecar path?")
+    elif cmd == "/sell" and len(parts) == 2:
+        _ask_confirm(chat, "CONFIRM manual protected exit", "emergency_exit",
+                     {"symbol": parts[1].replace("/", "").upper()},
+                     "Cancel current protection and sell the bot-owned BTC position now?")
     elif cmd == "/emergency" and len(parts) == 2:
         _ask_confirm(chat, "CONFIRM emergency exit", "emergency_exit",
                      {"symbol": parts[1].upper()})

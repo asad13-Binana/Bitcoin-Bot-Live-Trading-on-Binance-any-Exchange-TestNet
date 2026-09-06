@@ -163,6 +163,24 @@ class StateStore:
         finally:
             con.close()
 
+    def hold_wal_open(self):
+        """Keep WAL sidefiles available to the broker's read-only mount.
+
+        The owner process holds an idle connection, never a read transaction.
+        This permits checkpoints and replaces an extra host-only keeper service.
+        The caller must close the connection at shutdown.
+        """
+        con = sqlite3.connect(self.db_path, timeout=30)
+        try:
+            if con.execute('PRAGMA journal_mode').fetchone()[0].lower() != 'wal':
+                raise RuntimeError('execution state must use WAL journalling')
+            con.execute('PRAGMA query_only=ON')
+            con.execute('SELECT 1 FROM sqlite_master LIMIT 1').fetchone()
+            return con
+        except Exception:
+            con.close()
+            raise
+
     @staticmethod
     def _now() -> str:
         return datetime.now(timezone.utc).isoformat()
@@ -663,7 +681,10 @@ class StateStore:
                 # A list event alone therefore never proves SELL protection.
                 updates['reconciliation_status'] = 'ORDER_LIST_EXECUTING_PHASE_UNPROVEN'
             elif list_status == 'ALL_DONE' or order_status == 'ALL_DONE':
-                updates['reconciliation_status'] = 'ORDER_LIST_TERMINAL_RECONCILE_REQUIRED'
+                if str(row['lifecycle_state']) == LifecycleState.EXIT_FILLED.value:
+                    updates['reconciliation_status'] = 'ORDER_LIST_TERMINAL_EXIT_CONFIRMED'
+                else:
+                    updates['reconciliation_status'] = 'ORDER_LIST_TERMINAL_RECONCILE_REQUIRED'
             elif list_status == 'RESPONSE' or order_status == 'REJECT':
                 updates['reconciliation_status'] = 'ORDER_LIST_ACTION_REJECTED_RECONCILE_REQUIRED'
 

@@ -762,11 +762,11 @@
       },
       {
         "name": "bitcoin-bot:container-base:freqtrade",
-        "value": "freqtradeorg/freqtrade:2026.6@sha256:d451af021d5e08b70580c0eea5848534e9846b57391b34821c0a5814416397e6"
+        "value": "freqtradeorg/freqtrade:2026.8@sha256:4d23160b501d2b34579e76f57ad75edfa274967cd0dd824ff1c1b86d8c166ab4"
       },
       {
         "name": "bitcoin-bot:container-recipe-sha256:freqtrade",
-        "value": "78521eb044b333bd755115f8c40617871b26017b654f419239b517d729d8178c"
+        "value": "67270cd1e30cbb0bf8481fb64762459dba47af30678f9a17996a72265c4c3f85"
       },
       {
         "name": "bitcoin-bot:container-base:services",

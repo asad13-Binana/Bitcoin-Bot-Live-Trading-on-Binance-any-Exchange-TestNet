@@ -143,13 +143,23 @@ services:
       retries: 8
       start_period: 30s
     logging: *default-logging
+    tmpfs:
+      - /freqtrade/user_data/backtest_results:size=10m,mode=1777
+      - /freqtrade/user_data/data:size=10m,mode=1777
+      - /freqtrade/user_data/hyperopt_results:size=10m,mode=1777
+      - /freqtrade/user_data/plot:size=10m,mode=1777
+      - /freqtrade/user_data/hyperopts:size=10m,mode=1777
+      - /freqtrade/user_data/logs:size=10m,mode=1777
+      - /freqtrade/user_data/notebooks:size=10m,mode=1777
+      - /freqtrade/user_data/freqaimodels:size=10m,mode=1777
+      - /freqtrade/user_data/tensorboard:size=10m,mode=1777
 
   execution-sidecar:
     <<: *service-hardening
     # A reconciliation failure is a durable operator gate, not a reason to
     # spin forever. Five bounded retries preserve transient recovery while
     # avoiding the restart storm observed on the AWS TestNet experiment.
-    restart: "on-failure:5"
+    restart: unless-stopped
     image: bitcoin-testnet-services:${RELEASE_TAG:-local}
     command: python -m services.execution_sidecar.main
     depends_on:
@@ -175,6 +185,7 @@ services:
       BINANCE_SPOT_EXECUTION_PUBLIC_BASE: ${BINANCE_SPOT_EXECUTION_PUBLIC_BASE:-}
       ACTIVE_PAIR: ${ACTIVE_PAIR:-BTC/USDT}
       BTC_QUOTE_ALLOWLIST: ${BTC_QUOTE_ALLOWLIST:-}
+      TRADE_SIZE_BASE: ${TRADE_SIZE_BASE:-}
       TRADE_SIZE_QUOTE: ${TRADE_SIZE_QUOTE:-100}
       MAX_ENTRY_OPEN_SECONDS: ${MAX_ENTRY_OPEN_SECONDS:-300}
       PROTECTION_MODE: ${PROTECTION_MODE:-OCO_TRAILING}
@@ -259,7 +270,7 @@ services:
   telegram-broker:
     <<: *service-hardening
     image: bitcoin-testnet-services:${RELEASE_TAG:-local}
-    command: python -m services.telegram_broker.bot
+    command: python -m ${TELEGRAM_PANEL_MODULE:-services.telegram_broker.bot}
     depends_on:
       freqtrade:
         condition: service_healthy

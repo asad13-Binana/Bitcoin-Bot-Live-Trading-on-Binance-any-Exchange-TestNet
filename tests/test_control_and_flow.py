@@ -986,8 +986,8 @@ def test_compose_has_four_services_and_only_sidecar_receives_binance_credentials
     })
     assert services["moneyflow"]["command"] == "python -m services.moneyflow.service"
     assert "FROM " + (
-        "freqtradeorg/freqtrade:2026.6@sha256:"
-        "d451af021d5e08b70580c0eea5848534e9846b57391b34821c0a5814416397e6"
+        "freqtradeorg/freqtrade:2026.8@sha256:"
+        "4d23160b501d2b34579e76f57ad75edfa274967cd0dd824ff1c1b86d8c166ab4"
     ) in (ROOT / "Dockerfile.freqtrade").read_text(encoding="utf-8")
     assert services["freqtrade"]["build"]["dockerfile"] == "Dockerfile.freqtrade"
     assert "--strategy IctSmcStrategy" in services["freqtrade"]["command"]

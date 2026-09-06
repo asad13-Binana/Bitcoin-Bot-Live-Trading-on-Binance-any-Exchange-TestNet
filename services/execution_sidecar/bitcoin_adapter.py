@@ -85,7 +85,14 @@ class BitcoinSpotAdapter:
         self.started = False
         self.lock = threading.RLock()
         self.partial_recovery: set[str] = set()
+        self._account_dirty_since = None
         self.trade_size_quote = Decimal(str(env_float("TRADE_SIZE_QUOTE", 100, 5, 100_000)))
+        base_text = os.getenv("TRADE_SIZE_BASE", "").strip()
+        self.trade_size_base = Decimal(base_text) if base_text else None
+        if self.trade_size_base is not None and (
+                not self.trade_size_base.is_finite() or self.trade_size_base <= 0
+                or self.trade_size_base > Decimal("9000")):
+            raise ValueError("TRADE_SIZE_BASE must be within (0,9000] BTC")
         self.max_positions = 1
         self.max_entry_open_seconds = env_int("MAX_ENTRY_OPEN_SECONDS", 300, 30, 900)
         settings = ProtectionSettings(
@@ -716,6 +723,15 @@ class BitcoinSpotAdapter:
         except Exception:
             pass
 
+    def _configured_entry_quantity(self, rules, entry: Decimal) -> tuple[Decimal, Decimal]:
+        if self.trade_size_base is not None:
+            quantity = floor_step(self.trade_size_base, rules.step)
+        else:
+            quantity = floor_step(self.trade_size_quote / entry, rules.step)
+        if quantity <= 0:
+            raise RuntimeError("configured BTC entry quantity rounds to zero")
+        return quantity, quantity * entry
+
     # ---- lifecycle ----
     def start(self):
         state = self.pair_controller.load()
@@ -734,6 +750,7 @@ class BitcoinSpotAdapter:
         self.stream = self.stream_factory(
             self.gateway, self._on_order_update, self._on_list_update,
             self._on_resync, testnet=self.mode == "testnet")
+        self.stream.on_account_update = self._on_account_update
         self.stream.start()
         result = self.verified_reconcile()
         if not result["ok"]:
@@ -778,10 +795,11 @@ class BitcoinSpotAdapter:
                 return False, "an operation intent is unresolved"
             rules = self._rules(active["pair"])
             quote_free = self._free(rules.quote)
-            if quote_free < self.trade_size_quote:
-                return False, f"insufficient {rules.quote} balance"
             entry = floor_step(self._best_ask(symbol), rules.tick)
-            quantity = floor_step(self.trade_size_quote / entry, rules.step)
+            quantity, required_quote = self._configured_entry_quantity(rules, entry)
+            if quote_free < required_quote:
+                return False, (f"insufficient {rules.quote} balance: "
+                               f"need {required_quote}, available {quote_free}")
             mode = ProtectionMode(self.state_store.get_mode())
             self._require_mode_capabilities(rules, mode, for_entry=True)
             endpoint, params = self.factory.entry(mode, rules, quantity, entry)
@@ -817,30 +835,40 @@ class BitcoinSpotAdapter:
 
     # ---- user stream / partial-fill recovery ----
     def _on_order_update(self, event: dict):
-        try:
-            self._record_authenticated_event(event)
-            side, status = str(event.get("S", "")).upper(), str(event.get("X", "")).upper()
-            if side == "BUY" and status in {
-                "PARTIALLY_FILLED", "CANCELED", "EXPIRED", "REJECTED",
-            } and Decimal(str(event.get("z") or "0")) > 0:
-                self.partial_recovery.add(str(event.get("s", "")).upper())
-                self._pause("partial-entry-fill-needs-protection")
-        except Exception as exc:
-            self._pause("user-stream-event-processing-failed")
-            audit("user_stream_event_failed", severity="CRITICAL", details={"error": str(exc)})
+        with self.lock:
+            try:
+                self._record_authenticated_event(event)
+                side, status = str(event.get("S", "")).upper(), str(event.get("X", "")).upper()
+                if side == "BUY" and status in {
+                    "PARTIALLY_FILLED", "CANCELED", "EXPIRED", "REJECTED",
+                } and Decimal(str(event.get("z") or "0")) > 0:
+                    self.partial_recovery.add(str(event.get("s", "")).upper())
+                    self._pause("partial-entry-fill-needs-protection")
+            except Exception as exc:
+                self._pause("user-stream-event-processing-failed")
+                audit("user_stream_event_failed", severity="CRITICAL", details={"error": str(exc)})
 
     def _on_list_update(self, event: dict):
-        try:
-            self.state_store.record_exchange_event(event)
-        except Exception as exc:
-            self._pause("user-stream-list-processing-failed")
-            audit("user_stream_list_failed", severity="CRITICAL", details={"error": str(exc)})
+        with self.lock:
+            try:
+                self.state_store.record_exchange_event(event)
+            except Exception as exc:
+                self._pause("user-stream-list-processing-failed")
+                audit("user_stream_list_failed", severity="CRITICAL", details={"error": str(exc)})
 
     def _on_resync(self):
-        self.state_store.data["last_reconciliation_status"] = "RECONCILIATION_REQUIRED"
-        self.state_store.data["last_reconciliation_at"] = time.time()
-        self.state_store.save()
-        self._pause("user-stream-reconnect-reconciliation-required")
+        with self.lock:
+            self.state_store.data["last_reconciliation_status"] = "RECONCILIATION_REQUIRED"
+            self.state_store.data["last_reconciliation_at"] = time.time()
+            self.state_store.save()
+            self._pause("user-stream-reconnect-reconciliation-required")
+
+    def _on_account_update(self, _event):
+        # A normal balance event is not a lost stream. Still reconcile its
+        # ownership after related execution/list events have had time to arrive.
+        with self.lock:
+            if self._account_dirty_since is None:
+                self._account_dirty_since = time.monotonic()
 
     @staticmethod
     def _durable_protection_is_open(row: dict, orders: list, lists: list) -> bool:
@@ -1022,33 +1050,39 @@ class BitcoinSpotAdapter:
         return True, "stale unfilled entry canceled and verified terminal"
 
     def tick(self):
-        for row in self.state_store.active_trade_rows():
-            if row["lifecycle_state"] == LifecycleState.ENTRY_SUBMITTED.value:
-                try:
-                    ok, detail = self._expire_stale_entry(row)
-                    if not ok:
+        with self.lock:
+            with self.lock:
+                if (self._account_dirty_since is not None
+                        and time.monotonic() - self._account_dirty_since >= 5):
+                    self._account_dirty_since = None
+                    self.verified_reconcile()
+            for row in self.state_store.active_trade_rows():
+                if row["lifecycle_state"] == LifecycleState.ENTRY_SUBMITTED.value:
+                    try:
+                        ok, detail = self._expire_stale_entry(row)
+                        if not ok:
+                            self._pause("stale-entry-cancellation-unresolved")
+                            audit("stale_entry_cancellation_failed", severity="CRITICAL",
+                                  details={"trade_id": row["trade_id"], "detail": detail})
+                    except Exception as exc:
                         self._pause("stale-entry-cancellation-unresolved")
                         audit("stale_entry_cancellation_failed", severity="CRITICAL",
-                              details={"trade_id": row["trade_id"], "detail": detail})
+                              details={"trade_id": row["trade_id"], "error": str(exc)})
+            candidates = set(self.partial_recovery)
+            for row in self.state_store.active_trade_rows():
+                if row["lifecycle_state"] == LifecycleState.ENTRY_PARTIALLY_FILLED.value:
+                    candidates.add(row["pair"].replace("/", ""))
+            for symbol in candidates:
+                try:
+                    ok, detail = self._place_partial_protection(symbol)
+                    if ok:
+                        self.partial_recovery.discard(symbol)
+                    else:
+                        audit("partial_fill_protection_failed", severity="CRITICAL",
+                              details={"symbol": symbol, "detail": detail})
                 except Exception as exc:
-                    self._pause("stale-entry-cancellation-unresolved")
-                    audit("stale_entry_cancellation_failed", severity="CRITICAL",
-                          details={"trade_id": row["trade_id"], "error": str(exc)})
-        candidates = set(self.partial_recovery)
-        for row in self.state_store.active_trade_rows():
-            if row["lifecycle_state"] == LifecycleState.ENTRY_PARTIALLY_FILLED.value:
-                candidates.add(row["pair"].replace("/", ""))
-        for symbol in candidates:
-            try:
-                ok, detail = self._place_partial_protection(symbol)
-                if ok:
-                    self.partial_recovery.discard(symbol)
-                else:
                     audit("partial_fill_protection_failed", severity="CRITICAL",
-                          details={"symbol": symbol, "detail": detail})
-            except Exception as exc:
-                audit("partial_fill_protection_failed", severity="CRITICAL",
-                      details={"symbol": symbol, "error": str(exc)})
+                          details={"symbol": symbol, "error": str(exc)})
 
     # ---- cancel-and-replace protection ----
     def _cancel_protection(self, row: dict, symbol: str) -> tuple[bool, str]:
@@ -1128,8 +1162,15 @@ class BitcoinSpotAdapter:
             row = self.state_store.active_trade_for_symbol(symbol)
             if not row:
                 return False, "position not found"
-            self._pause("protection-conversion-in-progress")
+            if self.state_store.unresolved_intents():
+                return False, "unresolved operation intent; reconcile before changing protection"
+            if row.get("lifecycle_state") not in {
+                    LifecycleState.PROTECTION_ACTIVE.value, LifecycleState.BREAK_EVEN_ARMED.value,
+                    LifecycleState.PROFIT_LOCKED.value, LifecycleState.TRAILING_ACTIVE.value}:
+                return False, "position is not in a confirmed protected lifecycle"
             active = self.pair_controller.load()
+            if active["symbol"] != symbol or active["pair"] != row["pair"]:
+                return False, "protection belongs to a different active pair"
             rules = self._rules(active["pair"])
             entry = Decimal(str(row.get("average_entry_price") or "0"))
             current = self._current(symbol)
@@ -1146,7 +1187,12 @@ class BitcoinSpotAdapter:
                 stop_price = break_even_price
                 if lock_profit_pct is not None:
                     stop_price = max(stop_price, entry * (1 + Decimal(str(abs(float(lock_profit_pct)))) / 100))
-                stop_price = floor_step(stop_price, rules.tick)
+                from decimal import ROUND_CEILING
+                buffer = Decimal(self.factory.settings.limit_fill_buffer_bips) / 10000
+                stop_price = (stop_price / rules.tick).to_integral_value(
+                    rounding=ROUND_CEILING) * rules.tick
+                stop_price = ((stop_price / (1 - buffer)) / rules.tick).to_integral_value(
+                    rounding=ROUND_CEILING) * rules.tick
                 if not entry < stop_price < current:
                     return False, "profit-lock stop must be above entry and below current price"
                 mode = ProtectionMode.FIXED_OCO
@@ -1172,6 +1218,10 @@ class BitcoinSpotAdapter:
                 client_order_id=str(params.get("newClientOrderId", "")),
                 list_client_order_id=str(params.get("listClientOrderId", ""))):
                 return False, "replacement intent already exists"
+            # A routine replacement is not a global risk event. Preserve any
+            # existing risk pause; the durable intent blocks concurrent entry.
+            self.enabled = False
+            self.state_store.set_entries(False, "protection-conversion-in-progress")
             canceled, detail = self._cancel_protection(row, symbol)
             if not canceled:
                 # Keep the PREPARED repair plan durable. If the cancel actually
@@ -1223,39 +1273,80 @@ class BitcoinSpotAdapter:
                 reconciliation_status="PROTECTION_REPLACED")
             return True, f"{symbol} protection changed to {ProtectionMode(mode).value}"
 
+    def _auto_convert(self, symbol, mode, **kwargs):
+        was_enabled = self.enabled and self.state_store.entries()
+        ok, detail = self.convert(symbol, mode, **kwargs)
+        if ok:
+            proof = self.verified_reconcile()
+            # Never clear a risk pause or undo an owner pause. Resume only the
+            # entries that this successful automatic transaction suspended.
+            if (proof["ok"] and was_enabled
+                    and self.state_store.data.get("pause_reason") == "protection-conversion-in-progress"
+                    and not getattr(self.guard, "state", {}).get("global_pause")):
+                self.state_store.set_entries(True)
+                self.enabled = True
+        return detail
+
     def maybe_auto_manage(self, flow: dict) -> str:
-        if not (self.state_store.data.get("auto_protection_enabled", False)
-                or os.getenv("AUTO_PROTECTION_ENABLED", "false").lower() == "true"):
-            return "automatic protection management disabled"
-        active = self.pair_controller.load()
-        if not isinstance(flow, dict) or not flow.get("ok") or flow.get("pair_state_hash") != active["state_hash"]:
-            return "money-flow state unavailable or belongs to another pair generation"
-        try:
-            generated = float(flow.get("generated_at_epoch", 0))
-        except (TypeError, ValueError):
-            return "money-flow timestamp is malformed"
-        if not math.isfinite(generated):
-            return "money-flow timestamp is malformed"
-        age = time.time() - generated
-        if age < -30 or age > env_int("MAX_FLOW_AGE_SECONDS", 45, 5, 300):
-            return "money-flow state is stale"
-        row = self.state_store.active_trade_for_symbol(active["symbol"])
-        if not row or not row.get("average_entry_price"):
-            return "no managed BTC position"
-        entry, current = Decimal(str(row["average_entry_price"])), self._current(active["symbol"])
-        trigger = Decimal(str(env_float("AUTO_BREAK_EVEN_TRIGGER_PCT", 0.5, 0.05, 20)))
-        if current >= entry * (1 + trigger / 100) and row["lifecycle_state"] == LifecycleState.PROTECTION_ACTIVE.value:
-            ok, detail = self.convert(active["symbol"], ProtectionMode.FIXED_OCO, break_even=True)
-            return detail
-        if (flow.get("classification") or {}).get("bullish") and current > entry:
-            if (row.get("lifecycle_state") == LifecycleState.TRAILING_ACTIVE.value
-                    or row.get("protection_mode") == ProtectionMode.TRAILING_ONLY.value):
-                return "exchange-native trailing protection is already active"
-            delta = env_int("AUTO_TIGHT_TRAIL_BIPS", 20, 10, 2000)
-            ok, detail = self.convert(active["symbol"], ProtectionMode.TRAILING_ONLY,
-                                      trailing_delta_bips=delta)
-            return detail
-        return "automatic protection conditions not met"
+        # An explicit owner OFF must override an enabled startup environment.
+        with self.lock:
+            enabled = self.state_store.data.get("auto_protection_enabled")
+            if enabled is None:
+                enabled = os.getenv("AUTO_PROTECTION_ENABLED", "false").strip().lower() == "true"
+            if enabled is not True:
+                return "automatic protection management disabled"
+            if self.state_store.unresolved_intents():
+                return "automatic protection blocked: unresolved operation intent"
+            if not str(self.state_store.data.get("last_reconciliation_status", "")).startswith("RECONCILED"):
+                return "automatic protection blocked: reconciliation required"
+            if self._account_dirty_since is not None:
+                return "automatic protection waiting for account reconciliation"
+            active = self.pair_controller.load()
+            if not isinstance(flow, dict) or flow.get("ok") is not True or flow.get("pair_state_hash") != active["state_hash"]:
+                return "money-flow state unavailable or belongs to another pair generation"
+            try:
+                generated = float(flow.get("generated_at_epoch", 0))
+            except (TypeError, ValueError):
+                return "money-flow timestamp is malformed"
+            if not math.isfinite(generated):
+                return "money-flow timestamp is malformed"
+            age = time.time() - generated
+            if age < -30 or age > env_int("MAX_FLOW_AGE_SECONDS", 45, 5, 300):
+                return "money-flow state is stale"
+            row = self.state_store.active_trade_for_symbol(active["symbol"])
+            if not row or not row.get("average_entry_price"):
+                return "no managed BTC position"
+            if row.get("lifecycle_state") not in {
+                    LifecycleState.PROTECTION_ACTIVE.value, LifecycleState.BREAK_EVEN_ARMED.value,
+                    LifecycleState.PROFIT_LOCKED.value, LifecycleState.TRAILING_ACTIVE.value}:
+                return "automatic protection blocked: position requires reconciliation"
+            if self.stream is not None and not (
+                    getattr(self.stream, "_connected", False) and getattr(self.stream, "_subscribed", False)):
+                return "automatic protection blocked: user stream is not ready"
+            entry, current = Decimal(str(row["average_entry_price"])), self._current(active["symbol"])
+            if not entry.is_finite() or entry <= 0:
+                return "automatic protection blocked: invalid entry price"
+            trigger = Decimal(str(env_float("AUTO_BREAK_EVEN_TRIGGER_PCT", 0.5, 0.05, 20)))
+            classification = flow.get("classification")
+            if isinstance(classification, dict) and classification.get("bullish") is True and current > entry:
+                if (row.get("lifecycle_state") == LifecycleState.TRAILING_ACTIVE.value
+                        or row.get("protection_mode") == ProtectionMode.TRAILING_ONLY.value):
+                    return "exchange-native trailing protection is already active"
+                rules = self._rules(active["pair"])
+                delta = self.factory._delta(rules, env_int("AUTO_TIGHT_TRAIL_BIPS", 20, 10, 2000))
+                break_even = fee_adjusted_break_even(
+                    entry, buy_fee_pct=self.factory.settings.fee_pct_per_side,
+                    sell_fee_pct=self.factory.settings.fee_pct_per_side,
+                    slippage_pct=Decimal(str(env_float("BREAK_EVEN_SLIPPAGE_PCT", 0.05, 0, 5))))
+                limit_floor = floor_step(current * (1 - Decimal(
+                    delta + self.factory.settings.limit_fill_buffer_bips) / 10000), rules.tick)
+                if limit_floor < break_even:
+                    return "keep existing OCO: trailing limit would be below fee-adjusted break-even"
+                return self._auto_convert(active["symbol"], ProtectionMode.TRAILING_ONLY,
+                                          trailing_delta_bips=delta)
+            if current >= entry * (1 + trigger / 100) and row["lifecycle_state"] == LifecycleState.PROTECTION_ACTIVE.value:
+                return self._auto_convert(active["symbol"], ProtectionMode.FIXED_OCO, break_even=True)
+            return "automatic protection conditions not met"
 
     # ---- reconciliation, account and owner controls ----
     def _reconciled_ownership(self, orders: list, lists: list, balances: dict) -> dict:
@@ -1426,89 +1517,153 @@ class BitcoinSpotAdapter:
                 self._pause("partial-entry-fill-needs-protection")
         return {"ok": True, "refreshed": refreshed, "warnings": warnings}
 
-    def verified_reconcile(self) -> dict:
-        endpoints = {}
-        resolution = self._resolve_operation_intents()
-        endpoints["intent_resolution"] = {
-            "ok": resolution["remaining"] == 0,
-            "resolved": resolution["resolved"],
-            "remaining": resolution["remaining"],
-            "errors": resolution["errors"],
-        }
-        endpoints["durable_status_refresh"] = self._refresh_durable_exchange_state()
-        stale_results = []
-        for row in self.state_store.active_trade_rows():
-            if row.get("lifecycle_state") != LifecycleState.ENTRY_SUBMITTED.value:
+    def _reconcile_confirmed_emergency_exits(self) -> dict:
+        results = []
+        for row in list(self.state_store.active_trade_rows()):
+            intents = [
+                item for item in self.state_store.intents_for_trade(row["trade_id"])
+                if str(item.get("operation") or "").upper() == "EMERGENCY_EXIT"
+                and str(item.get("state") or "").upper() == "CONFIRMED"
+            ]
+            if not intents:
+                continue
+            intent = intents[-1]
+            order_id = int(intent.get("exchange_order_id") or 0)
+            if order_id <= 0:
+                results.append({"trade_id": row["trade_id"], "ok": False,
+                                "detail": "confirmed emergency intent has no order id"})
                 continue
             try:
-                submitted = float(row.get("entry_submitted_at") or "nan")
-                stale = not math.isfinite(submitted) or (
-                    time.time() - submitted > self.max_entry_open_seconds
-                )
-                recovered, detail = (
-                    self._expire_stale_entry(row) if stale
-                    else (True, "entry remains within its bounded open window")
-                )
+                request = json.loads(intent.get("request_json") or "{}")
+                requested = Decimal(str(request.get("quantity") or "0"))
+                recorded = max(Decimal(str(row.get("filled_quantity") or "0")),
+                               Decimal(str(row.get("protected_quantity") or "0")))
+                rules = self._rules(row["pair"])
+                order = self.gateway.get_order(
+                    str(intent.get("symbol") or "").upper(), order_id=order_id)
+                if int(order.get("orderId", 0) or 0) != order_id:
+                    raise RuntimeError("emergency order identity mismatch")
+                if str(order.get("symbol", "")).upper() != str(intent.get("symbol", "")).upper():
+                    raise RuntimeError("emergency order symbol mismatch")
+                if str(order.get("side", "")).upper() != "SELL":
+                    raise RuntimeError("emergency order side mismatch")
+                status = str(order.get("status", "")).upper()
+                executed = Decimal(str(order.get("executedQty") or "0"))
+                if any(not value.is_finite() or value <= 0 for value in (requested, recorded, executed)):
+                    raise RuntimeError("emergency quantities are not finite positive values")
+                if request.get("newClientOrderId") != order.get("clientOrderId"):
+                    raise RuntimeError("emergency client order identity mismatch")
+                full_request = requested == floor_step(recorded, rules.step)
+                full_fill = (status == "FILLED" and executed == requested
+                             and Decimal(str(order.get("origQty") or "0")) == requested)
+                if full_request and full_fill:
+                    event = self._rest_event(order)
+                    if event:
+                        self._record_authenticated_event(event)
+                    self.state_store.upsert_trade(
+                        row["trade_id"], row["pair"],
+                        lifecycle_state=LifecycleState.EXIT_FILLED.value,
+                        reconciliation_status="EMERGENCY_EXIT_RECONCILED")
+                    results.append({"trade_id": row["trade_id"], "ok": True,
+                                    "order_id": order_id, "executed_qty": str(executed)})
+                else:
+                    results.append({"trade_id": row["trade_id"], "ok": False,
+                                    "order_id": order_id, "status": status,
+                                    "executed_qty": str(executed),
+                                    "detail": "emergency exit is not proven fully filled"})
             except Exception as exc:
-                recovered, detail = False, f"{type(exc).__name__}: {redact_text(exc)}"
-            stale_results.append({"trade_id": row["trade_id"], "ok": recovered,
-                                  "detail": detail})
-        if stale_results:
-            endpoints["stale_entry_control"] = {
-                "ok": all(item["ok"] for item in stale_results), "results": stale_results,
+                results.append({"trade_id": row["trade_id"], "ok": False,
+                                "order_id": order_id, "error": type(exc).__name__})
+        return {"ok": all(item["ok"] for item in results),
+                "count": len(results), "results": results}
+
+    def verified_reconcile(self) -> dict:
+        with self.lock:
+            endpoints = {}
+            resolution = self._resolve_operation_intents()
+            endpoints["intent_resolution"] = {
+                "ok": resolution["remaining"] == 0,
+                "resolved": resolution["resolved"],
+                "remaining": resolution["remaining"],
+                "errors": resolution["errors"],
             }
-        partial_results = []
-        for symbol in sorted(self.partial_recovery):
+            endpoints["durable_status_refresh"] = self._refresh_durable_exchange_state()
+            emergency = self._reconcile_confirmed_emergency_exits()
+            if emergency["count"]:
+                endpoints["emergency_exit_recovery"] = emergency
+            stale_results = []
+            for row in self.state_store.active_trade_rows():
+                if row.get("lifecycle_state") != LifecycleState.ENTRY_SUBMITTED.value:
+                    continue
+                try:
+                    submitted = float(row.get("entry_submitted_at") or "nan")
+                    stale = not math.isfinite(submitted) or (
+                        time.time() - submitted > self.max_entry_open_seconds
+                    )
+                    recovered, detail = (
+                        self._expire_stale_entry(row) if stale
+                        else (True, "entry remains within its bounded open window")
+                    )
+                except Exception as exc:
+                    recovered, detail = False, f"{type(exc).__name__}: {redact_text(exc)}"
+                stale_results.append({"trade_id": row["trade_id"], "ok": recovered,
+                                      "detail": detail})
+            if stale_results:
+                endpoints["stale_entry_control"] = {
+                    "ok": all(item["ok"] for item in stale_results), "results": stale_results,
+                }
+            partial_results = []
+            for symbol in sorted(self.partial_recovery):
+                try:
+                    recovered, detail = self._place_partial_protection(symbol)
+                except Exception as exc:
+                    recovered, detail = False, f"{type(exc).__name__}: {redact_text(exc)}"
+                partial_results.append({"symbol": symbol, "ok": recovered, "detail": detail})
+                if recovered:
+                    self.partial_recovery.discard(symbol)
+            if partial_results:
+                endpoints["partial_fill_recovery"] = {
+                    "ok": all(item["ok"] for item in partial_results), "results": partial_results,
+                }
             try:
-                recovered, detail = self._place_partial_protection(symbol)
+                orders = self.gateway.open_orders()
+                if not isinstance(orders, list):
+                    raise RuntimeError("openOrders response is not a list")
+                endpoints["openOrders"] = {"ok": True, "count": len(orders)}
             except Exception as exc:
-                recovered, detail = False, f"{type(exc).__name__}: {redact_text(exc)}"
-            partial_results.append({"symbol": symbol, "ok": recovered, "detail": detail})
-            if recovered:
-                self.partial_recovery.discard(symbol)
-        if partial_results:
-            endpoints["partial_fill_recovery"] = {
-                "ok": all(item["ok"] for item in partial_results), "results": partial_results,
-            }
-        try:
-            orders = self.gateway.open_orders()
-            if not isinstance(orders, list):
-                raise RuntimeError("openOrders response is not a list")
-            endpoints["openOrders"] = {"ok": True, "count": len(orders)}
-        except Exception as exc:
-            orders = None; endpoints["openOrders"] = {"ok": False, "error": redact_text(exc)}
-        try:
-            lists = self.gateway.open_order_lists()
-            if not isinstance(lists, list):
-                raise RuntimeError("openOrderList response is not a list")
-            endpoints["openOrderList"] = {"ok": True, "count": len(lists)}
-        except Exception as exc:
-            lists = None; endpoints["openOrderList"] = {"ok": False, "error": redact_text(exc)}
-        try:
-            balances = self._balances(self.gateway.account())
-            endpoints["account"] = {"ok": True, "assets": len(balances)}
-        except Exception as exc:
-            balances = None; endpoints["account"] = {"ok": False, "error": redact_text(exc)}
-        unresolved = self.state_store.unresolved_intents()
-        if unresolved:
-            endpoints["intents"] = {"ok": False, "count": len(unresolved),
-                                    "states": sorted({item["state"] for item in unresolved})}
-        else:
-            endpoints["intents"] = {"ok": True, "count": 0}
-        if orders is None or lists is None or balances is None:
-            endpoints["ownership"] = {
-                "ok": False, "reason": "authenticated ownership enumeration is incomplete"}
-        else:
-            endpoints["ownership"] = self._reconciled_ownership(orders, lists, balances)
-        ok = all(item["ok"] for item in endpoints.values())
-        self.state_store.data["last_reconciliation_status"] = "RECONCILED" if ok else "RECONCILIATION_FAILED"
-        self.state_store.data["last_reconciliation_at"] = time.time()
-        self.state_store.save()
-        if not ok:
-            self._pause("reconciliation-failed")
-        return {"ok": ok, "endpoints": endpoints,
-                "detail": "all authenticated endpoints and intents verified" if ok else
-                          "reconciliation incomplete; entries remain paused"}
+                orders = None; endpoints["openOrders"] = {"ok": False, "error": redact_text(exc)}
+            try:
+                lists = self.gateway.open_order_lists()
+                if not isinstance(lists, list):
+                    raise RuntimeError("openOrderList response is not a list")
+                endpoints["openOrderList"] = {"ok": True, "count": len(lists)}
+            except Exception as exc:
+                lists = None; endpoints["openOrderList"] = {"ok": False, "error": redact_text(exc)}
+            try:
+                balances = self._balances(self.gateway.account())
+                endpoints["account"] = {"ok": True, "assets": len(balances)}
+            except Exception as exc:
+                balances = None; endpoints["account"] = {"ok": False, "error": redact_text(exc)}
+            unresolved = self.state_store.unresolved_intents()
+            if unresolved:
+                endpoints["intents"] = {"ok": False, "count": len(unresolved),
+                                        "states": sorted({item["state"] for item in unresolved})}
+            else:
+                endpoints["intents"] = {"ok": True, "count": 0}
+            if orders is None or lists is None or balances is None:
+                endpoints["ownership"] = {
+                    "ok": False, "reason": "authenticated ownership enumeration is incomplete"}
+            else:
+                endpoints["ownership"] = self._reconciled_ownership(orders, lists, balances)
+            ok = all(item["ok"] for item in endpoints.values())
+            self.state_store.data["last_reconciliation_status"] = "RECONCILED" if ok else "RECONCILIATION_FAILED"
+            self.state_store.data["last_reconciliation_at"] = time.time()
+            self.state_store.save()
+            if not ok:
+                self._pause("reconciliation-failed")
+            return {"ok": ok, "endpoints": endpoints,
+                    "detail": "all authenticated endpoints and intents verified" if ok else
+                              "reconciliation incomplete; entries remain paused"}
 
     def reconcile(self):
         return self.verified_reconcile()["detail"]
@@ -1571,13 +1726,13 @@ class BitcoinSpotAdapter:
         mode = ProtectionMode(self.state_store.get_mode())
         self._require_mode_capabilities(rules, mode, for_entry=True)
         quote_free = self._free(rules.quote)
-        if quote_free < self.trade_size_quote:
+        entry = floor_step(self._best_ask(rules.symbol), rules.tick)
+        quantity, required_quote = self._configured_entry_quantity(rules, entry)
+        if quote_free < required_quote:
             raise RuntimeError(
-                f"selected pair requires at least {self.trade_size_quote} "
+                f"selected pair requires at least {required_quote} "
                 f"{rules.quote}; available {quote_free}"
             )
-        entry = floor_step(self._best_ask(rules.symbol), rules.tick)
-        quantity = floor_step(self.trade_size_quote / entry, rules.step)
         endpoint, params = self.factory.entry(
             mode,
             rules,
@@ -1590,7 +1745,10 @@ class BitcoinSpotAdapter:
             "symbol": rules.symbol,
             "quote_asset": rules.quote,
             "quote_free": str(quote_free),
-            "required_quote": str(self.trade_size_quote),
+            "required_quote": str(required_quote),
+            "configured_base_quantity": (
+                str(self.trade_size_base) if self.trade_size_base is not None else None
+            ),
             "entry_protection_mode": mode.value,
             "preflight": preflight,
         }
@@ -1703,6 +1861,9 @@ class BitcoinSpotAdapter:
         return self.reconcile()
 
     def set_size(self, value: float):
+        if self.trade_size_base is not None:
+            return (f"fixed base size active: {self.trade_size_base} BTC; "
+                    "quote-size changes disabled")
         value = Decimal(str(value))
         if value < 5 or value > 100_000:
             return "size must be 5-100000 quote units"
