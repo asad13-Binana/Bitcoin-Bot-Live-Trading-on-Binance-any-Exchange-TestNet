@@ -29,6 +29,19 @@ def environment(mode: str = "testnet") -> dict[str, str]:
     }
 
 
+def test_coingecko_public_mode_does_not_send_marker_as_credential(monkeypatch):
+    env={**environment(), "COINGECKO_CONTEXT_ENABLED":"true",
+         "COINGECKO_API_KEY":"__KEYLESS_PUBLIC__"}
+    probe=api_readiness.ApiReadinessProbe(env=env,release_mode="testnet")
+    captured=[]
+    def request(*args,**kwargs):
+        captured.append(kwargs["headers"])
+        return {"bitcoin":{"usd":80000,"last_updated_at":1788700000}}
+    monkeypatch.setattr(probe,"_request_json",request)
+    assert probe._optional_providers()["coingecko"]["ok"] is True
+    assert captured == [{"Accept":"application/json"}]
+
+
 def test_testnet_identity_is_fixed_and_live_is_blocked_by_default():
     probe = api_readiness.ApiReadinessProbe(
         env=environment(), release_mode="testnet"

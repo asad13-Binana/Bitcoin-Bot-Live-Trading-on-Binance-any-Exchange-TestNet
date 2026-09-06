@@ -105,7 +105,7 @@ def test_compose_has_bounded_resources_logs_and_no_public_ports_or_socket():
         assert service.get("mem_limit")
         assert float(service.get("cpus", 0)) > 0
         assert int(service.get("pids_limit", 0)) > 0
-        expected_restart = "on-failure:5" if name == "execution-sidecar" else "unless-stopped"
+        expected_restart = "unless-stopped"
         assert service.get("restart") == expected_restart
         assert service.get("logging", {}).get("driver") == "json-file"
         assert "/var/run/docker.sock" not in raw

@@ -27,3 +27,6 @@
 /tests/test_live_evidence.py                        @asad13-Binana
 /tests/test_deployment_identity.py                  @asad13-Binana
 /tests/test_env_file_parser.py                      @asad13-Binana
+
+# Default ownership also covers new application and workflow files.
+* @asad13-Binana

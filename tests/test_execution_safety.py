@@ -1373,6 +1373,7 @@ def test_auto_bullish_trailing_conversion_happens_once_not_every_tick(tmp_path, 
     )
     seed_protected_trade(store)
     store.data["auto_protection_enabled"] = True
+    store.data["last_reconciliation_status"] = "RECONCILED"
     store.save()
     active = controller.load()
     flow = {

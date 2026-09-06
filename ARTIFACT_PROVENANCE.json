@@ -12,7 +12,7 @@
   "release_mode": "testnet",
   "sbom": {
     "path": "SBOM.cyclonedx.json",
-    "sha256": "327bd8a657447886581f62d903c4525b0a1568e0a7b4e1a72211964804e0a2df"
+    "sha256": "e6d030f5ac5bb80749e8170448285dea5d07700892cdd3313c2661a7350960db"
   },
   "schema": "bitcoin-bot-artifact-provenance-v1",
   "source": {

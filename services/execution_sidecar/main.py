@@ -303,6 +303,14 @@ def process_command(adapter, state: StateStore, guard: FreshSignalGuard,
                     "switch": verified,
                     "freqtrade": pair_detail,
                 }, sort_keys=True, default=str)
+        elif cmd == "manual_entry":
+            if getattr(adapter, "mode", "simulation") != "testnet":
+                raise ValueError("manual entry is enabled only on TestNet")
+            symbol = _active_symbol(args.get("symbol"), pair_controller)
+            accepted, message = adapter.submit(
+                symbol, f"Manual TestNet entry command {cid}",
+                trade_id=f"manual-{cid}")
+            ok, result = bool(accepted), str(message)
         elif cmd == "emergency_exit":
             _disarm(adapter, state, "emergency-exit-owner-resume-required")
             outcome = adapter.emergency_exit(_active_symbol(args.get("symbol"), pair_controller))
@@ -430,6 +438,10 @@ def live_interlock(state: StateStore, pair_controller: PairController) -> Execut
     except ValueError as exc:
         raise SystemExit("Invalid EXECUTION_MODE; use simulation, testnet, or live") from exc
     package_mode = enforce_package_mode(mode.value)
+    auto_enabled = os.getenv("AUTO_PROTECTION_ENABLED", "false").strip().lower()
+    if auto_enabled not in {"true", "false"}:
+        raise SystemExit("AUTO_PROTECTION_ENABLED must be true or false")
+    state.data.setdefault("auto_protection_enabled", auto_enabled == "true")
     state.data["package_mode"] = package_mode
     state.data["simulation"] = mode is ExecutionMode.SIMULATION
     state.set_entries(False, f"{mode.value}-startup-owner-resume-required")
@@ -539,6 +551,8 @@ def main():
         "mode": mode.value, "pair": pair_state["pair"],
         "protection_mode": state.get_mode(), "entries": "off"})
     next_maintenance = next_backup = 0.0
+    wal_reader_anchor = state.hold_wal_open()
+    automatic_protection_status = "automatic protection management disabled"
     live_evidence_ok = mode is not ExecutionMode.LIVE
     live_evidence_status = "not-required" if live_evidence_ok else "valid"
     live_recheck_seconds = env_int("LIVE_EVIDENCE_RECHECK_SECONDS", 30, 5, 300)
@@ -576,7 +590,9 @@ def main():
         try:
             adapter.tick()
             if state.data.get("auto_protection_enabled", False):
-                adapter.maybe_auto_manage(read_json(MONEYFLOW_FILE, {}) or {})
+                automatic_protection_status = adapter.maybe_auto_manage(read_json(MONEYFLOW_FILE, {}) or {})
+            else:
+                automatic_protection_status = "automatic protection management disabled"
         except Exception as exc:
             audit("adapter_tick_failed", severity="CRITICAL", details={"error": str(exc)})
             _disarm(adapter, state, "adapter-tick-failed")
@@ -643,6 +659,9 @@ def main():
             "reconciliation_ok": reconciliation_ok,
             "user_stream_ok": user_stream_ok,
             "unresolved_intents": unresolved_count,
+            "auto_protection_enabled": state.data.get("auto_protection_enabled", False),
+            "auto_protection_status": automatic_protection_status,
+            "trade_size_base": str(getattr(adapter, "trade_size_base", None) or ""),
             "live_evidence_ok": live_evidence_ok,
             "live_evidence_status": live_evidence_status,
             "live_evidence_expires_at": live_lease.get("expires_at") if mode is ExecutionMode.LIVE else None,
@@ -652,6 +671,7 @@ def main():
         if getattr(adapter, "stream", None):
             adapter.stream.stop()
     finally:
+        wal_reader_anchor.close()
         audit("sidecar_stopped")
 
 

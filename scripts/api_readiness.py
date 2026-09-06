@@ -327,6 +327,9 @@ class ApiReadinessProbe:
                 checks[label] = {"ok": True, "skipped": True, "reason": "disabled"}
                 continue
             key = _required(self.env, key_name, 16)
+            headers = {"Accept": "application/json"}
+            if not (label == "coingecko" and key == "__KEYLESS_PUBLIC__"):
+                headers[header_name] = key
             original_timeout = self.timeout
             self.timeout = timeout
             try:
@@ -339,7 +342,7 @@ class ApiReadinessProbe:
                             "vs_currencies": "usd",
                             "include_last_updated_at": "true",
                         },
-                        headers={"Accept": "application/json", header_name: key},
+                        headers=headers,
                     )
                     valid = (
                         isinstance(payload, dict)
@@ -352,7 +355,7 @@ class ApiReadinessProbe:
                         "CoinMarketCap Bitcoin quote",
                         url,
                         params={"id": "1", "convert": "USD"},
-                        headers={"Accept": "application/json", header_name: key},
+                        headers=headers,
                     )
                     status = payload.get("status") if isinstance(payload, dict) else None
                     error_code = (

@@ -26,3 +26,6 @@
 /tests/test_live_evidence.py                        @YOUR_GITHUB_USERNAME
 /tests/test_deployment_identity.py                  @YOUR_GITHUB_USERNAME
 /tests/test_env_file_parser.py                      @YOUR_GITHUB_USERNAME
+
+# Default ownership also covers new application and workflow files.
+* @YOUR_GITHUB_USERNAME

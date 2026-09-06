@@ -44,7 +44,7 @@ class OfflineExchange:
 
 class RemotePairListContract(unittest.TestCase):
     def setUp(self):
-        self.assertEqual(__version__, "2026.6", "review this contract before upgrading")
+        self.assertEqual(__version__, "2026.8", "review this contract before upgrading")
         self.assertEqual(Path.cwd(), Path("/freqtrade"))
         self.config_bytes = CONFIG.read_bytes()
         self.pair_bytes = PAIR_FILE.read_bytes()
