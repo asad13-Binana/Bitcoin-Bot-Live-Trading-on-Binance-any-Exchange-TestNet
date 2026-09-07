@@ -57,9 +57,60 @@ def test_bootstrap_allows_swap_setup_but_install_requires_it():
 
 
 def test_installer_uses_private_profile_not_shell_resource_overrides():
-    installer = (ROOT / "deploy/install_artifact.sh").read_text()
+    installer = (ROOT / "deploy/install_artifact.sh").read_text(encoding="utf-8")
     assert 'env_file_get "$ENV_FILE" DEPLOYMENT_PROFILE' in installer
     assert 'MIN_PHYSICAL_MEMORY_MIB=${' not in installer
     assert 'host_capacity.py" --phase install' in installer
     assert 'experiment cannot replace/roll back to a LIVE-money deployment' in installer
-    assert 'DEPLOYMENT_PROFILE=oracle-four-bot' in (ROOT / ".env.example").read_text()
+    assert 'DEPLOYMENT_PROFILE=oracle-four-bot' in (ROOT / ".env.example").read_text(encoding="utf-8")
+
+
+def cohost(memory=300 * 1024**2, cpu=80_000_000, pids=128, mode="testnet"):
+    return {"Config": {"Labels": {"com.docker.compose.project": "binana-testnet",
+                                 "com.docker.compose.service": "execution-sidecar"},
+                       "Env": ["EXECUTION_MODE=" + mode]},
+            "HostConfig": {"Memory": memory, "NanoCpus": cpu, "PidsLimit": pids}}
+
+
+def test_shared_testnet_requires_explicit_profile_and_bounded_reservations():
+    projects = ["bitcoin-testnet"] * 4 + ["binana-testnet"] * 7
+    check(profile="shared-testnet-experiment", mode="testnet", projects=projects)
+    with pytest.raises(ValueError):
+        check(projects=projects)  # The existing isolated profile still rejects sharing.
+    capacity.validate_shared_runtime([cohost()], 7776, 2)
+
+
+@pytest.mark.parametrize("overrides", [
+    {"instance": "bitcoin-live"}, {"mode": "live"}, {"projects": ["binana-live"]},
+    {"projects": [""]}, {"projects": ["unrelated-service"]}, {"free_gib": 7},
+    {"memory_mib": 7167}, {"swap_mib": 3799}, {"cpu_count": 1},
+])
+def test_shared_profile_preserves_capacity_and_mode_guards(overrides):
+    with pytest.raises(ValueError):
+        check(**{**{"profile": "shared-testnet-experiment"}, **overrides})
+
+
+@pytest.mark.parametrize("overrides", [
+    {"memory": 0}, {"cpu": 0}, {"pids": -1}, {"mode": "live"},
+    {"mode": "unknown"}, {"memory": 5 * 1024**3}, {"cpu": 1_100_000_000},
+])
+def test_shared_runtime_rejects_unbounded_or_oversubscribed_cohost(overrides):
+    with pytest.raises(ValueError):
+        capacity.validate_shared_runtime([cohost(**overrides)], 7776, 2)
+
+
+def test_shared_runtime_rejects_missing_executor_and_unrecognised_project():
+    row = cohost()
+    row["Config"]["Labels"]["com.docker.compose.service"] = "freqtrade"
+    with pytest.raises(ValueError, match="executor"):
+        capacity.validate_shared_runtime([row], 7776, 2)
+    row["Config"]["Labels"]["com.docker.compose.project"] = "binana-live"
+    with pytest.raises(ValueError, match="unrecognised"):
+        capacity.validate_shared_runtime([row], 7776, 2)
+
+
+def test_shared_replacement_budget_matches_compose_limits():
+    import yaml
+    services = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))["services"]
+    assert sum(int(str(s["mem_limit"]).removesuffix("m")) for s in services.values()) == 1200
+    assert sum(float(s["cpus"]) for s in services.values()) == pytest.approx(0.45)

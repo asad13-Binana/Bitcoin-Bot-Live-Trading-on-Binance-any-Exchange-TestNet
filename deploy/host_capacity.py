@@ -31,6 +31,14 @@ def validate(profile: str, mode: str, instance: str, phase: str,
             raise ValueError("unsupported experimental host architecture")
         if any(project != instance for project in projects):
             raise ValueError("single-bot experiment rejects other running containers/projects")
+    elif profile == "shared-testnet-experiment":
+        required_memory, required_disk, required_total = 7168, 12 if phase == "bootstrap" else 8, 10968
+        if instance != "bitcoin-testnet" or mode not in {"simulation", "testnet"}:
+            raise ValueError("shared experiment permits only the Bitcoin Testnet package")
+        if architecture not in {"x86_64", "amd64", "aarch64", "arm64"}:
+            raise ValueError("unsupported experimental host architecture")
+        if any(project not in {"bitcoin-testnet", "binana-testnet"} for project in projects):
+            raise ValueError("shared experiment permits only Bitcoin and BINANA Testnet projects")
     else:
         raise ValueError("unknown deployment profile")
     measurements = (memory_mib, swap_mib, cpu_count, free_gib)
@@ -55,6 +63,50 @@ def running_projects(docker: str) -> list[str]:
     return projects
 
 
+def validate_shared_runtime(containers: list[dict], memory_mib: int, cpu_count: int) -> None:
+    """Budget the cohost while replacing Bitcoin's legacy stack with bounded services."""
+    cohost_memory = cohost_cpu = 0
+    cohost_seen = cohost_executor = False
+    for container in containers:
+        config = container.get("Config") or {}
+        labels = config.get("Labels") or {}
+        project = labels.get("com.docker.compose.project", "")
+        if project not in {"bitcoin-testnet", "binana-testnet"}:
+            raise ValueError("unrecognised cohost in shared Testnet experiment")
+        environment = dict(item.split("=", 1) for item in config.get("Env", []) if "=" in item)
+        mode = environment.get("EXECUTION_MODE")
+        if mode is not None and mode not in {"simulation", "testnet"}:
+            raise ValueError("shared experiment rejects non-Testnet execution")
+        if project == "bitcoin-testnet":
+            continue  # Replacement Compose has 1200 MiB / 0.45 CPU hard limits.
+        cohost_seen = True
+        if labels.get("com.docker.compose.service") == "execution-sidecar":
+            cohost_executor = mode in {"simulation", "testnet"}
+        host = container.get("HostConfig") or {}
+        limits = [host.get(key) for key in ("Memory", "NanoCpus", "PidsLimit")]
+        if any(type(value) is not int or value <= 0 for value in limits):
+            raise ValueError("BINANA cohost must have explicit memory, CPU and PID limits")
+        cohost_memory += limits[0]
+        cohost_cpu += limits[1]
+    if cohost_seen and not cohost_executor:
+        raise ValueError("cannot verify the cohost Testnet executor")
+    # Reserve 1200 MiB for Bitcoin, 512 MiB for monitoring and 2 GiB for the OS/builds.
+    if cohost_memory + 3760 * 1024**2 > memory_mib * 1024**2:
+        raise ValueError("shared Testnet memory reservations exceed physical capacity")
+    # Bitcoin 0.45 CPU plus 0.5 CPU headroom; do not rely on the cohost's idle snapshot.
+    if cohost_cpu + 950_000_000 > cpu_count * 1_000_000_000:
+        raise ValueError("shared Testnet CPU reservations exceed physical capacity")
+
+
+def running_container_snapshot(docker: str) -> list[dict]:
+    ids = subprocess.run([docker, "ps", "-q"], capture_output=True, text=True,
+                         timeout=30, check=True).stdout.split()
+    if not ids:
+        return []
+    return json.loads(subprocess.run([docker, "inspect", *ids], capture_output=True,
+                                     text=True, timeout=30, check=True).stdout)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", required=True)
@@ -72,10 +124,13 @@ def main() -> None:
     if docker is None and args.phase == "install":
         raise SystemExit("Docker unavailable; capacity/occupancy cannot be verified")
     try:
-        projects = running_projects(docker) if docker and args.profile == "single-bot-experiment" else []
+        projects = running_projects(docker) if docker and args.profile in {
+            "single-bot-experiment", "shared-testnet-experiment"} else []
         validate(args.profile, args.mode, args.instance, args.phase,
                  memory["MemTotal"], memory["SwapTotal"], os.cpu_count() or 0,
                  shutil.disk_usage("/").free // (1024 ** 3), platform.machine(), projects)
+        if args.profile == "shared-testnet-experiment" and docker:
+            validate_shared_runtime(running_container_snapshot(docker), memory["MemTotal"], os.cpu_count() or 0)
     except (ValueError, OSError, subprocess.SubprocessError, KeyError) as exc:
         raise SystemExit(f"host capacity check failed: {exc}") from exc
     print(f"capacity profile passed: {args.profile}/{args.phase}; not a runtime certification")

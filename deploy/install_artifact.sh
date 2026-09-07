@@ -862,7 +862,7 @@ if [[ -L "$CURRENT" ]]; then
     OLD_EXECUTION_MODE=$(env_file_get "$OLD_CONFIG" EXECUTION_MODE) \
       || OLD_EXECUTION_MODE=simulation
     [[ -n "$OLD_EXECUTION_MODE" ]] || OLD_EXECUTION_MODE=simulation
-    if [[ "$DEPLOYMENT_PROFILE" == single-bot-experiment && "$OLD_EXECUTION_MODE" == live ]]; then
+    if [[ "$DEPLOYMENT_PROFILE" == *-experiment && "$OLD_EXECUTION_MODE" == live ]]; then
       fail 'experiment cannot replace/roll back to a LIVE-money deployment'
     fi
     case "$OLD_EXECUTION_MODE" in

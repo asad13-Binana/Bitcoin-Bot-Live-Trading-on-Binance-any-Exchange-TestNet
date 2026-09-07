@@ -30,10 +30,10 @@ as_root(){
   if [[ $EUID -eq 0 ]]; then "$@"; else sudo "$@"; fi
 }
 
-# The smaller profile is explicit, single-instance and never LIVE-money.
+# Experimental profiles are explicit and never LIVE-money.
 case "$DEPLOYMENT_PROFILE" in
   oracle-four-bot) ;;
-  single-bot-experiment)
+  single-bot-experiment|shared-testnet-experiment)
     REQUIRE_ARM64=false
     MIN_TOTAL_MEMORY_MIB=10968
     MIN_FREE_DISK_GIB=12
