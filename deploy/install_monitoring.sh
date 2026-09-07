@@ -297,10 +297,13 @@ if [[ ! -f "$VENV_TARGET/.complete" ]]; then
   [[ ! -e "$VENV_TARGET" ]] || fail "incomplete monitoring venv exists: $VENV_TARGET"
   BUILD=$(mktemp -d "$VENV_ROOT/.build.XXXXXX")
   trap 'rm -rf --one-file-system -- "$BUILD"' EXIT
-  python3 -m venv "$BUILD/venv"
-  "$BUILD/venv/bin/python" -m pip install --disable-pip-version-check \
-    --require-hashes --requirement "$RELEASE_DIR/monitoring/requirements-monitoring.lock"
-  "$BUILD/venv/bin/python" -m pip check
+  (
+    umask 022
+    python3 -m venv "$BUILD/venv"
+    "$BUILD/venv/bin/python" -m pip install --disable-pip-version-check \
+      --require-hashes --requirement "$RELEASE_DIR/monitoring/requirements-monitoring.lock"
+    "$BUILD/venv/bin/python" -m pip check
+  )
   touch "$BUILD/venv/.complete"
   mv "$BUILD/venv" "$VENV_TARGET"
   rmdir "$BUILD"

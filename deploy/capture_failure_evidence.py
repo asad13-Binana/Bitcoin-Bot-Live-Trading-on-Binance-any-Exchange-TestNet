@@ -83,8 +83,8 @@ def integer(value):
 
 
 def private_directory(path):
-    # /var/log is root-controlled; reject any link, foreign owner or writable parent.
-    for parent in (Path("/"), Path("/var"), Path("/var/log")):
+    # Use the canonical private instance root, not a distribution's group-writable log root.
+    for parent in reversed(path.parents):
         stat = parent.lstat()
         if parent.is_symlink() or not parent.is_dir() or stat.st_uid != 0 or stat.st_mode & 0o022:
             raise ValueError("unsafe diagnostics parent")
@@ -124,7 +124,7 @@ def main():
             report["containers"].append(row)
         except (ValueError, KeyError, IndexError, TypeError, OSError):
             report["capture_incomplete"] = True
-    directory = Path("/var/log") / (args.project + "-deployment")
+    directory = Path("/var/lib") / args.project / "deployment-diagnostics"
     private_directory(directory)
     name = datetime.now(timezone.utc).strftime("failure-%Y%m%dT%H%M%S.%fZ-") + args.release_hash[:16] + ".json"
     fd = os.open(directory / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)

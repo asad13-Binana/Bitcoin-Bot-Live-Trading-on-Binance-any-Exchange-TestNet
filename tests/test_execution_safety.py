@@ -1142,6 +1142,54 @@ def test_list_executing_event_does_not_claim_otoco_pending_sells_are_active(tmp_
     )
 
 
+@pytest.mark.parametrize("symbol", ["LINKUSDT", "UNIUSDT", "BTCUSDC"])
+def test_cross_symbol_order_ids_cannot_change_or_replay_a_bitcoin_trade(tmp_path, symbol):
+    store = make_store(tmp_path)
+    seed_protected_trade(store)
+    before = store.trade("trade-1")
+    store.record_exchange_event({
+        "e": "executionReport", "s": symbol, "i": 5003, "g": 5001,
+        "S": "SELL", "X": "FILLED", "o": "STOP_LOSS_LIMIT",
+        "z": "1", "Z": "90", "q": "1", "E": 2, "I": 23,
+    })
+    store.record_exchange_event({
+        "e": "listStatus", "s": symbol, "g": 5001,
+        "l": "ALL_DONE", "L": "ALL_DONE", "E": 3,
+    })
+    assert store.trade("trade-1") == before
+    assert store.replay_exchange_events_for_trade("trade-1") == 0
+    assert store.trade("trade-1") == before
+
+
+@pytest.mark.parametrize("pair", ["LINK/USDT", "UNI/USDT", "ETH/BTC"])
+@pytest.mark.parametrize("side,status", [("SELL", "FILLED"), ("BUY", "PARTIALLY_FILLED")])
+def test_other_bot_events_do_not_pause_or_change_bitcoin_risk(tmp_path, pair, side, status):
+    adapter, store, guard, _, gateway, _ = make_live_adapter(tmp_path)
+    gateway.symbol_info = lambda symbol: exchange_symbol(pair)
+    adapter.enabled = True
+    seed_protected_trade(store)
+    before = store.trade("trade-1")
+    guard.on_exchange_event = lambda event: pytest.fail("foreign event reached Bitcoin risk guard")
+    adapter._on_order_update({
+        "e": "executionReport", "s": pair.replace("/", ""), "i": 5003, "g": 5001,
+        "S": side, "X": status, "o": "STOP_LOSS_LIMIT", "z": "1", "E": 2,
+    })
+    adapter._on_list_update({"e": "listStatus", "s": pair.replace("/", ""),
+                             "g": 5001, "l": "ALL_DONE", "L": "ALL_DONE", "E": 3})
+    assert adapter.enabled and not adapter.partial_recovery
+    assert store.trade("trade-1") == before
+
+
+@pytest.mark.parametrize("metadata", [{}, exchange_symbol("BTC/USDC"), exchange_symbol("UNI/USDT")])
+def test_unknown_bitcoin_or_mismatched_metadata_keeps_entries_paused(tmp_path, metadata):
+    adapter, _, _, _, gateway, _ = make_live_adapter(tmp_path)
+    gateway.symbol_info = lambda symbol: metadata
+    adapter.enabled = True
+    adapter._on_order_update({"e": "executionReport", "s": "BTCUSDC", "S": "SELL",
+                              "X": "FILLED", "o": "STOP_LOSS_LIMIT", "z": "1"})
+    assert not adapter.enabled
+
+
 def test_early_user_stream_fill_is_replayed_after_rest_ids_are_bound(tmp_path):
     store = make_store(tmp_path)
     store.register_symbol_pair("BTCUSDT", "BTC/USDT")

@@ -241,10 +241,30 @@ class BitcoinSpotAdapter:
         }
 
     def _record_authenticated_event(self, event: dict) -> bool:
+        if not self._event_in_scope(event):
+            return False
         is_new = self.state_store.record_exchange_event(event)
         if is_new:
             self.guard.on_exchange_event(event)
         return is_new
+
+    def _event_in_scope(self, event: dict) -> bool:
+        """Account streams include other bots; classify unknown symbols from metadata."""
+        symbol = str(event.get("s") or event.get("symbol") or "")
+        if not symbol:
+            raise ValueError("order event has no symbol")
+        try:
+            pair = self.state_store.pair_for_symbol(symbol)
+        except ValueError:
+            metadata = self.gateway.symbol_info(symbol)
+            if metadata.get("symbol") != symbol or not metadata.get("baseAsset"):
+                raise ValueError("order event metadata identity is unverified")
+            if metadata["baseAsset"] != "BTC":
+                return False
+            raise ValueError("unregistered BTC order event requires ownership reconciliation")
+        if pair.split("/", 1)[0] != "BTC" or pair.replace("/", "") != symbol:
+            raise ValueError("order event pair mapping is invalid")
+        return True
 
     def _record_response_events(self, response: dict, *, order_list_id=None) -> None:
         candidates = list(response.get("orderReports") or [])
@@ -837,6 +857,8 @@ class BitcoinSpotAdapter:
     def _on_order_update(self, event: dict):
         with self.lock:
             try:
+                if not self._event_in_scope(event):
+                    return
                 self._record_authenticated_event(event)
                 side, status = str(event.get("S", "")).upper(), str(event.get("X", "")).upper()
                 if side == "BUY" and status in {
@@ -851,6 +873,8 @@ class BitcoinSpotAdapter:
     def _on_list_update(self, event: dict):
         with self.lock:
             try:
+                if not self._event_in_scope(event):
+                    return
                 self.state_store.record_exchange_event(event)
             except Exception as exc:
                 self._pause("user-stream-list-processing-failed")

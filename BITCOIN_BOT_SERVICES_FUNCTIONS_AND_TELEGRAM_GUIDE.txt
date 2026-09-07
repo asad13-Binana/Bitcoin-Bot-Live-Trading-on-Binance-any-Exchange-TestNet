@@ -203,8 +203,8 @@ Total prompt/send call sites: 57
   line 715: send: send("Confirmation rejected: " + reason, chat)
 
 8. COMPLETE NON-TEST PYTHON AND BASH FUNCTION INVENTORY
-Total callable declarations: 806
-Kinds: function=734, shell_function=72
+Total callable declarations: 807
+Kinds: function=735, shell_function=72
 This section is generated from docs/audit/FUNCTION_PARITY_MATRIX.csv. Python rows carry an exact function source hash. Bash rows carry the exact containing-file hash; the release manifest independently binds every byte of every file.
 
 FILE: deploy/backup_state.sh (1 callable(s))
@@ -227,8 +227,8 @@ line 24-45 | function | bounded_command | PRESERVE_AND_REGRESSION_TEST | sha256=
 line 48-49 | function | categories | PRESERVE_AND_REGRESSION_TEST | sha256=27f985c45cfb7776be4135258011e0dd9b5afe8805bdc93eeb5ee25e66378539
 line 52-78 | function | project_state | PRESERVE_AND_REGRESSION_TEST | sha256=5d7abff255dccec0d3406311ae80cf2bb2348dcedb52bcfefb73abb545a0a664
 line 81-82 | function | integer | PRESERVE_AND_REGRESSION_TEST | sha256=9298fc230fd570c44c17a6886635c6beefcecf79cf637176f97541c053ae3242
-line 85-94 | function | private_directory | PRESERVE_AND_REGRESSION_TEST | sha256=41660c21d161ba13de126b60f0ea6c7d75155b212c9319a0b7f8db6f39b6730a
-line 97-136 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=252013c75d5ae3babf79256de5e1ba179c3235631340c042e7237e37305c35d4
+line 85-94 | function | private_directory | PRESERVE_AND_REGRESSION_TEST | sha256=ce2c31b225f6cf7bf32e5600835112a7a8ebe6c73ef7ddae08fed70a31093014
+line 97-136 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=c7e31bb9ea5b76001e2536c173572af2a49e86ad856e86f30d2ea97dfb34e3dc
 
 FILE: deploy/create_oci_host_loss_alarm.sh (1 callable(s))
 line 5 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=03ee979bff8fe813e0c462db0d81784db65d5e94445a41ed71546b782df91e8f
@@ -241,48 +241,48 @@ line 101-107 | function | running_container_snapshot | PRESERVE_AND_REGRESSION_T
 line 110-136 | function | main | PRESERVE_AND_REGRESSION_TEST | sha256=b91e544c44471a43c22058ea2500375f76836dc37645fc3436c165a2ecb79aad
 
 FILE: deploy/install_artifact.sh (30 callable(s))
-line 6 | shell_function | load_instance_identity | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 35 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 36 | shell_function | as_root | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 69 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 75 | shell_function | env_file_key_allowed | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 131 | shell_function | env_file_require_trusted | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 153 | shell_function | _env_file_unquote | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 175 | shell_function | env_file_get | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 214 | shell_function | env_file_pairs | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 244 | shell_function | env_file_load | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 270 | shell_function | require_canonical_dir | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 279 | shell_function | is_timestamp_release_dir | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 288 | shell_function | require_release_config | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 299 | shell_function | project_empty | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 304 | shell_function | switch_current | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 309 | shell_function | clear_current | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 330 | shell_function | placeholder | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 335 | shell_function | require_secret | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 399 | shell_function | bounded_provider_cap | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 556 | shell_function | cleanup | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 711 | shell_function | verify_live_candidate | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 745 | shell_function | activate_live_evidence | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 788 | shell_function | compose_for | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 883 | shell_function | submit_old_command | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 934 | shell_function | stack_healthy | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 958 | shell_function | write_deployment_status | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 1004 | shell_function | write_release_validation | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 1059 | shell_function | mark_release_success | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 1097 | shell_function | rollback | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
-line 1214 | shell_function | on_cutover_failure | PRESERVE_AND_REGRESSION_TEST | sha256=616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab
+line 6 | shell_function | load_instance_identity | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 35 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 36 | shell_function | as_root | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 69 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 75 | shell_function | env_file_key_allowed | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 131 | shell_function | env_file_require_trusted | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 153 | shell_function | _env_file_unquote | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 175 | shell_function | env_file_get | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 214 | shell_function | env_file_pairs | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 244 | shell_function | env_file_load | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 270 | shell_function | require_canonical_dir | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 279 | shell_function | is_timestamp_release_dir | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 288 | shell_function | require_release_config | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 299 | shell_function | project_empty | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 304 | shell_function | switch_current | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 309 | shell_function | clear_current | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 330 | shell_function | placeholder | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 335 | shell_function | require_secret | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 399 | shell_function | bounded_provider_cap | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 556 | shell_function | cleanup | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 713 | shell_function | verify_live_candidate | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 747 | shell_function | activate_live_evidence | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 790 | shell_function | compose_for | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 885 | shell_function | submit_old_command | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 936 | shell_function | stack_healthy | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 960 | shell_function | write_deployment_status | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 1006 | shell_function | write_release_validation | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 1061 | shell_function | mark_release_success | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 1099 | shell_function | rollback | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
+line 1216 | shell_function | on_cutover_failure | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
 
 FILE: deploy/install_monitoring.sh (10 callable(s))
-line 5 | shell_function | load_instance_identity | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 30 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 68 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 74 | shell_function | env_file_key_allowed | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 130 | shell_function | env_file_require_trusted | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 152 | shell_function | _env_file_unquote | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 174 | shell_function | env_file_get | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 213 | shell_function | env_file_pairs | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 243 | shell_function | env_file_load | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 347 | shell_function | render_unit | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
+line 5 | shell_function | load_instance_identity | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 30 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 68 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 74 | shell_function | env_file_key_allowed | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 130 | shell_function | env_file_require_trusted | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 152 | shell_function | _env_file_unquote | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 174 | shell_function | env_file_get | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 213 | shell_function | env_file_pairs | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 243 | shell_function | env_file_load | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 350 | shell_function | render_unit | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
 
 FILE: deploy/lib/envfile.sh (7 callable(s))
 line 32 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=1d8638c91a946b40c9a9c6fcd958ca58c11df2a75d9aa226f4bdb44377805bdc
@@ -710,7 +710,7 @@ line 84-87 | function | token_hash | PRESERVE_AND_REGRESSION_TEST | sha256=38043
 line 90-97 | function | fingerprints | PRESERVE_AND_REGRESSION_TEST | sha256=d3491b8193163b29254da3e18da2da5c2cbdfc9a9f63fa40a97d5a76aeeb17a5
 line 100-112 | function | fingerprints_source | PRESERVE_AND_REGRESSION_TEST | sha256=42bcf4c98ad3fdd5d902fcdc3c1592ec95729405c9e570fad0367ece5c4e2f13
 
-FILE: services/execution_sidecar/bitcoin_adapter.py (58 callable(s))
+FILE: services/execution_sidecar/bitcoin_adapter.py (59 callable(s))
 line 53-54 | function | _decimal | PRESERVE_AND_REGRESSION_TEST | sha256=a2318e0a7dd3275664f546f851cf768ba65e0fc0ba0ceeb19f140c929e2709d4
 line 60-105 | function | BitcoinSpotAdapter.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=9e5341c0c0c977b80722835e262f080c6e03c6d03ad4b11ed14e5a509a964aca
 line 108-135 | function | BitcoinSpotAdapter._rules | PRESERVE_AND_REGRESSION_TEST | sha256=7c19210a33271b6b7e525b714295d221b4a9c3835421074c3bdbcdef7d9ca4e0
@@ -723,52 +723,53 @@ line 187-196 | function | BitcoinSpotAdapter._balances | PRESERVE_AND_REGRESSION
 line 198-199 | function | BitcoinSpotAdapter._free | PRESERVE_AND_REGRESSION_TEST | sha256=3b0bf05c08a8859937ac7a5863fe0daff8d692a05f2b8ff84251ee1f4278c69e
 line 202-223 | function | BitcoinSpotAdapter._response_ids | PRESERVE_AND_REGRESSION_TEST | sha256=10040110b589bd13c6b4d7930e9784b4fea641cb4240797404668c78cb0551bd
 line 226-241 | function | BitcoinSpotAdapter._rest_event | PRESERVE_AND_REGRESSION_TEST | sha256=30ca536ba9c23b874c78dde615528ee8e88e8eb8383d86cbd6752219427553db
-line 243-247 | function | BitcoinSpotAdapter._record_authenticated_event | PRESERVE_AND_REGRESSION_TEST | sha256=39015ded4cd7e655c9d3d2dd4f0c51b903521ec58be228227a99478302996516
-line 249-256 | function | BitcoinSpotAdapter._record_response_events | PRESERVE_AND_REGRESSION_TEST | sha256=c21248b31905579972399bff79b95dff886b79d2162f1ccf4611ce8ee75e630e
-line 258-300 | function | BitcoinSpotAdapter._bind_confirmed_intent | PRESERVE_AND_REGRESSION_TEST | sha256=9e6c883b26e390aebe07ab971b67b627b2d5dd1b1cb4474d6b118b36f22b3aa0
-line 302-312 | function | BitcoinSpotAdapter._preflight | PRESERVE_AND_REGRESSION_TEST | sha256=dc15f47e8cf56a4d424ea3a29d99868fa31b60e1f3c603f11a5ecab8c1f2b331
-line 314-320 | function | BitcoinSpotAdapter._lookup | PRESERVE_AND_REGRESSION_TEST | sha256=e937df6925aea5e172cbb5ea4ba80dbc260a9da3583e220e56e30128e75f1ba0
-line 322-368 | function | BitcoinSpotAdapter._submit_once | PRESERVE_AND_REGRESSION_TEST | sha256=e262aaafce877643952a277b46ce928202caf5f7d5dba985687b855e8b907ea3
-line 371-374 | function | BitcoinSpotAdapter._terminal_order_status | PRESERVE_AND_REGRESSION_TEST | sha256=001b1615248551fafbcc51cafc6e16922da4ee60729f197d3bff06361c2b1a5a
-line 377-381 | function | BitcoinSpotAdapter._terminal_list_status | PRESERVE_AND_REGRESSION_TEST | sha256=29f22e667828fa64ba31a476588c0cfdf0e39c8da45faa0491dddd8452f8df0b
-line 384-393 | function | BitcoinSpotAdapter._intent_request | PRESERVE_AND_REGRESSION_TEST | sha256=d2f49e55a550dabba85a2ec7002eab22583ec5c8c2a658f0b69153495ffa916c
-line 395-426 | function | BitcoinSpotAdapter._resume_existing_prepared_submission | PRESERVE_AND_REGRESSION_TEST | sha256=cb0dec5c7a897537dca1f30aacf3e0e53f39fae42b4f9a94ed8e661293d1e59f
-line 428-585 | function | BitcoinSpotAdapter._resume_prepared_replacement | PRESERVE_AND_REGRESSION_TEST | sha256=2b8b2a7a2df6225e75a27396a4f7003c133872e14be4af03451a0806e7a28514
-line 587-716 | function | BitcoinSpotAdapter._resolve_operation_intents | PRESERVE_AND_REGRESSION_TEST | sha256=90e6cf38043c6e91385c8d4e482ceda51240eef698f32b795fd35aa7c4c09939
-line 718-724 | function | BitcoinSpotAdapter._pause | PRESERVE_AND_REGRESSION_TEST | sha256=25a25ae946a98a94a52f1055655a2c0468552c21e3edab7b882a318608ecc73b
-line 726-733 | function | BitcoinSpotAdapter._configured_entry_quantity | PRESERVE_AND_REGRESSION_TEST | sha256=ce1e201c1ec7c0db5b8884a73f67dc2190f188bd9315ba1005cc7cf9093aa356
-line 736-761 | function | BitcoinSpotAdapter.start | PRESERVE_AND_REGRESSION_TEST | sha256=ad548135101650898c1adc6eadcec28a6c2fb6a03caee27af6cfb664249e25c5
-line 763-778 | function | BitcoinSpotAdapter.set_enabled | PRESERVE_AND_REGRESSION_TEST | sha256=ecf8fb8c5ec91246b3e522cad7051842944bb17348c4d828d7c6d50b5af1bae5
-line 780-834 | function | BitcoinSpotAdapter.submit | PRESERVE_AND_REGRESSION_TEST | sha256=44dbd43185cf97df2158e1e0c6fdc505f4ec473cbd9dcee108c6e0f767af9db0
-line 837-849 | function | BitcoinSpotAdapter._on_order_update | PRESERVE_AND_REGRESSION_TEST | sha256=ee8316a467edf1c6d5835d03ebb351b6ba3d76acba605215a42a7feb0a8985b2
-line 851-857 | function | BitcoinSpotAdapter._on_list_update | PRESERVE_AND_REGRESSION_TEST | sha256=f2c41de6c6fc16808e7c764919053fd775ccef3ec884ceaf6b60e63eb5b1912a
-line 859-864 | function | BitcoinSpotAdapter._on_resync | PRESERVE_AND_REGRESSION_TEST | sha256=f63a8b28587d6af8126bf8cb9edaa4374aa2f25604cb6c6bf5e3b138ae648954
-line 866-871 | function | BitcoinSpotAdapter._on_account_update | PRESERVE_AND_REGRESSION_TEST | sha256=818785f4b368da840a6c685dfc345fe72e1e127bba74433d67ef9d1270221e79
-line 874-882 | function | BitcoinSpotAdapter._durable_protection_is_open | PRESERVE_AND_REGRESSION_TEST | sha256=fbe46e09395983b4069238f35721cdbc863cad980f24544281dcc5b21ff9b9f4
-line 884-916 | function | BitcoinSpotAdapter._cancel_entry_list | PRESERVE_AND_REGRESSION_TEST | sha256=50218a0b70020f84b7dac9006a8c76fa4a9cdde00662c5cf2e38d7c062ab94cd
-line 918-998 | function | BitcoinSpotAdapter._place_partial_protection | PRESERVE_AND_REGRESSION_TEST | sha256=10db4b49f6fae8b449c84d2ed6d14ce9f756514891923fc196182abb41999058
-line 1000-1050 | function | BitcoinSpotAdapter._expire_stale_entry | PRESERVE_AND_REGRESSION_TEST | sha256=255f0af5ec548d840833ac73e78973783660ec820099078d45a637d000887ca0
-line 1052-1085 | function | BitcoinSpotAdapter.tick | PRESERVE_AND_REGRESSION_TEST | sha256=1c2ac9c4ce09eb0232a402a4e905ae91360dadc398e2434d92fb5be4dd56f309
-line 1088-1156 | function | BitcoinSpotAdapter._cancel_protection | PRESERVE_AND_REGRESSION_TEST | sha256=03b4766a5bf653c788d32c531e99d9a5a2ec231a5328f271975c413e83f4b8fd
-line 1158-1274 | function | BitcoinSpotAdapter.convert | PRESERVE_AND_REGRESSION_TEST | sha256=bbc3b1c292d6dbdf92eab4f42f34784da7218219c894ba606d003efcedb1572f
-line 1276-1288 | function | BitcoinSpotAdapter._auto_convert | PRESERVE_AND_REGRESSION_TEST | sha256=ae2c2abff77591d0cbb994ceefda4cf9032bd46b6870242de56633b58305905e
-line 1290-1349 | function | BitcoinSpotAdapter.maybe_auto_manage | PRESERVE_AND_REGRESSION_TEST | sha256=66dbef4c741109b1c15b7a1ca300b48ffffa0a7b112d4cd482b1c2ec9f295308
-line 1352-1454 | function | BitcoinSpotAdapter._reconciled_ownership | PRESERVE_AND_REGRESSION_TEST | sha256=f18c0808395c7ce627952a267b99c2a4ac20bcb6a0aef7271efac1f0c3119661
-line 1456-1518 | function | BitcoinSpotAdapter._refresh_durable_exchange_state | PRESERVE_AND_REGRESSION_TEST | sha256=f0a82ba325cb60ae4e71b31c223d57b7cb6feab095bf06f280ba030d3d4155f6
-line 1520-1578 | function | BitcoinSpotAdapter._reconcile_confirmed_emergency_exits | PRESERVE_AND_REGRESSION_TEST | sha256=c3d8ec90976c2d7aa7ecff6e86a502cd654957a381ff992a92eeaefa00bfb6eb
-line 1580-1666 | function | BitcoinSpotAdapter.verified_reconcile | PRESERVE_AND_REGRESSION_TEST | sha256=ddb41fc40bc9e45f7a19a59a0616d9d102ce2993959da372a0c716949b641e41
-line 1668-1669 | function | BitcoinSpotAdapter.reconcile | PRESERVE_AND_REGRESSION_TEST | sha256=fa681431869f939343ea7726d4364e75572ce8ede0078c3adb74a70a3d4789f9
-line 1671-1711 | function | BitcoinSpotAdapter.verify_flat_for_switch | PRESERVE_AND_REGRESSION_TEST | sha256=7b2e1bc88bbe6b005d27b2346ba97e6f661aa510e4eea3a893728c404e4c4fc1
-line 1713-1721 | function | BitcoinSpotAdapter.validate_pair | PRESERVE_AND_REGRESSION_TEST | sha256=459eae58567cc3adc0e2394f7ec5c93c63cbc11f319eb7471b1bb2663a13afa3
-line 1723-1754 | function | BitcoinSpotAdapter.validate_pair_funding | PRESERVE_AND_REGRESSION_TEST | sha256=61a9e9682469db6140368e953ce7108df29751cc16642ff7ddc04609b83dbc39
-line 1756-1830 | function | BitcoinSpotAdapter.emergency_exit | PRESERVE_AND_REGRESSION_TEST | sha256=62066cf673a5cb0a2a777e0cd719dd26f403ed428c7f60c6e4bda91b8600e23b
-line 1832-1837 | function | BitcoinSpotAdapter.status | PRESERVE_AND_REGRESSION_TEST | sha256=07823ea73d73e592e6c20f85ee2a43700b4dd71aaf4cb6580cdd0f99f532950e
-line 1839-1840 | function | BitcoinSpotAdapter.positions | PRESERVE_AND_REGRESSION_TEST | sha256=2fba889d4f429c1dfd2a60e9ce00176f68cd9deab19212270bdc80284e9c9886
-line 1842-1847 | function | BitcoinSpotAdapter.balance | PRESERVE_AND_REGRESSION_TEST | sha256=dde7d22e7c473c48a046a2577b89581e8d00c3c469318a37bab2d52fef41db00
-line 1849-1851 | function | BitcoinSpotAdapter.profit | PRESERVE_AND_REGRESSION_TEST | sha256=ba225bf5f67cb54bd8f8b69cd75063c9adbf7db0cbac85b50445de12b061a648
-line 1853-1861 | function | BitcoinSpotAdapter.restart_user_stream | PRESERVE_AND_REGRESSION_TEST | sha256=1746901fedda7a87b9b601d34f73848674a2460ad35937e443e7e2e9341bc95e
-line 1863-1876 | function | BitcoinSpotAdapter.set_size | PRESERVE_AND_REGRESSION_TEST | sha256=f2d6f38de4f072b961e32dddc080ea3a7bc9811eb7a63a6ee01998bd3d43fb71
-line 1878-1880 | function | BitcoinSpotAdapter.set_max | PRESERVE_AND_REGRESSION_TEST | sha256=25f22282a61b5e51bce27d8eeade6047450fbbfff8e30756442b75b2f67a0cc6
+line 243-249 | function | BitcoinSpotAdapter._record_authenticated_event | PRESERVE_AND_REGRESSION_TEST | sha256=31565faf8fb8cac8ce276d56454d63a3fadcf74c121a886f7cbbd2a8585760c1
+line 251-267 | function | BitcoinSpotAdapter._event_in_scope | PRESERVE_AND_REGRESSION_TEST | sha256=fbe67fd5be355804f78feaac954f83757a6bc496f08294d7391800401ac78473
+line 269-276 | function | BitcoinSpotAdapter._record_response_events | PRESERVE_AND_REGRESSION_TEST | sha256=c21248b31905579972399bff79b95dff886b79d2162f1ccf4611ce8ee75e630e
+line 278-320 | function | BitcoinSpotAdapter._bind_confirmed_intent | PRESERVE_AND_REGRESSION_TEST | sha256=9e6c883b26e390aebe07ab971b67b627b2d5dd1b1cb4474d6b118b36f22b3aa0
+line 322-332 | function | BitcoinSpotAdapter._preflight | PRESERVE_AND_REGRESSION_TEST | sha256=dc15f47e8cf56a4d424ea3a29d99868fa31b60e1f3c603f11a5ecab8c1f2b331
+line 334-340 | function | BitcoinSpotAdapter._lookup | PRESERVE_AND_REGRESSION_TEST | sha256=e937df6925aea5e172cbb5ea4ba80dbc260a9da3583e220e56e30128e75f1ba0
+line 342-388 | function | BitcoinSpotAdapter._submit_once | PRESERVE_AND_REGRESSION_TEST | sha256=e262aaafce877643952a277b46ce928202caf5f7d5dba985687b855e8b907ea3
+line 391-394 | function | BitcoinSpotAdapter._terminal_order_status | PRESERVE_AND_REGRESSION_TEST | sha256=001b1615248551fafbcc51cafc6e16922da4ee60729f197d3bff06361c2b1a5a
+line 397-401 | function | BitcoinSpotAdapter._terminal_list_status | PRESERVE_AND_REGRESSION_TEST | sha256=29f22e667828fa64ba31a476588c0cfdf0e39c8da45faa0491dddd8452f8df0b
+line 404-413 | function | BitcoinSpotAdapter._intent_request | PRESERVE_AND_REGRESSION_TEST | sha256=d2f49e55a550dabba85a2ec7002eab22583ec5c8c2a658f0b69153495ffa916c
+line 415-446 | function | BitcoinSpotAdapter._resume_existing_prepared_submission | PRESERVE_AND_REGRESSION_TEST | sha256=cb0dec5c7a897537dca1f30aacf3e0e53f39fae42b4f9a94ed8e661293d1e59f
+line 448-605 | function | BitcoinSpotAdapter._resume_prepared_replacement | PRESERVE_AND_REGRESSION_TEST | sha256=2b8b2a7a2df6225e75a27396a4f7003c133872e14be4af03451a0806e7a28514
+line 607-736 | function | BitcoinSpotAdapter._resolve_operation_intents | PRESERVE_AND_REGRESSION_TEST | sha256=90e6cf38043c6e91385c8d4e482ceda51240eef698f32b795fd35aa7c4c09939
+line 738-744 | function | BitcoinSpotAdapter._pause | PRESERVE_AND_REGRESSION_TEST | sha256=25a25ae946a98a94a52f1055655a2c0468552c21e3edab7b882a318608ecc73b
+line 746-753 | function | BitcoinSpotAdapter._configured_entry_quantity | PRESERVE_AND_REGRESSION_TEST | sha256=ce1e201c1ec7c0db5b8884a73f67dc2190f188bd9315ba1005cc7cf9093aa356
+line 756-781 | function | BitcoinSpotAdapter.start | PRESERVE_AND_REGRESSION_TEST | sha256=ad548135101650898c1adc6eadcec28a6c2fb6a03caee27af6cfb664249e25c5
+line 783-798 | function | BitcoinSpotAdapter.set_enabled | PRESERVE_AND_REGRESSION_TEST | sha256=ecf8fb8c5ec91246b3e522cad7051842944bb17348c4d828d7c6d50b5af1bae5
+line 800-854 | function | BitcoinSpotAdapter.submit | PRESERVE_AND_REGRESSION_TEST | sha256=44dbd43185cf97df2158e1e0c6fdc505f4ec473cbd9dcee108c6e0f767af9db0
+line 857-871 | function | BitcoinSpotAdapter._on_order_update | PRESERVE_AND_REGRESSION_TEST | sha256=5fbaa22b003c43509cbaa96ae0366ce201039e0c3314dc888a75b33bdbfa2369
+line 873-881 | function | BitcoinSpotAdapter._on_list_update | PRESERVE_AND_REGRESSION_TEST | sha256=f6cf8d6d04902e46e75d65213377408c89a08af8ac25440869b41990068a93c7
+line 883-888 | function | BitcoinSpotAdapter._on_resync | PRESERVE_AND_REGRESSION_TEST | sha256=f63a8b28587d6af8126bf8cb9edaa4374aa2f25604cb6c6bf5e3b138ae648954
+line 890-895 | function | BitcoinSpotAdapter._on_account_update | PRESERVE_AND_REGRESSION_TEST | sha256=818785f4b368da840a6c685dfc345fe72e1e127bba74433d67ef9d1270221e79
+line 898-906 | function | BitcoinSpotAdapter._durable_protection_is_open | PRESERVE_AND_REGRESSION_TEST | sha256=fbe46e09395983b4069238f35721cdbc863cad980f24544281dcc5b21ff9b9f4
+line 908-940 | function | BitcoinSpotAdapter._cancel_entry_list | PRESERVE_AND_REGRESSION_TEST | sha256=50218a0b70020f84b7dac9006a8c76fa4a9cdde00662c5cf2e38d7c062ab94cd
+line 942-1022 | function | BitcoinSpotAdapter._place_partial_protection | PRESERVE_AND_REGRESSION_TEST | sha256=10db4b49f6fae8b449c84d2ed6d14ce9f756514891923fc196182abb41999058
+line 1024-1074 | function | BitcoinSpotAdapter._expire_stale_entry | PRESERVE_AND_REGRESSION_TEST | sha256=255f0af5ec548d840833ac73e78973783660ec820099078d45a637d000887ca0
+line 1076-1109 | function | BitcoinSpotAdapter.tick | PRESERVE_AND_REGRESSION_TEST | sha256=1c2ac9c4ce09eb0232a402a4e905ae91360dadc398e2434d92fb5be4dd56f309
+line 1112-1180 | function | BitcoinSpotAdapter._cancel_protection | PRESERVE_AND_REGRESSION_TEST | sha256=03b4766a5bf653c788d32c531e99d9a5a2ec231a5328f271975c413e83f4b8fd
+line 1182-1298 | function | BitcoinSpotAdapter.convert | PRESERVE_AND_REGRESSION_TEST | sha256=bbc3b1c292d6dbdf92eab4f42f34784da7218219c894ba606d003efcedb1572f
+line 1300-1312 | function | BitcoinSpotAdapter._auto_convert | PRESERVE_AND_REGRESSION_TEST | sha256=ae2c2abff77591d0cbb994ceefda4cf9032bd46b6870242de56633b58305905e
+line 1314-1373 | function | BitcoinSpotAdapter.maybe_auto_manage | PRESERVE_AND_REGRESSION_TEST | sha256=66dbef4c741109b1c15b7a1ca300b48ffffa0a7b112d4cd482b1c2ec9f295308
+line 1376-1478 | function | BitcoinSpotAdapter._reconciled_ownership | PRESERVE_AND_REGRESSION_TEST | sha256=f18c0808395c7ce627952a267b99c2a4ac20bcb6a0aef7271efac1f0c3119661
+line 1480-1542 | function | BitcoinSpotAdapter._refresh_durable_exchange_state | PRESERVE_AND_REGRESSION_TEST | sha256=f0a82ba325cb60ae4e71b31c223d57b7cb6feab095bf06f280ba030d3d4155f6
+line 1544-1602 | function | BitcoinSpotAdapter._reconcile_confirmed_emergency_exits | PRESERVE_AND_REGRESSION_TEST | sha256=c3d8ec90976c2d7aa7ecff6e86a502cd654957a381ff992a92eeaefa00bfb6eb
+line 1604-1690 | function | BitcoinSpotAdapter.verified_reconcile | PRESERVE_AND_REGRESSION_TEST | sha256=ddb41fc40bc9e45f7a19a59a0616d9d102ce2993959da372a0c716949b641e41
+line 1692-1693 | function | BitcoinSpotAdapter.reconcile | PRESERVE_AND_REGRESSION_TEST | sha256=fa681431869f939343ea7726d4364e75572ce8ede0078c3adb74a70a3d4789f9
+line 1695-1735 | function | BitcoinSpotAdapter.verify_flat_for_switch | PRESERVE_AND_REGRESSION_TEST | sha256=7b2e1bc88bbe6b005d27b2346ba97e6f661aa510e4eea3a893728c404e4c4fc1
+line 1737-1745 | function | BitcoinSpotAdapter.validate_pair | PRESERVE_AND_REGRESSION_TEST | sha256=459eae58567cc3adc0e2394f7ec5c93c63cbc11f319eb7471b1bb2663a13afa3
+line 1747-1778 | function | BitcoinSpotAdapter.validate_pair_funding | PRESERVE_AND_REGRESSION_TEST | sha256=61a9e9682469db6140368e953ce7108df29751cc16642ff7ddc04609b83dbc39
+line 1780-1854 | function | BitcoinSpotAdapter.emergency_exit | PRESERVE_AND_REGRESSION_TEST | sha256=62066cf673a5cb0a2a777e0cd719dd26f403ed428c7f60c6e4bda91b8600e23b
+line 1856-1861 | function | BitcoinSpotAdapter.status | PRESERVE_AND_REGRESSION_TEST | sha256=07823ea73d73e592e6c20f85ee2a43700b4dd71aaf4cb6580cdd0f99f532950e
+line 1863-1864 | function | BitcoinSpotAdapter.positions | PRESERVE_AND_REGRESSION_TEST | sha256=2fba889d4f429c1dfd2a60e9ce00176f68cd9deab19212270bdc80284e9c9886
+line 1866-1871 | function | BitcoinSpotAdapter.balance | PRESERVE_AND_REGRESSION_TEST | sha256=dde7d22e7c473c48a046a2577b89581e8d00c3c469318a37bab2d52fef41db00
+line 1873-1875 | function | BitcoinSpotAdapter.profit | PRESERVE_AND_REGRESSION_TEST | sha256=ba225bf5f67cb54bd8f8b69cd75063c9adbf7db0cbac85b50445de12b061a648
+line 1877-1885 | function | BitcoinSpotAdapter.restart_user_stream | PRESERVE_AND_REGRESSION_TEST | sha256=1746901fedda7a87b9b601d34f73848674a2460ad35937e443e7e2e9341bc95e
+line 1887-1900 | function | BitcoinSpotAdapter.set_size | PRESERVE_AND_REGRESSION_TEST | sha256=f2d6f38de4f072b961e32dddc080ea3a7bc9811eb7a63a6ee01998bd3d43fb71
+line 1902-1904 | function | BitcoinSpotAdapter.set_max | PRESERVE_AND_REGRESSION_TEST | sha256=25f22282a61b5e51bce27d8eeade6047450fbbfff8e30756442b75b2f67a0cc6
 
 FILE: services/execution_sidecar/client_ids.py (3 callable(s))
 line 14-20 | function | ClientOrderIds.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=5861b57849d6db61f42f7b91c210d9d8d7b95f0625f5b7c3ffb1fac44acc09e2
@@ -972,9 +973,9 @@ line 568-577 | function | StateStore._active_trade_id | PRESERVE_AND_REGRESSION_
 line 580-597 | function | StateStore._event_identity | PRESERVE_AND_REGRESSION_TEST | sha256=fabea7432252d6f915000901dfc26ffacb4721021e19825ae1158505c25eda6b
 line 599-699 | function | StateStore._event_updates | PRESERVE_AND_REGRESSION_TEST | sha256=d93be77b79952ece29f701a491521268ec9d8bba49fe23f940801a77b35c9952
 line 701-707 | function | StateStore._apply_event | PRESERVE_AND_REGRESSION_TEST | sha256=f72ead73ec3f89d0335463703ac5ef88382c2d2ea6bc8665c20147a6c4e3c369
-line 710-722 | function | StateStore._matching_trade_rows | PRESERVE_AND_REGRESSION_TEST | sha256=e2484afac444cfed996e5a785e3c2a4ef679a6df2c38eba8254563be77f0acd3
-line 724-744 | function | StateStore.record_exchange_event | PRESERVE_AND_REGRESSION_TEST | sha256=f04f8f3d60552af5c9a6d45b67fe9cb3e64aa46d42551c43325cc70e6cd4818a
-line 746-780 | function | StateStore.replay_exchange_events_for_trade | PRESERVE_AND_REGRESSION_TEST | sha256=d96eb2f9ddb6300321c6fd996eea418e4074b1c386c50d5cab577a92cf94b9f0
+line 710-723 | function | StateStore._matching_trade_rows | PRESERVE_AND_REGRESSION_TEST | sha256=babcaa40975d7e605a82a7cb82bc6a88b7d2eb87b13c670cb76fbc45c0aa5b92
+line 725-745 | function | StateStore.record_exchange_event | PRESERVE_AND_REGRESSION_TEST | sha256=1326b5b4b691fb0d51f3a659c114d1fe813cbeae8184e5081745e1bab81328f1
+line 747-782 | function | StateStore.replay_exchange_events_for_trade | PRESERVE_AND_REGRESSION_TEST | sha256=8acb05a2974639defd38f52ef76eefff5da556a043fe8f60bbb97baaf4075453
 
 FILE: services/execution_sidecar/user_data_stream.py (17 callable(s))
 line 35-58 | function | ModernUserDataStream.__init__ | PRESERVE_AND_REGRESSION_TEST | sha256=8efc982725813e415112a13d08d693ce61b4163ca1a381dd0f225863769fb25b

@@ -45,8 +45,8 @@
       "size": 2387
     },
     "BITCOIN_BOT_SERVICES_FUNCTIONS_AND_TELEGRAM_GUIDE.txt": {
-      "sha256": "6c430fb28c7075a40a4ebab84a2940a18d0b27a23058e3c157f07edc93da5f31",
-      "size": 144829
+      "sha256": "78cb74411f7baa63f3905a0dd29e3efc1424f6cfbd51a4475a0dd2714641bd4d",
+      "size": 144996
     },
     "BOT_SIMPLE_DESCRIPTION.txt": {
       "sha256": "9dfd21c5b98f9482804f9685a1606c3141f519b3980d9ca6848e29c2229b8b0b",
@@ -145,8 +145,8 @@
       "size": 18982
     },
     "deploy/capture_failure_evidence.py": {
-      "sha256": "fdd71d677bbb048a361008a94505dc8353ea4e13a9a21f4a2194321a932871ad",
-      "size": 6667
+      "sha256": "c34c54d2b513eb2a6e2568cefa478921d419b8549e266fb1a99aca5905cf94fd",
+      "size": 6662
     },
     "deploy/configure_offhost_backup.sh": {
       "sha256": "d5d25c5b0d687b6a0432882cf4026d98d0641b607e09eb7654e84770190b483f",
@@ -165,12 +165,12 @@
       "size": 7746
     },
     "deploy/install_artifact.sh": {
-      "sha256": "616c8752a0091875f7a400d93dcdb1298fb758871c2170cfeb95824d8c55d3ab",
-      "size": 58237
+      "sha256": "c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7",
+      "size": 58402
     },
     "deploy/install_monitoring.sh": {
-      "sha256": "667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6",
-      "size": 23988
+      "sha256": "af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363",
+      "size": 24018
     },
     "deploy/instance_identity.sh": {
       "sha256": "d67ff899438e1855ffb5e8ca6c9dc65a869984e039edd68ed8f5b86d466be7ef",
@@ -265,8 +265,8 @@
       "size": 8179
     },
     "docs/AWS_RUNTIME_REPAIR_20260907.md": {
-      "sha256": "c7dcc96556c0e968083f5202dd6a58c334fcefdfb3993d18058364ace740b87f",
-      "size": 8191
+      "sha256": "4981a2154f8867f75dabc4a26bd1ef4b099ae679cc22d3ff43ff1aff44846686",
+      "size": 9776
     },
     "docs/AWS_TESTNET_INCIDENT_REVIEW_2026-08-30.md": {
       "sha256": "bebbe32799d6401bf0522107fcf8dd28fb0e6865c97246ef4ee9cee37db33117",
@@ -333,8 +333,8 @@
       "size": 60986
     },
     "docs/audit/FUNCTION_PARITY_MATRIX.csv": {
-      "sha256": "690b0b1ec717129ee262a5c4b5754482caa7174295f6653ce3880dc4d01e0f4d",
-      "size": 146688
+      "sha256": "0cd979d8a50c858cbefea138d3a78070f38b3dc3a0e8039ba4481479498b2d98",
+      "size": 146895
     },
     "docs/audit/ISSUE_LEDGER.csv": {
       "sha256": "d66622971520dcdc647fad8b14d4c7dea6cea1e6a0b808afef1e1599df5894b4",
@@ -733,8 +733,8 @@
       "size": 0
     },
     "services/execution_sidecar/bitcoin_adapter.py": {
-      "sha256": "b26cc66df9d418f05b85ad4d4a2164a33b2a41187576b3f503b8faaa75a4c2c1",
-      "size": 102697
+      "sha256": "c5d1d38d0b00707575fe87340ffa09fc07dd1b2747d519f610f44a103ce1c066",
+      "size": 103869
     },
     "services/execution_sidecar/client_ids.py": {
       "sha256": "0784d62bddf18180d0412c846087ffbdea7c4b17e1f762d32117eee2aa893802",
@@ -785,8 +785,8 @@
       "size": 9110
     },
     "services/execution_sidecar/state_store.py": {
-      "sha256": "063d4b577730cb16788ff708d0841f3fbbe823a680c723da449b2c4f867f26ba",
-      "size": 37067
+      "sha256": "4887adb10bc621cfb1aaaa1f5c69c4683374d40b01da4af0ca20612ddca60846",
+      "size": 37204
     },
     "services/execution_sidecar/user_data_stream.py": {
       "sha256": "303e2c48d5e748b2b6aba471e351bd7799979478d01315546aab73608aa7c4e3",
@@ -905,16 +905,16 @@
       "size": 4305
     },
     "tests/test_deployment_runtime_20260831.py": {
-      "sha256": "cb91a735b3bedbfafdc55260666a0af9966935a8b363c4a8ff5fc68ca762d3c7",
-      "size": 10795
+      "sha256": "ff8f9fe95f74dae65626d0c5c5d6c8cee5c60134e54631899a29fbdf646cdfe3",
+      "size": 11766
     },
     "tests/test_env_file_parser.py": {
       "sha256": "040c21385bb0430dfb44095cdb6fe7eecb1db94cecfa61d23645f0dbdba0e47a",
       "size": 14825
     },
     "tests/test_execution_safety.py": {
-      "sha256": "65041d77b93827257619ee83e63cdaf4f17b2ae6b9ef44bc9231099b6b01a65a",
-      "size": 60151
+      "sha256": "f4d6159f0fa31f7373f94691b546c5d5ec07447e65de5616eb09a23a32e1b6a3",
+      "size": 62506
     },
     "tests/test_external_market_context.py": {
       "sha256": "e0b34c2738e632ca9276e854d6f67c55b077e280b3e60ac0c55cf2249275f253",

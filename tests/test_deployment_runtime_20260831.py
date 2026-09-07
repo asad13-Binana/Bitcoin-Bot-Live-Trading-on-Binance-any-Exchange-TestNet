@@ -8,6 +8,7 @@ import shutil
 import sqlite3
 import stat
 import subprocess
+import tarfile
 
 import pytest
 import yaml
@@ -20,6 +21,25 @@ ROOT_LINUX = pytest.mark.skipif(
     os.name != "posix" or getattr(os, "geteuid", lambda: -1)() != 0,
     reason="requires root on a disposable Linux CI VM",
 )
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX umask and tar permissions")
+def test_public_release_extraction_is_readable_under_private_caller_umask(tmp_path):
+    public = tmp_path / "config.json"
+    public.write_text("{}")
+    public.chmod(0o644)
+    archive = tmp_path / "release.tar.gz"
+    with tarfile.open(archive, "w:gz") as tf:
+        tf.add(public, arcname="bitcoin-bot/config.json")
+    destination = tmp_path / "extracted"
+    destination.mkdir()
+    script = (ROOT / "deploy/install_artifact.sh").read_text()
+    extraction = next(line for line in script.splitlines() if line.startswith("(umask 022; tar "))
+    subprocess.run(["bash", "-c", "umask 077\n" + extraction], check=True,
+                   env=dict(os.environ, ARTIFACT=str(archive), TMP=str(destination)))
+    result = destination / "bitcoin-bot/config.json"
+    assert result.read_bytes() == public.read_bytes()
+    assert stat.S_IMODE(result.stat().st_mode) == 0o644
 
 
 def test_derived_image_keeps_the_pinned_upstream_and_trading_mounts():

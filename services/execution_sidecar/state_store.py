@@ -707,7 +707,7 @@ class StateStore:
         )
 
     @staticmethod
-    def _matching_trade_rows(con, order_id, order_list_id):
+    def _matching_trade_rows(con, order_id, order_list_id, symbol):
         clauses, values = [], []
         if order_id not in (None, -1, '-1'):
             clauses.append('(entry_order_id=? OR take_profit_order_id=? OR stop_order_id=?)')
@@ -718,7 +718,8 @@ class StateStore:
         if not clauses:
             return []
         return con.execute(
-            'SELECT * FROM trade_records WHERE ' + ' OR '.join(clauses), values  # nosec B608
+            "SELECT * FROM trade_records WHERE REPLACE(pair,'/','')=? AND ("
+            + ' OR '.join(clauses) + ')', [symbol, *values]  # nosec B608
         ).fetchall()
 
     def record_exchange_event(self, event: dict[str, Any]) -> bool:
@@ -739,7 +740,7 @@ class StateStore:
                 )
             except sqlite3.IntegrityError:
                 return False
-            for row in self._matching_trade_rows(con, order_id, order_list_id):
+            for row in self._matching_trade_rows(con, order_id, order_list_id, symbol):
                 self._apply_event(con, row, event, event_key)
         return True
 
@@ -766,8 +767,9 @@ class StateStore:
             if not clauses:
                 return 0
             events = con.execute(
-                'SELECT event_key,payload_json FROM exchange_events WHERE '
-                + ' OR '.join(clauses) + ' ORDER BY id', params  # nosec B608
+                'SELECT event_key,payload_json FROM exchange_events WHERE symbol=? AND ('
+                + ' OR '.join(clauses) + ') ORDER BY id',
+                [row['pair'].replace('/', ''), *params]  # nosec B608
             ).fetchall()
             for stored in events:
                 event = json.loads(stored['payload_json'])

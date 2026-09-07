@@ -588,7 +588,9 @@ cleanup(){
   fi
 }
 trap cleanup EXIT
-tar -xzf "$ARTIFACT" -C "$TMP" --no-same-owner --no-same-permissions
+# Public release inputs must remain readable by the unprivileged containers,
+# even when the caller protects its private recovery files with umask 077.
+(umask 022; tar -xzf "$ARTIFACT" -C "$TMP" --no-same-owner --no-same-permissions)
 NEW="$TMP/bitcoin-bot"
 [[ -d "$NEW" && -f "$NEW/RELEASE_MANIFEST.json" && -f "$NEW/RELEASE_SHA256.txt" \
    && -f "$NEW/RELEASE_MODE" ]] || fail 'invalid release root'
