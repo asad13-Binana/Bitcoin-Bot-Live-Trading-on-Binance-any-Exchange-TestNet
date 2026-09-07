@@ -273,16 +273,16 @@ line 1099 | shell_function | rollback | PRESERVE_AND_REGRESSION_TEST | sha256=c7
 line 1216 | shell_function | on_cutover_failure | PRESERVE_AND_REGRESSION_TEST | sha256=c72401abae6946afa9dc70c6b7652a86abe4a24ad077975617386a7aaa7032d7
 
 FILE: deploy/install_monitoring.sh (10 callable(s))
-line 5 | shell_function | load_instance_identity | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 30 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 68 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 74 | shell_function | env_file_key_allowed | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 130 | shell_function | env_file_require_trusted | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 152 | shell_function | _env_file_unquote | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 174 | shell_function | env_file_get | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 213 | shell_function | env_file_pairs | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 243 | shell_function | env_file_load | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
-line 347 | shell_function | render_unit | PRESERVE_AND_REGRESSION_TEST | sha256=667734abf5d7e5a6d9b532914a055bb3cd52808b5efeeed4b7ec1f0868248bf6
+line 5 | shell_function | load_instance_identity | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 30 | shell_function | fail | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 68 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 74 | shell_function | env_file_key_allowed | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 130 | shell_function | env_file_require_trusted | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 152 | shell_function | _env_file_unquote | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 174 | shell_function | env_file_get | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 213 | shell_function | env_file_pairs | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 243 | shell_function | env_file_load | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
+line 350 | shell_function | render_unit | PRESERVE_AND_REGRESSION_TEST | sha256=af45cc04f6ec914f7ba11f08d8ab6798bbecc4db9d980f3299b96b1a7b1d4363
 
 FILE: deploy/lib/envfile.sh (7 callable(s))
 line 32 | shell_function | env_file_fail | PRESERVE_AND_REGRESSION_TEST | sha256=1d8638c91a946b40c9a9c6fcd958ca58c11df2a75d9aa226f4bdb44377805bdc
