@@ -4,7 +4,7 @@ uvicorn==0.41.0
 httpx==0.28.1
 psutil==7.2.2
 pydantic==2.12.5
-mcp==1.28.1
+mcp==1.30.0
 # Preserve the documented Python 3.10-3.13 support range. Newer rpds-py
 # releases require Python 3.11, while 0.30.0 is available to Python 3.10.
 rpds-py==0.30.0
